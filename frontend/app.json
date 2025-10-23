@@ -29,6 +29,15 @@
       "eas": {
         "projectId": "a748a54b-a21e-4284-964b-b4773f150eeb"
       }
+    },
+    "android": {
+      "package": "com.sharon14kevin.chopnow"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a748a54b-a21e-4284-964b-b4773f150eeb"
     }
   }
 }
