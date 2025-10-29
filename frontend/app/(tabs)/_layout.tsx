@@ -1,7 +1,9 @@
+import { useTheme } from '@/hooks/useTheme';
 import { Tabs } from 'expo-router';
-import { Chrome as Home, ShoppingCart, Search, User, Plus } from 'lucide-react-native';
+import { Home, ShoppingCart, Search, User, Plus } from 'lucide-react-native';
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{

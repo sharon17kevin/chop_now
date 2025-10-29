@@ -30,6 +30,11 @@
         "projectId": "a748a54b-a21e-4284-964b-b4773f150eeb"
       }
     },
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#059669"
+    },
     "android": {
       "package": "com.sharon14kevin.chopnow"
     },
