@@ -21,6 +21,7 @@ import { miniCardsData } from '@/data/mockData';
 import DestinationCard, {
   DestinationMiniCard,
 } from '@/components/DestinationCard';
+import { useRouter } from 'expo-router';
 
 const categories = [
   { id: 1, name: 'Fruits', icon: '🍎', color: '#EF4444' },
@@ -72,6 +73,7 @@ const SPACING = 12;
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { colors } = useTheme();
+  const router = useRouter();
   const [mode, setMode] = useState<string>('private');
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [width, setWidth] = useState(Dimensions.get('window').width);
@@ -98,11 +100,19 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={{ ...styles.header, backgroundColor: colors.secondary }}>
         <View>
-          <Text style={styles.greeting}>Good morning!</Text>
-          <View style={styles.locationRow}>
+          <Text style={styles.greeting}>Delivering to</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() =>
+              router.push({
+                pathname: 'delivery' as any,
+              })
+            }
+            style={styles.locationRow}
+          >
             <MapPin size={16} color="#059669" />
             <Text style={styles.location}>San Francisco, CA</Text>
-          </View>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.cartButton}>
           <ShoppingCart size={24} color="#059669" />
@@ -147,12 +157,7 @@ export default function HomeScreen() {
           flex: 1,
         }}
       >
-        <ScrollView
-          // contentContainerStyle={{
-          //   paddingHorizontal: 20,
-          // }}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView showsVerticalScrollIndicator={false}>
           {/* Hero Banner */}
           <View style={styles.part}>
             <View
@@ -169,7 +174,7 @@ export default function HomeScreen() {
               <View
                 style={{
                   flex: 4,
-                  paddingHorizontal: 5,
+                  paddingHorizontal: 8,
                   borderTopLeftRadius: 16,
                   borderBottomLeftRadius: 16,
                   height: 200,
@@ -314,7 +319,6 @@ export default function HomeScreen() {
                   </View>
                 </TouchableOpacity>
               )}
-              
               snapToInterval={200 + 16}
               decelerationRate="fast"
               snapToAlignment="start"
