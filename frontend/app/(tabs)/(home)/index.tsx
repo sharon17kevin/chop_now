@@ -331,71 +331,7 @@ export default function HomeScreen() {
               })}
             />
           </View>
-          {/* Featured Products */}
-          {/* <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Featured Products</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.productsContainer}
-          >
-            {featuredProducts.map((product) => (
-              <TouchableOpacity key={product.id} style={styles.productCard}>
-                <Image
-                  source={{ uri: product.image }}
-                  style={styles.productImage}
-                />
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.name}</Text>
-                  <Text style={styles.farmerName}>{product.farmer}</Text>
-                  <View style={styles.ratingRow}>
-                    <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                    <Text style={styles.rating}>{product.rating}</Text>
-                    <Text style={styles.location}>• {product.location}</Text>
-                  </View>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.price}>${product.price}</Text>
-                    <Text style={styles.unit}>{product.unit}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.addToCartButton}>
-                    <Text style={styles.addToCartText}>Add to Cart</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View> */}
-
-          {/* Farmers Near You */}
-          {/* <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Farmers Near You</Text>
-            <View>
-              <TouchableOpacity style={styles.farmerCard}>
-                <Image
-                  source={{
-                    uri: 'https://images.pexels.com/photos/2889942/pexels-photo-2889942.jpeg?auto=compress&cs=tinysrgb&w=400',
-                  }}
-                  style={styles.farmerImage}
-                />
-                <View style={styles.farmerInfo}>
-                  <Text style={styles.farmerName}>Green Valley Farm</Text>
-                  <Text style={styles.farmerDescription}>
-                    Organic vegetables and fruits
-                  </Text>
-                  <View style={styles.ratingRow}>
-                    <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                    <Text style={styles.rating}>4.8</Text>
-                    <Text style={styles.location}>• 2.5 miles away</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View> */}
+          
         </ScrollView>
       </View>
     </SafeAreaView>

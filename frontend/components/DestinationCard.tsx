@@ -25,25 +25,25 @@ const DestinationCard = ({
   const router = useRouter();
 
   const handlePress = () => {
-    // Convert restaurant name to URL-friendly format that matches the restaurant page keys
-    let restaurantSlug = name.toLowerCase().replace(/\s+/g, '-');
+    // Convert item name to URL-friendly format that matches the item page keys
+    let itemSlug = name.toLowerCase().replace(/\s+/g, '-');
 
-    // Handle special cases to match the restaurant page keys exactly
+    // Handle special cases to match the item page keys exactly
     if (name === "Domino's Pizza") {
-      restaurantSlug = 'dominos-pizza';
+      itemSlug = 'dominos-pizza';
     } else if (name === 'Cafe Neo') {
-      restaurantSlug = 'cafe-neo';
+      itemSlug = 'cafe-neo';
     } else if (name === 'Spice Route') {
-      restaurantSlug = 'spice-route';
+      itemSlug = 'spice-route';
     } else if (name === 'The Grill') {
-      restaurantSlug = 'the-grill';
+      itemSlug = 'the-grill';
     } else if (name === 'Bukka Hut') {
-      restaurantSlug = 'bukka-hut';
+      itemSlug = 'bukka-hut';
     }
 
     router.push({
-      pathname: '/places/[restaurant]' as any,
-      params: { restaurant: restaurantSlug },
+      pathname: '/items/[iteminfo]' as any,
+      params: { item: itemSlug },
     });
   };
 
@@ -124,25 +124,25 @@ export const DestinationMiniCard = ({
   const router = useRouter();
 
   const handlePress = () => {
-    // Convert restaurant name to URL-friendly format that matches the restaurant page keys
-    let restaurantSlug = name.toLowerCase().replace(/\s+/g, '-');
+    // Convert item name to URL-friendly format that matches the item page keys
+    let itemSlug = name.toLowerCase().replace(/\s+/g, '-');
 
-    // Handle special cases to match the restaurant page keys exactly
+    // Handle special cases to match the item page keys exactly
     if (name === "Domino's Pizza") {
-      restaurantSlug = 'dominos-pizza';
+      itemSlug = 'dominos-pizza';
     } else if (name === 'Cafe Neo') {
-      restaurantSlug = 'cafe-neo';
+      itemSlug = 'cafe-neo';
     } else if (name === 'Spice Route') {
-      restaurantSlug = 'spice-route';
+      itemSlug = 'spice-route';
     } else if (name === 'The Grill') {
-      restaurantSlug = 'the-grill';
+      itemSlug = 'the-grill';
     } else if (name === 'Bukka Hut') {
-      restaurantSlug = 'bukka-hut';
+      itemSlug = 'bukka-hut';
     }
 
     router.push({
-      pathname: 'places/[restaurant]' as any,
-      params: { restaurant: restaurantSlug },
+      pathname: 'places/[item]' as any,
+      params: { item: itemSlug },
     });
   };
 

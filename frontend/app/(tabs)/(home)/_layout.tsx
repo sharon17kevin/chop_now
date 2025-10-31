@@ -5,5 +5,7 @@ export default function Layout() {
     <Stack.Screen name="index" options={{ headerShown: false }} />
     <Stack.Screen name="delivery" options={{ headerShown: false }} />
     <Stack.Screen name="newaddress" options={{ headerShown: false }} />
+    <Stack.Screen name="reviews" options={{ headerShown: false }} />
+    <Stack.Screen name="items/[iteminfo]" options={{ headerShown: false }} />
   </Stack>
 }
