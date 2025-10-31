@@ -24,7 +24,7 @@ const mockReviews = [
   {
     reviewer: 'Mary Johnson',
     rating: 5,
-    text: 'Best restaurant in town!',
+    text: 'Best item in town!',
     date: '2024-05-20',
   },
   {
@@ -55,14 +55,14 @@ const mockReviews = [
 
 export default function ReviewsScreen() {
   const { colors } = useTheme();
-  const { restaurant } = useLocalSearchParams();
+  const { item } = useLocalSearchParams();
   const router = useRouter();
-  const restaurantName = restaurant
-    ? restaurant
+  const itemName = item
+    ? item
         .toString()
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (l) => l.toUpperCase())
-    : 'Restaurant';
+    : 'item';
   const [selectedTab, setSelectedTab] = React.useState<number>(5);
   const tabs = [5, 4, 3, 2, 1];
   const filteredReviews = mockReviews.filter((r) => r.rating === selectedTab);
@@ -116,7 +116,7 @@ export default function ReviewsScreen() {
         contentContainerStyle={{ padding: 20 }}
       >
         <Text style={[typography.h2, { color: colors.text, marginBottom: 16 }]}>
-          Reviews for {restaurantName}
+          Reviews for {itemName}
         </Text>
         {filteredReviews.length === 0 ? (
           <View style={styles.placeholderBox}>

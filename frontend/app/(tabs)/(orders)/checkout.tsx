@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react-native';
+import AppHeader from '@/components/AppHeader';
 
 const cartItems = [
   {
@@ -18,7 +19,8 @@ const cartItems = [
     quantity: 2,
     unit: 'per lb',
     farmer: 'Green Valley Farm',
-    image: 'https://images.pexels.com/photos/533280/pexels-photo-533280.jpeg?auto=compress&cs=tinysrgb&w=400',
+    image:
+      'https://images.pexels.com/photos/533280/pexels-photo-533280.jpeg?auto=compress&cs=tinysrgb&w=400',
   },
   {
     id: 2,
@@ -27,7 +29,8 @@ const cartItems = [
     quantity: 1,
     unit: 'per basket',
     farmer: 'Berry Fields',
-    image: 'https://images.pexels.com/photos/46174/strawberries-berries-fruit-freshness-46174.jpeg?auto=compress&cs=tinysrgb&w=400',
+    image:
+      'https://images.pexels.com/photos/46174/strawberries-berries-fruit-freshness-46174.jpeg?auto=compress&cs=tinysrgb&w=400',
   },
   {
     id: 3,
@@ -36,7 +39,8 @@ const cartItems = [
     quantity: 3,
     unit: 'per dozen',
     farmer: 'Sunny Side Farm',
-    image: 'https://images.pexels.com/photos/162712/egg-white-food-protein-162712.jpeg?auto=compress&cs=tinysrgb&w=400',
+    image:
+      'https://images.pexels.com/photos/162712/egg-white-food-protein-162712.jpeg?auto=compress&cs=tinysrgb&w=400',
   },
 ];
 
@@ -45,19 +49,24 @@ export default function CartScreen() {
 
   const updateQuantity = (id: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      setItems(items.filter(item => item.id !== id));
+      setItems(items.filter((item) => item.id !== id));
     } else {
-      setItems(items.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      ));
+      setItems(
+        items.map((item) =>
+          item.id === id ? { ...item, quantity: newQuantity } : item
+        )
+      );
     }
   };
 
   const removeItem = (id: number) => {
-    setItems(items.filter(item => item.id !== id));
+    setItems(items.filter((item) => item.id !== id));
   };
 
-  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
   const deliveryFee = 2.99;
   const serviceFee = 1.49;
   const total = subtotal + deliveryFee + serviceFee;
@@ -84,10 +93,7 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Your Cart</Text>
-        <Text style={styles.itemCount}>{items.length} items</Text>
-      </View>
+      <AppHeader title={`Your Order: ${items.length} items`} />
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.itemsList}>
         {items.map((item) => (
@@ -96,7 +102,9 @@ export default function CartScreen() {
             <View style={styles.itemDetails}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.farmerName}>{item.farmer}</Text>
-              <Text style={styles.itemPrice}>${item.price.toFixed(2)} {item.unit}</Text>
+              <Text style={styles.itemPrice}>
+                ${item.price.toFixed(2)} {item.unit}
+              </Text>
             </View>
             <View style={styles.quantityControls}>
               <TouchableOpacity
