@@ -10,6 +10,9 @@ import {
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { Trash2, ShoppingCart } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppHeader from '@/components/AppHeader';
+import { useTheme } from '@/hooks/useTheme';
 
 interface WishlistItem {
   id: string;
@@ -26,6 +29,7 @@ export default function WishlistScreen() {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { colors } = useTheme();
 
   useEffect(() => {
     fetchWishlist();
@@ -83,16 +87,16 @@ export default function WishlistScreen() {
 
       setWishlist((prev) => prev.filter((item) => item.id !== itemId));
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to remove item'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to remove item');
     }
   }
 
   const renderItem = ({ item }: { item: WishlistItem }) => (
     <View style={styles.itemContainer}>
       <Image
-        source={{ uri: item.product.image_url || 'https://via.placeholder.com/80' }}
+        source={{
+          uri: item.product.image_url || 'https://via.placeholder.com/80',
+        }}
         style={styles.image}
       />
       <View style={styles.infoContainer}>
@@ -105,7 +109,8 @@ export default function WishlistScreen() {
       <View style={styles.actionsContainer}>
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => removeFromWishlist(item.id)}>
+          onPress={() => removeFromWishlist(item.id)}
+        >
           <Trash2 size={20} color="#FF3B30" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.cartButton}>
@@ -135,8 +140,11 @@ export default function WishlistScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>My Wishlist</Text>
+    <SafeAreaView
+      edges={['top']}
+      style={{ flex: 1, backgroundColor: colors.secondary }}
+    >
+      <AppHeader title="Favourites" />
       {wishlist.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Your wishlist is empty</Text>
@@ -152,7 +160,7 @@ export default function WishlistScreen() {
           contentContainerStyle={styles.listContainer}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

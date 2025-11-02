@@ -7,5 +7,6 @@ export default function Layout() {
     <Stack.Screen name="payment" options={{ headerShown: false }} />
     <Stack.Screen name="settings" options={{ headerShown: false }} />
     <Stack.Screen name="wishlist" options={{ headerShown: false }} />
+    <Stack.Screen name="support" options={{ headerShown: false }} />
   </Stack>
 }

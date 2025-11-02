@@ -9,6 +9,9 @@ import {
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { Bell, Check, Package, Tag, AlertCircle } from 'lucide-react-native';
+import { useTheme } from '@/hooks/useTheme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppHeader from '@/components/AppHeader';
 
 interface Notification {
   id: string;
@@ -23,6 +26,7 @@ export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { colors } = useTheme();
 
   useEffect(() => {
     fetchNotifications();
@@ -76,9 +80,7 @@ export default function NotificationsScreen() {
         )
       );
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to mark as read'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to mark as read');
     }
   }
 
@@ -139,7 +141,8 @@ export default function NotificationsScreen() {
   const renderItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity
       style={[styles.notifItem, !item.is_read && styles.unreadNotif]}
-      onPress={() => !item.is_read && markAsRead(item.id)}>
+      onPress={() => !item.is_read && markAsRead(item.id)}
+    >
       <View style={styles.iconContainer}>{getNotificationIcon(item.type)}</View>
       <View style={styles.contentContainer}>
         <Text style={styles.title}>{item.title}</Text>
@@ -163,13 +166,17 @@ export default function NotificationsScreen() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView
+      edges={['top']}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
+      <AppHeader title="Notifications" />
       <View style={styles.headerContainer}>
-        <Text style={styles.header}>Notifications</Text>
         {unreadCount > 0 && (
           <TouchableOpacity
             style={styles.markAllButton}
-            onPress={markAllAsRead}>
+            onPress={markAllAsRead}
+          >
             <Check size={16} color="#007AFF" />
             <Text style={styles.markAllText}>Mark all read</Text>
           </TouchableOpacity>
@@ -197,7 +204,7 @@ export default function NotificationsScreen() {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

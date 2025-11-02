@@ -8,9 +8,12 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Sun, Moon, Smartphone, HelpCircle } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/useTheme';
+import AppHeader from '@/components/AppHeader';
 
 interface AppSettings {
   theme: 'light' | 'dark' | 'system';
@@ -24,6 +27,9 @@ export default function SettingsScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { colors } = useTheme();
+  const router = useRouter();
 
   useEffect(() => {
     fetchSettings();
@@ -64,9 +70,7 @@ export default function SettingsScreen() {
     }
   }
 
-  async function updateSettings(
-    updates: Partial<AppSettings>
-  ) {
+  async function updateSettings(updates: Partial<AppSettings>) {
     try {
       const {
         data: { user },
@@ -109,7 +113,9 @@ export default function SettingsScreen() {
         if (insertError) throw insertError;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update settings');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update settings'
+      );
     }
   }
 
@@ -127,7 +133,8 @@ export default function SettingsScreen() {
         styles.themeOption,
         settings.theme === theme && styles.selectedTheme,
       ]}
-      onPress={() => updateSettings({ theme })}>
+      onPress={() => updateSettings({ theme })}
+    >
       <Icon
         size={24}
         color={settings.theme === theme ? '#007AFF' : '#8E8E93'}
@@ -136,7 +143,8 @@ export default function SettingsScreen() {
         style={[
           styles.themeLabel,
           settings.theme === theme && styles.selectedThemeLabel,
-        ]}>
+        ]}
+      >
         {label}
       </Text>
     </TouchableOpacity>
@@ -151,49 +159,58 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Settings</Text>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <AppHeader title="Settings" />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
-      {error && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Appearance</Text>
+          <View style={styles.themeContainer}>
+            <ThemeOption theme="light" icon={Sun} label="Light" />
+            <ThemeOption theme="dark" icon={Moon} label="Dark" />
+            <ThemeOption theme="system" icon={Smartphone} label="System" />
+          </View>
         </View>
-      )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Appearance</Text>
-        <View style={styles.themeContainer}>
-          <ThemeOption theme="light" icon={Sun} label="Light" />
-          <ThemeOption theme="dark" icon={Moon} label="Dark" />
-          <ThemeOption theme="system" icon={Smartphone} label="System" />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <View style={styles.settingItem}>
+            <Text style={styles.settingLabel}>Push Notifications</Text>
+            <Switch
+              value={settings.notifications_enabled}
+              onValueChange={(value) =>
+                updateSettings({ notifications_enabled: value })
+              }
+              trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Push Notifications</Text>
-          <Switch
-            value={settings.notifications_enabled}
-            onValueChange={(value) =>
-              updateSettings({ notifications_enabled: value })
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Support</Text>
+          <TouchableOpacity
+            style={styles.linkItem}
+            onPress={() =>
+              router.push({
+                pathname: 'support' as any,
+              })
             }
-            trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-            thumbColor="#FFFFFF"
-          />
+          >
+            <HelpCircle size={20} color="#8E8E93" />
+            <Text style={styles.linkText}>Help and Support</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support</Text>
-        <TouchableOpacity
-          style={styles.linkItem}
-          onPress={() => router.push('/help')}>
-          <HelpCircle size={20} color="#8E8E93" />
-          <Text style={styles.linkText}>Help and Support</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

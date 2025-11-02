@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { CreditCard, Plus, Trash2, Check } from 'lucide-react-native';
+import { useTheme } from '@/hooks/useTheme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppHeader from '@/components/AppHeader';
 
 interface PaymentMethod {
   id: string;
@@ -27,6 +30,8 @@ export default function PaymentScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
   const [cardBrand, setCardBrand] = useState('');
+  
+  const { colors } = useTheme();
 
   useEffect(() => {
     fetchPaymentMethods();
@@ -186,15 +191,16 @@ export default function PaymentScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Payment Options</Text>
-
+    <SafeAreaView
+      edges={['top']}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
+      <AppHeader title="Payment Methods" />
       {error && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
-
       <FlatList
         data={paymentMethods}
         renderItem={renderItem}
@@ -262,7 +268,7 @@ export default function PaymentScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

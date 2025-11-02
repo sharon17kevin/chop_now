@@ -110,6 +110,7 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView
+      edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={[styles.header]}>
