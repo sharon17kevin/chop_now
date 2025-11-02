@@ -10,7 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { User, Save, Mail, Phone, MapPin, Edit } from 'lucide-react-native';
+import { User, Save, Mail, Phone, MapPin, Edit, ArrowLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 interface Profile {
   full_name: string;
@@ -30,6 +31,7 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     fetchProfile();
@@ -143,17 +145,35 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{
+            backgroundColor: 'white',
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            padding: 8,
+            elevation: 3,
+            shadowColor: '#000',
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+          }}
+        >
+          <ArrowLeft />
+        </TouchableOpacity>
         <Text style={styles.header}>Profile</Text>
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => setIsEditing(!isEditing)}>
+          onPress={() => setIsEditing(!isEditing)}
+        >
           <Edit size={20} color="#007AFF" />
         </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}>
+        contentContainerStyle={styles.scrollContent}
+      >
         {error && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorText}>{error}</Text>
@@ -237,7 +257,8 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={styles.saveButton}
             onPress={saveProfile}
-            disabled={saving}>
+            disabled={saving}
+          >
             {saving ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (

@@ -8,6 +8,7 @@ import {
   Trash2,
   Wallet,
 } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Image,
@@ -242,11 +243,23 @@ export default function CartScreen() {
                 onPress={() => setSelectedPayment(method.label)}
               >
                 <View style={styles.paymentLeft}>
-                  <Wallet
+                  {/* <Wallet
                     size={20}
                     color={
                       selectedPayment === method.label ? '#f6891f' : '#888'
                     }
+                  /> */}
+                  <Ionicons
+                    name={
+                      method.label === 'Wallet'
+                        ? 'wallet-outline'
+                        : method.label === 'Card'
+                        ? 'card-outline'
+                        : 'swap-horizontal-outline'
+                    }
+                    size={20}
+                    color={colors.secondary}
+                    style={{ marginRight: 8 }}
                   />
                   <Text
                     style={[
@@ -269,7 +282,7 @@ export default function CartScreen() {
         {/* Checkout Button */}
         <View style={styles.checkoutSection}>
           <TouchableOpacity style={styles.checkoutButton}>
-            <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
+            <Text style={styles.checkoutButtonText}>Pay</Text>
           </TouchableOpacity>
           <Text style={styles.checkoutNote}>
             Estimated delivery: Tomorrow, 10:00 AM - 2:00 PM
