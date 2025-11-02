@@ -8,49 +8,70 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, MapPin, ShoppingBag, Heart, Settings, Bell, CreditCard, CircleHelp as HelpCircle, LogOut, ChevronRight, Star } from 'lucide-react-native';
+import {
+  User,
+  MapPin,
+  ShoppingBag,
+  Heart,
+  Settings,
+  Bell,
+  CreditCard,
+  CircleHelp as HelpCircle,
+  LogOut,
+  ChevronRight,
+  Star,
+} from 'lucide-react-native';
+import { useTheme } from '@/hooks/useTheme';
+import { useRouter } from 'expo-router';
 
 const menuItems = [
   {
     id: 1,
     title: 'My Orders',
     icon: ShoppingBag,
+    link: '/(tabs)/(orders)',
     subtitle: 'Track your purchases',
   },
   {
     id: 2,
     title: 'Favorites',
     icon: Heart,
+    link: 'wishlist',
     subtitle: 'Your favorite products',
   },
   {
     id: 3,
     title: 'Delivery Address',
     icon: MapPin,
+    link: '/(tabs)/(home)/delivery',
     subtitle: 'Manage your addresses',
   },
   {
     id: 4,
     title: 'Payment Methods',
     icon: CreditCard,
+    link: 'payment',
     subtitle: 'Cards and payment options',
   },
   {
     id: 5,
     title: 'Notifications',
     icon: Bell,
+    link: 'notifications',
     subtitle: 'Manage your notifications',
   },
   {
     id: 6,
     title: 'Settings',
     icon: Settings,
+    link: 'settings',
     subtitle: 'App preferences',
   },
   {
     id: 7,
     title: 'Help & Support',
     icon: HelpCircle,
+    link: 'support',
     subtitle: 'Get help when you need it',
   },
 ];
@@ -75,6 +96,9 @@ const recentOrders = [
 ];
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
+  const router = useRouter();
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -87,7 +111,14 @@ export default function ProfileScreen() {
               }}
               style={styles.avatar}
             />
-            <TouchableOpacity style={styles.editButton}>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: 'profile' as any,
+                })
+              }
+              style={styles.editButton}
+            >
               <Text style={styles.editButtonText}>Edit</Text>
             </TouchableOpacity>
           </View>
@@ -119,7 +150,13 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Orders</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: '/(tabs)/(orders)' as any,
+                })
+              }
+            >
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
@@ -145,7 +182,15 @@ export default function ProfileScreen() {
           {menuItems.map((item) => {
             const IconComponent = item.icon;
             return (
-              <TouchableOpacity key={item.id} style={styles.menuItem}>
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: `${item.link}` as any,
+                  })
+                }
+                key={item.id}
+                style={styles.menuItem}
+              >
                 <View style={styles.menuIconContainer}>
                   <IconComponent size={20} color="#059669" />
                 </View>

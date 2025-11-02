@@ -1,6 +1,6 @@
 import { useTheme } from '@/hooks/useTheme';
 import { Tabs } from 'expo-router';
-import { Home, ShoppingCart, Search, User, Plus } from 'lucide-react-native';
+import { Home, Plus, Search, ShoppingBag, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { colors } = useTheme();
@@ -47,16 +47,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="orders"
+        name="(orders)"
         options={{
           title: 'Orders',
           tabBarIcon: ({ size, color }) => (
-            <ShoppingCart size={size} color={color} />
+            <ShoppingBag size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="(profile)"
         options={{
           title: 'Profile',
           tabBarIcon: ({ size, color }) => (

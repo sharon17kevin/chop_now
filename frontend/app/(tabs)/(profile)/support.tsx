@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 
-export default function TrackOrder() {
+export default function Support() {
   return (
     <View>
-      <Text>TrackOrder</Text>
+      <Text>Support</Text>
     </View>
   )
 }
