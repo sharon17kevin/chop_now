@@ -149,33 +149,14 @@ export default function SignUpScreen() {
             <View
               style={[
                 styles.logoBackground,
-                { backgroundColor: colors.primary },
+                { backgroundColor: colors.secondary },
               ]}
             >
               <User size={32} color={colors.buttonText} />
             </View>
             <Text style={[typography.h3, { color: colors.text }]}>
-              Ride Naija
+              Create Your Account
             </Text>
-          </View>
-
-          <View style={styles.heroImageContainer}>
-            <Image
-              source={{
-                uri: 'https://images.pexels.com/photos/4481259/pexels-photo-4481259.jpeg?auto=compress&cs=tinysrgb&w=800',
-              }}
-              style={styles.heroImage}
-            />
-            <View
-              style={[styles.heroOverlay, { backgroundColor: colors.overlay }]}
-            >
-              <Text style={[typography.h2, { color: colors.buttonText }]}>
-                Create Account
-              </Text>
-              <Text style={[typography.body2, { color: colors.textSecondary }]}>
-                Join our logistics network today
-              </Text>
-            </View>
           </View>
         </View>
 
@@ -375,7 +356,7 @@ export default function SignUpScreen() {
               <TouchableOpacity
                 style={[
                   styles.signUpButton,
-                  { backgroundColor: colors.button },
+                  { backgroundColor: colors.secondary },
                   isLoading && styles.signUpButtonLoading,
                 ]}
                 onPress={handleSignUp}
@@ -446,22 +427,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-  },
-  heroImageContainer: {
-    height: 200,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
   formContainer: {
     flex: 1,

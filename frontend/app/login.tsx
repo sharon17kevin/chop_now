@@ -1,34 +1,33 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { useState, useRef } from 'react';
-import { router } from 'expo-router';
-import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  Truck,
-  ArrowRight,
-} from 'lucide-react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { typography } from '@/styles/typography';
+import { router } from 'expo-router';
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  User
+} from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -132,33 +131,14 @@ const handleDemoLogin = async () => {
             <View
               style={[
                 styles.logoBackground,
-                { backgroundColor: colors.primary },
+                { backgroundColor: colors.secondary },
               ]}
             >
-              <Truck size={32} color={colors.buttonText} />
+              <User size={32} color={colors.buttonText} />
             </View>
             <Text style={[typography.h3, { color: colors.text }]}>
-              Ride Naija
+              Sign In Your Account
             </Text>
-          </View>
-
-          <View style={styles.heroImageContainer}>
-            <Image
-              source={{
-                uri: 'https://images.pexels.com/photos/4481259/pexels-photo-4481259.jpeg?auto=compress&cs=tinysrgb&w=800',
-              }}
-              style={styles.heroImage}
-            />
-            <View
-              style={[styles.heroOverlay, { backgroundColor: colors.overlay }]}
-            >
-              <Text style={[typography.h2, { color: colors.buttonText }]}>
-                Welcome Back
-              </Text>
-              <Text style={[typography.body2, { color: colors.textSecondary }]}>
-                Sign in to manage your logistics operations
-              </Text>
-            </View>
           </View>
         </View>
 
@@ -264,7 +244,7 @@ const handleDemoLogin = async () => {
             </View>
 
             <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={[typography.caption1, { color: colors.primary }]}>
+              <Text style={[typography.caption1, { color: colors.secondary }]}>
                 Forgot Password?
               </Text>
             </TouchableOpacity>
@@ -273,7 +253,7 @@ const handleDemoLogin = async () => {
               <TouchableOpacity
                 style={[
                   styles.loginButton,
-                  { backgroundColor: colors.button },
+                  { backgroundColor: colors.secondary },
                   isLoading && styles.loginButtonLoading,
                 ]}
                 onPress={handleLogin}
@@ -366,25 +346,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  heroImageContainer: {
-    position: 'relative',
-    marginBottom: 32,
-  },
-  heroImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 16,
-    resizeMode: 'cover',
-  },
-  heroOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
   },
   formContainer: {
     flex: 1,
