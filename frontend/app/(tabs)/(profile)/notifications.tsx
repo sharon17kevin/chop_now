@@ -171,7 +171,7 @@ export default function NotificationsScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
     >
       <AppHeader title="Notifications" />
-      <View style={styles.headerContainer}>
+      <View style={{...styles.headerContainer, backgroundColor: colors.background}}>
         {unreadCount > 0 && (
           <TouchableOpacity
             style={styles.markAllButton}

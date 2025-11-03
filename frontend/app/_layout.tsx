@@ -26,7 +26,7 @@ const clearAllStorage = async () => {
 };
 
 //You can call this function to clear storage
-clearAllStorage();
+//clearAllStorage();
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
