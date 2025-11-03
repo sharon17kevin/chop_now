@@ -1,84 +1,57 @@
+import { useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  FlatList,
   Image,
   PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
   useWindowDimensions,
+  View,
 } from 'react-native';
-import { useState, useRef, useMemo } from 'react';
-import { FlatList } from 'react-native';
-import { router } from 'expo-router';
-import {
-  Package,
-  Truck,
-  ChartBar as BarChart3,
-  Users,
-  ArrowRight,
-  ArrowLeft,
-} from 'lucide-react-native';
+
+import { board1, board2, board3 } from '@/assets/images';
+
 import Animated, {
-  useSharedValue,
+  Extrapolate,
+  interpolate,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
   withTiming,
-  interpolate,
-  Extrapolate,
 } from 'react-native-reanimated';
-import {
-  PanGestureHandler,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
+
+import SliderButton from '@/components/SliderButton';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { typography } from '@/styles/typography';
-import { LinearGradient } from 'expo-linear-gradient';
-import SliderButton from '@/components/SliderButton';
 
 interface OnboardingSlide {
   id: string;
   title: string;
   subtitle: string;
-  description: string;
-  image: string;
-  icon: any;
-  color: string;
+  image: number;
 }
 
 const slides: OnboardingSlide[] = [
   {
     id: '1',
-    title: 'Find Your Way Around',
-    subtitle: 'Real-time Visibility',
-    description:
-      'Monitor all your deliveries in real-time with comprehensive tracking and status updates for complete logistics visibility.',
-    image:
-      'https://images.unsplash.com/photo-1601231509500-a54c372447da?w=1200&q=80&fm=webp',
-    icon: Package,
-    color: '#1E40AF',
+    title: 'Quick Ordering',
+    subtitle: "Skip the line, Order ahead. we've got you covered!",
+    image: board1,
   },
   {
     id: '2',
-    title: 'Connect To Your City',
-    subtitle: 'Smart Delivery Planning',
-    description:
-      'Intelligent route optimization reduces delivery time and fuel costs while ensuring maximum efficiency for your fleet.',
-    image:
-      'https://images.unsplash.com/photo-1529171918672-ba6d0733a56c?w=1200&q=80&fm=webp',
-    icon: Truck,
-    color: '#F97316',
+    title: 'Pay With Ease',
+    subtitle: 'Smooth checkout, every time. Pay with ease on Chop n Cart.',
+    image: board2,
   },
   {
     id: '3',
-    title: 'Optimize Your Trips',
-    subtitle: 'Driver Coordination',
-    description:
-      'Coordinate your delivery team with real-time communication, performance tracking, and workload distribution.',
-    image:
-      'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=800',
-    icon: Users,
-    color: '#10B981',
+    title: 'Quick Delivery',
+    subtitle:
+      'Get your favorite food and food items delivered fast. Order now and enjoy your meal in minutes. ',
+    image: board3,
   },
 ];
 
@@ -91,6 +64,24 @@ export default function OnboardingScreen() {
   const slideAnim = useSharedValue(0);
   const [isSliding, setIsSliding] = useState(false);
   const { width, height } = useWindowDimensions();
+
+  const handleNext = () => {
+    if (currentIndex < slides.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
+    } else {
+      console.log('Get Started pressed');
+      completeOnboarding().catch((e) =>
+        console.error('completeOnboarding error', e)
+      );
+    }
+  };
+
+  const handleSkip = () => {
+    //latListRef.current?.scrollToIndex({ index: slides.length - 1 });
+    completeOnboarding().catch((e) =>
+      console.error('completeOnboarding error', e)
+    );
+  };
 
   const panResponder = useMemo(
     () =>
@@ -135,7 +126,6 @@ export default function OnboardingScreen() {
   };
 
   const PaginationDot = ({ index }: { index: number }) => {
-    //const { colors } = useTheme();
     const animatedStyle = useAnimatedStyle(() => {
       const inputRange = [
         (index - 1) * width,
@@ -178,9 +168,9 @@ export default function OnboardingScreen() {
       StyleSheet.create({
         image: {
           width: width * 0.94,
-          height: height * 0.55,
+          height: height * 0.5,
           borderRadius: 20,
-          resizeMode: 'cover',
+          resizeMode: 'contain',
         },
         overlay: {
           position: 'absolute',
@@ -209,32 +199,29 @@ export default function OnboardingScreen() {
     item: OnboardingSlide;
     index: number;
   }) => {
-    const Icon = item.icon;
-
     return (
       <View style={slideStyle}>
         <View style={styles.imageContainer}>
-          <Image source={{ uri: item.image }} style={dynamicStyles.image} />
-          <LinearGradient
-            colors={[
-              colors.background + '00',
-              colors.background + '00',
-              colors.background + '66',
-              colors.background + 'FF',
-              colors.background + 'FF',
-            ]}
-            style={dynamicStyles.overlay}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          />
+          <Image source={item.image} style={dynamicStyles.image} />
         </View>
 
         <View style={styles.content}>
-          <Text style={[typography.h1, { color: colors.text }]}>
+          <Text
+            style={[typography.h1, { textAlign: 'center', color: colors.text }]}
+          >
             {item.title}
           </Text>
-          <Text style={[typography.body2, { color: colors.textSecondary }]}>
-            {item.description}
+          <Text
+            style={[
+              typography.h3,
+              {
+                fontWeight: '400',
+                textAlign: 'center',
+                color: colors.textSecondary,
+              },
+            ]}
+          >
+            {item.subtitle}
           </Text>
         </View>
       </View>
@@ -266,8 +253,55 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.navigation}>
-          <View style={styles.sliderContainer}>
-            <SliderButton/>
+          <View
+            style={[
+              styles.sliderContainer,
+              {
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingHorizontal: 20,
+              },
+            ]}
+          >
+            {/* Skip Button */}
+            <TouchableOpacity onPress={handleSkip}>
+              <View style={{ paddingVertical: 10 }}>
+                <Text
+                  style={{
+                    color: colors.secondary,
+                    fontSize: 16,
+                    fontWeight: '500',
+                  }}
+                >
+                  Skip
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Next Button */}
+            <TouchableOpacity onPress={handleNext}>
+              <View
+                style={[
+                  styles.nextButton,
+                  {
+                    flexDirection: 'row',
+                    backgroundColor: colors.secondary,
+                    borderRadius: 25,
+                    paddingHorizontal: 24,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingVertical: 10,
+                  },
+                ]}
+              >
+                <Text
+                  style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}
+                >
+                  {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -288,8 +322,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 2,
-    paddingLeft: 25,
-    paddingRight: 10,
+    paddingHorizontal: 20,
     paddingBottom: 20,
   },
   subtitle: {
