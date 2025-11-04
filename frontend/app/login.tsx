@@ -311,7 +311,7 @@ const handleDemoLogin = async () => {
               Don't have an account?{' '}
               <Text
                 style={[typography.button2, { color: colors.secondary }]}
-                onPress={() => router.push('/signup')}
+                onPress={() => router.push('/signupstart')}
               >
                 Sign Up
               </Text>
