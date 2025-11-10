@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useState, useRef } from 'react';
 import { router } from 'expo-router';
@@ -104,13 +105,24 @@ export default function SignUpScreen() {
 
     setIsLoading(true);
     try {
-      await signup(name, email, password);
-      router.replace('/');
+      const result = await signup(name, email, password);
+
+      if (!result.success) {
+        // Show user-friendly error message
+        Alert.alert(
+          'Signup Failed',
+          result.error || 'An error occurred during signup'
+        );
+
+        // Optionally set field-specific errors
+        if (result.error?.toLowerCase().includes('email')) {
+          setErrors({ email: result.error });
+        }
+        return; // Don't navigate on error
+      }
     } catch (error) {
-      console.error('Signup error:', error);
-      setErrors({
-        email: 'An error occurred during signup. Please try again.',
-      });
+      console.error('Unexpected signup error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

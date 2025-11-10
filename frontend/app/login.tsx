@@ -2,16 +2,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { typography } from '@/styles/typography';
 import { router } from 'expo-router';
-import {
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  User
-} from 'lucide-react-native';
+import { ArrowRight, Eye, EyeOff, Lock, Mail, User } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,7 +13,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -79,31 +73,39 @@ export default function LoginScreen() {
     setIsLoading(true);
     buttonScale.value = withSpring(0.95);
 
+    const result = await login(email.trim(), password);
+
+    if (!result.success) {
+      setIsLoading(false);
+      buttonScale.value = withSpring(1);
+
+      // Show field-specific error if it's an email issue
+      if (result.error?.toLowerCase().includes('email')) {
+        setErrors({ email: result.error });
+      } else {
+        Alert.alert('Login Failed', result.error);
+      }
+      return;
+    }
+
+    // Success - navigation handled by useAuth automatically
+    setIsLoading(false);
+    buttonScale.value = withSpring(1);
+  };
+
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    buttonScale.value = withSpring(0.95);
     try {
-      await login(email, password);
+      await login('demo@demo.com', 'demopassword');
     } catch (error) {
-      console.error('Login failed:', error);
-      // Handle login error
+      console.error('Demo login failed:', error);
+      // Optionally show an error message
     } finally {
       setIsLoading(false);
       buttonScale.value = withSpring(1);
     }
   };
-
-const handleDemoLogin = async () => {
-  setIsLoading(true);
-  buttonScale.value = withSpring(0.95);
-  try {
-    // Replace with your actual demo credentials
-    await login('demo@demo.com', 'demopassword');
-  } catch (error) {
-    console.error('Demo login failed:', error);
-    // Optionally show an error message
-  } finally {
-    setIsLoading(false);
-    buttonScale.value = withSpring(1);
-  }
-};
 
   const animatedFormStyle = useAnimatedStyle(() => {
     return {
@@ -243,7 +245,14 @@ const handleDemoLogin = async () => {
               )}
             </View>
 
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: 'forgot' as any,
+                })
+              }
+              style={styles.forgotPassword}
+            >
               <Text style={[typography.caption1, { color: colors.secondary }]}>
                 Forgot Password?
               </Text>

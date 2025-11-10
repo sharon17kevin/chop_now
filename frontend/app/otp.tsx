@@ -4,48 +4,62 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  StyleSheet,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '@/hooks/useTheme';
 import { ArrowLeft } from 'lucide-react-native';
 import { typography } from '@/styles/typography';
-import { ScrollView } from 'react-native-gesture-handler';
 
-export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState('');
+export default function EmailVerificationScreen() {
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const router = useRouter();
   const { colors } = useTheme();
 
-  const handleResetPassword = async () => {
-    if (!email.trim()) {
-      Alert.alert('Missing Email', 'Please enter your email address.');
+  const handleVerifyOtp = async () => {
+    if (otp.trim().length < 6) {
+      Alert.alert(
+        'Invalid Code',
+        'Please enter the 6-digit code sent to your email.'
+      );
       return;
     }
 
     setLoading(true);
     try {
-      // Example: Supabase or Firebase password reset
-      // await supabase.auth.resetPasswordForEmail(email);
+      // Example verification logic (replace with your backend call)
       await new Promise((res) => setTimeout(res, 1500)); // mock delay
 
-      Alert.alert(
-        'Check your inbox',
-        'We’ve sent a password reset code to your email.'
-      );
-      router.push({
-        pathname: 'otp' as any,
-      });
+      Alert.alert('Success', 'Your email has been verified!');
+      router.replace('/(tabs)'); // navigate to main app or next screen
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Alert.alert('Error', 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setResending(true);
+    try {
+      // Example: resend OTP API call
+      await new Promise((res) => setTimeout(res, 1500)); // mock delay
+      Alert.alert(
+        'Code Resent',
+        'A new verification code has been sent to your email.'
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Could not resend code. Please try again.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -53,7 +67,7 @@ export default function ForgotPasswordScreen() {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView
         edges={['top']}
-        style={[styles.container, { backgroundColor: 'colors.background' }]}
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
         <View style={[styles.header, { width: '100%', height: 50 }]}>
           <TouchableOpacity
@@ -75,35 +89,43 @@ export default function ForgotPasswordScreen() {
               paddingBottom: 20,
             }}
           >
-            <Text style={styles.title}>Forgot Password?</Text>
+            <Text style={styles.title}>Verify Your Email</Text>
             <Text style={styles.subtitle}>
-              Enter your email below and we’ll send you a link to reset your
-              password.
+              Enter the 6-digit code we sent to your email to complete
+              verification.
             </Text>
 
             <TextInput
-              placeholder="Enter your email"
+              placeholder="Enter verification code"
               placeholderTextColor="#aaa"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
+              value={otp}
+              onChangeText={setOtp}
+              keyboardType="number-pad"
+              maxLength={6}
               style={styles.input}
             />
 
             <TouchableOpacity
-              style={[
-                styles.button,
-                loading && { opacity: 0.6 },
-                { backgroundColor: colors.secondary },
-              ]}
-              onPress={handleResetPassword}
+              style={[styles.button, loading && { opacity: 0.6 }, {backgroundColor: colors.secondary}]}
+              onPress={handleVerifyOtp}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Send Reset Link</Text>
+                <Text style={styles.buttonText}>Verify Email</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resendContainer}
+              onPress={handleResendCode}
+              disabled={resending}
+            >
+              {resending ? (
+                <ActivityIndicator color={colors.secondary} />
+              ) : (
+                <Text style={styles.resendText}>Resend Code</Text>
               )}
             </TouchableOpacity>
 
@@ -111,7 +133,7 @@ export default function ForgotPasswordScreen() {
               onPress={() => router.back()}
               style={styles.backContainer}
             >
-              <Text style={styles.backText}>Back to Login</Text>
+              <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -140,13 +162,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#111',
+    color: '#222',
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#666',
     marginBottom: 30,
+    textAlign: 'center',
   },
   input: {
     width: '100%',
@@ -154,17 +177,10 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 10,
     padding: 14,
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  dummy: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 20,
+    fontSize: 18,
+    textAlign: 'center',
+    letterSpacing: 4,
+    marginBottom: 25,
   },
   button: {
     width: '100%',
@@ -174,16 +190,22 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '600',
     fontSize: 16,
+    fontWeight: '600',
   },
-  backContainer: {
+  resendContainer: {
     marginTop: 20,
-    alignItems: 'center',
   },
-  backText: {
-    color: '#FF6600',
+  resendText: {
+    color: '#007bff',
     fontSize: 15,
     fontWeight: '500',
+  },
+  backContainer: {
+    marginTop: 15,
+  },
+  backText: {
+    color: '#666',
+    fontSize: 15,
   },
 });
