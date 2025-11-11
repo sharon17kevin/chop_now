@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useState, useRef } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   Eye,
   EyeOff,
@@ -31,10 +31,13 @@ import Animated, {
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { typography } from '@/styles/typography';
+import { usePendingSignup } from '@/stores/usePendingSignup';
+import * as authService from '@/services/auth';
 
 export default function SignUpScreen() {
   const { signup } = useAuth();
   const { colors } = useTheme();
+  const { setPending } = usePendingSignup();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,6 +51,7 @@ export default function SignUpScreen() {
     password?: string;
     confirmPassword?: string;
   }>({});
+  const { role } = useLocalSearchParams<{ role: 'customer' | 'vendor' }>();
 
   const shakeAnimation = useSharedValue(0);
   const buttonScale = useSharedValue(1);
@@ -104,28 +108,41 @@ export default function SignUpScreen() {
     }
 
     setIsLoading(true);
-    try {
-      const result = await signup(name, email, password);
+    buttonScale.value = withSpring(0.95);
 
-      if (!result.success) {
-        // Show user-friendly error message
-        Alert.alert(
-          'Signup Failed',
-          result.error || 'An error occurred during signup'
-        );
+    console.log('🚀 Requesting OTP for signup...', { name, email, role });
 
-        // Optionally set field-specific errors
-        if (result.error?.toLowerCase().includes('email')) {
-          setErrors({ email: result.error });
-        }
-        return; // Don't navigate on error
-      }
-    } catch (error) {
-      console.error('Unexpected signup error:', error);
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-    } finally {
+    // Request OTP via Edge Function
+    const result = await authService.requestEmailOtp(email.trim());
+
+    if (!result.success) {
       setIsLoading(false);
+      buttonScale.value = withSpring(1);
+
+      Alert.alert(
+        'Signup Failed',
+        result.error || 'Failed to send verification code'
+      );
+
+      if (result.error?.toLowerCase().includes('email')) {
+        setErrors({ email: result.error });
+      }
+      return;
     }
+
+    // Store pending signup data
+    setPending({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      role: role || 'customer',
+    });
+
+    // Success - navigate to OTP screen
+    console.log('✅ OTP sent, navigating to verification screen');
+    setIsLoading(false);
+    buttonScale.value = withSpring(1);
+    router.push('/otp' as any);
   };
 
   const animatedFormStyle = useAnimatedStyle(() => {

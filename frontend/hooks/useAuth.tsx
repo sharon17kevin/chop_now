@@ -20,7 +20,17 @@ interface AuthContextType {
   signup: (
     name: string,
     email: string,
-    password: string
+    password: string,
+    role: 'customer' | 'vendor'
+  ) => Promise<{ success: boolean; error?: string }>;
+  verifyOtp: (token: string) => Promise<{ success: boolean; error?: string }>;
+  resendOtp: () => Promise<{ success: boolean; error?: string }>;
+  verifyEmailOtp: (
+    email: string,
+    code: string,
+    name: string,
+    password: string,
+    role: 'customer' | 'vendor'
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
@@ -140,24 +150,139 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ✅ Sign-up using auth service
-  const signup = async (name: string, email: string, password: string) => {
-    const result = await authService.signUp(email, password, name, 'customer');
+  const signup = async (
+    name: string,
+    email: string,
+    password: string,
+    role: 'customer' | 'vendor'
+  ) => {
+    console.log('🔐 useAuth.signup called', { name, email, role });
+
+    const result = await authService.signUp(email, password, name, role);
+
+    console.log('📊 Signup result:', {
+      success: result.success,
+      hasData: !!result.data,
+      hasUser: !!result.data?.user,
+      error: result.error,
+    });
+
+    if (!result.success) {
+      console.error('❌ Signup failed:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    if (result.data?.user) {
+      console.log('👤 Setting user in state:', result.data.user.id);
+      // Store user temporarily but don't mark as authenticated until email verified
+      setUser(result.data.user);
+
+      // Only store session if it exists (may be null if email confirmation required)
+      if (result.data.session) {
+        console.log('💾 Storing session in SecureStore');
+        await SecureStore.setItemAsync(
+          'supabaseSession',
+          JSON.stringify(result.data.session)
+        );
+      } else {
+        console.log('⚠️ No session returned (email confirmation required)');
+      }
+
+      console.log('🚀 Navigating to OTP page');
+      // Navigate to OTP verification page
+      router.push('/otp' as any);
+    } else {
+      console.error('❌ No user data in result');
+      return { success: false, error: 'Failed to create account' };
+    }
+
+    return { success: true };
+  };
+
+  // ✅ Verify OTP for email confirmation
+  const verifyOtp = async (token: string) => {
+    if (!user?.email) {
+      return { success: false, error: 'No user email found' };
+    }
+
+    const result = await authService.verifyOtp(user.email, token);
 
     if (!result.success) {
       return { success: false, error: result.error };
     }
 
-    if (result.data) {
-      setUser(result.data.user);
+    // Mark as authenticated and fetch profile after verification
+    setIsAuthenticated(true);
+    if (user?.id) {
+      await useUserStore.getState().fetchProfile(user.id);
+    }
+
+    router.replace('/(tabs)' as any);
+    return { success: true };
+  };
+
+  // ✅ Resend OTP
+  const resendOtp = async () => {
+    if (!user?.email) {
+      return { success: false, error: 'No user email found' };
+    }
+
+    const result = await authService.resendOtp(user.email);
+    return result;
+  };
+
+  // ✅ NEW: Verify Email OTP (custom flow)
+  const verifyEmailOtp = async (
+    email: string,
+    code: string,
+    name: string,
+    password: string,
+    role: 'customer' | 'vendor'
+  ) => {
+    console.log('🔐 Verifying email OTP...');
+
+    // Call Edge Function to verify and create user
+    const result = await authService.verifyEmailOtp(
+      email,
+      code,
+      name,
+      password,
+      role
+    );
+
+    if (!result.success) {
+      console.error('❌ Email OTP verification failed:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    console.log('✅ User created, signing in...');
+
+    // Now sign in to get a session
+    const signInResult = await authService.signIn(email, password);
+
+    if (!signInResult.success) {
+      console.error(
+        '❌ Sign in after verification failed:',
+        signInResult.error
+      );
+      return {
+        success: false,
+        error: 'Account created but sign in failed. Please try logging in.',
+      };
+    }
+
+    if (signInResult.data) {
+      setUser(signInResult.data.user);
       setIsAuthenticated(true);
       await SecureStore.setItemAsync(
         'supabaseSession',
-        JSON.stringify(result.data)
+        JSON.stringify(signInResult.data)
       );
 
-      // ✅ Fetch user profile and role
-      await useUserStore.getState().fetchProfile(result.data.user.id);
+      // Fetch user profile and role
+      await useUserStore.getState().fetchProfile(signInResult.data.user.id);
 
+      console.log('🎉 Sign in successful, navigating to app');
       router.replace('/(tabs)' as any);
     }
 
@@ -199,6 +324,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         login,
         signup,
+        verifyOtp,
+        resendOtp,
+        verifyEmailOtp,
         logout,
         completeOnboarding,
       }}

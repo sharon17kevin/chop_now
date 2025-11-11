@@ -14,6 +14,9 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/hooks/useAuth';
+import { usePendingSignup } from '@/stores/usePendingSignup';
+import * as authService from '@/services/auth';
 import { ArrowLeft } from 'lucide-react-native';
 import { typography } from '@/styles/typography';
 
@@ -23,6 +26,8 @@ export default function EmailVerificationScreen() {
   const [resending, setResending] = useState(false);
   const router = useRouter();
   const { colors } = useTheme();
+  const { verifyEmailOtp } = useAuth();
+  const { pending, clear } = usePendingSignup();
 
   const handleVerifyOtp = async () => {
     if (otp.trim().length < 6) {
@@ -33,34 +38,63 @@ export default function EmailVerificationScreen() {
       return;
     }
 
-    setLoading(true);
-    try {
-      // Example verification logic (replace with your backend call)
-      await new Promise((res) => setTimeout(res, 1500)); // mock delay
-
-      Alert.alert('Success', 'Your email has been verified!');
-      router.replace('/(tabs)'); // navigate to main app or next screen
-    } catch (error) {
-      Alert.alert('Error', 'Verification failed. Please try again.');
-    } finally {
-      setLoading(false);
+    if (!pending) {
+      Alert.alert(
+        'Error',
+        'No pending signup found. Please try signing up again.'
+      );
+      router.back();
+      return;
     }
+
+    setLoading(true);
+
+    console.log('🔐 Verifying OTP and creating account...');
+
+    const result = await verifyEmailOtp(
+      pending.email,
+      otp.trim(),
+      pending.name,
+      pending.password,
+      pending.role
+    );
+
+    if (!result.success) {
+      setLoading(false);
+      Alert.alert('Verification Failed', result.error);
+      return;
+    }
+
+    // Success - clear pending data and navigation handled by verifyEmailOtp
+    console.log('✅ Verification successful');
+    clear();
+    setLoading(false);
   };
 
   const handleResendCode = async () => {
-    setResending(true);
-    try {
-      // Example: resend OTP API call
-      await new Promise((res) => setTimeout(res, 1500)); // mock delay
-      Alert.alert(
-        'Code Resent',
-        'A new verification code has been sent to your email.'
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Could not resend code. Please try again.');
-    } finally {
-      setResending(false);
+    if (!pending?.email) {
+      Alert.alert('Error', 'No email found. Please try signing up again.');
+      return;
     }
+
+    setResending(true);
+
+    const result = await authService.resendEmailOtp(pending.email);
+
+    setResending(false);
+
+    if (!result.success) {
+      Alert.alert(
+        'Error',
+        result.error || 'Could not resend code. Please try again.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Code Resent',
+      'A new verification code has been sent to your email.'
+    );
   };
 
   return (
@@ -89,24 +123,37 @@ export default function EmailVerificationScreen() {
               paddingBottom: 20,
             }}
           >
-            <Text style={styles.title}>Verify Your Email</Text>
-            <Text style={styles.subtitle}>
-              Enter the 6-digit code we sent to your email to complete
-              verification.
+            <Text style={[styles.title, { color: colors.text }]}>
+              Verify Your Email
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Enter the 6-digit code we sent to {pending?.email || 'your email'}{' '}
+              to complete verification.
             </Text>
 
             <TextInput
               placeholder="Enter verification code"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={colors.textSecondary}
               value={otp}
               onChangeText={setOtp}
               keyboardType="number-pad"
               maxLength={6}
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  borderColor: colors.inputBorder,
+                  backgroundColor: colors.input,
+                  color: colors.text,
+                },
+              ]}
             />
 
             <TouchableOpacity
-              style={[styles.button, loading && { opacity: 0.6 }, {backgroundColor: colors.secondary}]}
+              style={[
+                styles.button,
+                loading && { opacity: 0.6 },
+                { backgroundColor: colors.secondary },
+              ]}
               onPress={handleVerifyOtp}
               disabled={loading}
             >
@@ -125,7 +172,9 @@ export default function EmailVerificationScreen() {
               {resending ? (
                 <ActivityIndicator color={colors.secondary} />
               ) : (
-                <Text style={styles.resendText}>Resend Code</Text>
+                <Text style={[styles.resendText, { color: colors.secondary }]}>
+                  Resend Code
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -133,7 +182,9 @@ export default function EmailVerificationScreen() {
               onPress={() => router.back()}
               style={styles.backContainer}
             >
-              <Text style={styles.backText}>Back</Text>
+              <Text style={[styles.backText, { color: colors.textSecondary }]}>
+                Back
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

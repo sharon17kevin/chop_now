@@ -59,6 +59,7 @@ export default function SignupStart({}) {
               onPress={() =>
                 router.push({
                   pathname: 'signup' as any,
+                  params: { role: 'customer' },
                 })
               }
             >
@@ -78,6 +79,7 @@ export default function SignupStart({}) {
               onPress={() =>
                 router.push({
                   pathname: 'signup' as any,
+                  params: { role: 'vendor' },
                 })
               }
             >
