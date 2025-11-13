@@ -285,7 +285,10 @@ export async function verifyEmailOtp(
     console.log('✅ OTP verified, user created:', result.user?.id)
     return {
       success: true,
-      data: result.user
+      data: {
+        user: result.user,
+        session: result.session  // ✅ Pass session from Edge Function
+      }
     }
   } catch (error) {
     console.error('💥 Verify OTP exception:', error)

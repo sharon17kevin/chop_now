@@ -129,7 +129,7 @@ Deno.serve(async (req)=>{
       password,
       email_confirm: true,
       user_metadata: {
-        full_name: name,
+        name: name || '',  // ✅ Ensure name is always a string
         role
       }
     });
@@ -164,10 +164,77 @@ Deno.serve(async (req)=>{
         }
       });
     }
+
+    if (!authData.user) {
+      console.error('❌ No user data returned from createUser');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Failed to create account. Please try again.'
+      }), {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    console.log(`✅ User created: ${authData.user.id} | ${normalizedEmail} | Role: ${role}`);
+
+    // === CREATE PROFILE IN PROFILES TABLE ===
+    console.log('📝 Creating profile in profiles table...');
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        email: normalizedEmail,
+        name: name || '',  // ✅ Ensure name is always a string, not null
+        role: role
+      });
+
+    if (profileError) {
+      console.error('⚠️ Profile creation error:', profileError.message);
+      // Don't fail the whole operation - trigger might handle it
+    } else {
+      console.log('✅ Profile created successfully');
+    }
+
     // === DELETE ALL OTPS FOR THIS EMAIL ===
     await supabase.from('email_otps').delete().eq('email', normalizedEmail);
-    // === LOG SUCCESS ===
-    console.log(`User created: ${authData.user.id} | ${normalizedEmail} | Role: ${role}`);
+    console.log('🧹 OTPs cleaned up');
+
+    // === SIGN IN USER SERVER-SIDE TO GET SESSION ===
+    console.log('🔐 Signing in user server-side...');
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password
+    });
+
+    if (signInError || !signInData.session) {
+      console.error('⚠️ Sign in error:', signInError?.message);
+      // User was created successfully, but sign-in failed
+      // Client can sign in manually
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Account created successfully!',
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          role
+        },
+        session: null
+      }), {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    console.log('✅ User signed in successfully');
+
+    // === RETURN SUCCESS WITH SESSION ===
     return new Response(JSON.stringify({
       success: true,
       message: 'Account created successfully!',
@@ -175,6 +242,13 @@ Deno.serve(async (req)=>{
         id: authData.user.id,
         email: authData.user.email,
         role
+      },
+      session: {
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
+        expires_at: signInData.session.expires_at,
+        expires_in: signInData.session.expires_in,
+        user: signInData.session.user
       }
     }), {
       status: 200,

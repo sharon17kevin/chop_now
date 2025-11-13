@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -13,6 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   hasCompletedOnboarding: boolean;
   user: any | null;
+  isLoading: boolean;
   login: (
     email: string,
     password: string
@@ -47,30 +49,134 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 🔹 Restore session and onboarding state
   useEffect(() => {
     let mounted = true;
+    let isInitializing = true;
 
     const initAuth = async () => {
       try {
+        console.log('🔄 Initializing auth state...');
+
         // ✅ Use Supabase as the source of truth for session
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('❌ Error getting session:', error);
+          throw error;
+        }
+
         const session = data?.session ?? null;
 
         if (mounted) {
           if (session) {
-            setUser(session.user);
-            setIsAuthenticated(true);
-            // ✅ Persist session securely
-            await SecureStore.setItemAsync(
-              'supabaseSession',
-              JSON.stringify(session)
-            );
+            console.log('✅ Session found, user:', session.user.email);
 
-            // ✅ Fetch user profile and role
-            useUserStore.getState().fetchProfile(session.user.id);
+            // ✅ Verify user still exists in auth.users
+            const { data: userData, error: userError } =
+              await supabase.auth.admin.getUserById(session.user.id);
+
+            if (userError || !userData.user) {
+              console.error('❌ User no longer exists, clearing session');
+              await SecureStore.deleteItemAsync('supabaseSession');
+              await supabase.auth.signOut();
+              setUser(null);
+              setIsAuthenticated(false);
+              useUserStore.getState().clearProfile();
+            } else {
+              setUser(session.user);
+              setIsAuthenticated(true);
+
+              // ✅ Persist session securely for backup
+              await SecureStore.setItemAsync(
+                'supabaseSession',
+                JSON.stringify(session)
+              );
+
+              // ✅ Fetch user profile and role
+              console.log('📊 Fetching user profile...');
+              try {
+                await useUserStore.getState().fetchProfile(session.user.id);
+                console.log('✅ Profile fetched');
+              } catch (error) {
+                console.error(
+                  '⚠️ Profile fetch failed - user might not have profile, clearing session'
+                );
+                // If profile doesn't exist, clear session
+                await SecureStore.deleteItemAsync('supabaseSession');
+                await supabase.auth.signOut();
+                setUser(null);
+                setIsAuthenticated(false);
+                useUserStore.getState().clearProfile();
+              }
+            }
           } else {
-            setUser(null);
-            setIsAuthenticated(false);
-            await SecureStore.deleteItemAsync('supabaseSession');
-            useUserStore.getState().clearProfile();
+            console.log('❌ No session found in Supabase');
+
+            // Try to restore from SecureStore as fallback
+            try {
+              const storedSession = await SecureStore.getItemAsync(
+                'supabaseSession'
+              );
+              if (storedSession) {
+                console.log(
+                  '🔄 Found stored session, attempting to restore...'
+                );
+                const parsedSession = JSON.parse(storedSession);
+
+                // Set the session in Supabase
+                const { data: sessionData, error: setError } =
+                  await supabase.auth.setSession({
+                    access_token: parsedSession.access_token,
+                    refresh_token: parsedSession.refresh_token,
+                  });
+
+                if (setError) {
+                  console.error('❌ Failed to restore session:', setError);
+                  throw setError;
+                }
+
+                if (sessionData.session) {
+                  console.log('✅ Session restored successfully');
+
+                  // Verify profile exists before marking as authenticated
+                  try {
+                    await useUserStore
+                      .getState()
+                      .fetchProfile(sessionData.session.user.id);
+                    console.log('✅ Profile fetched after restore');
+
+                    // Only set authenticated if profile exists
+                    setUser(sessionData.session.user);
+                    setIsAuthenticated(true);
+                  } catch (error) {
+                    console.error(
+                      '❌ Profile fetch failed after restore - clearing session:',
+                      error
+                    );
+                    // Profile doesn't exist, clear everything
+                    await SecureStore.deleteItemAsync('supabaseSession');
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setIsAuthenticated(false);
+                    useUserStore.getState().clearProfile();
+                  }
+                } else {
+                  console.log('ℹ️ No valid session in stored data');
+                  setUser(null);
+                  setIsAuthenticated(false);
+                  useUserStore.getState().clearProfile();
+                }
+              } else {
+                console.log('ℹ️ No stored session found in SecureStore');
+                setUser(null);
+                setIsAuthenticated(false);
+                useUserStore.getState().clearProfile();
+              }
+            } catch (restoreError) {
+              console.error('❌ Error restoring session:', restoreError);
+              setUser(null);
+              setIsAuthenticated(false);
+              await SecureStore.deleteItemAsync('supabaseSession');
+              useUserStore.getState().clearProfile();
+            }
           }
 
           // Restore onboarding state (non-sensitive, can use AsyncStorage)
@@ -80,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setHasCompletedOnboarding(onboardingCompleted === 'true');
         }
       } catch (error) {
-        console.error('Error restoring session:', error);
+        console.error('❌ Error initializing auth:', error);
         if (mounted) {
           setUser(null);
           setIsAuthenticated(false);
@@ -88,35 +194,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           useUserStore.getState().clearProfile();
         }
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mounted) {
+          console.log('✅ Auth initialization complete');
+          isInitializing = false;
+          setIsLoading(false);
+        }
       }
     };
 
-    initAuth();
-
     // ✅ Sync with Supabase auth state changes (login/logout/token refresh)
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mounted) return;
 
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        setIsAuthenticated(!!currentUser);
+        console.log('🔄 Auth state change:', event);
 
-        // ✅ Persist session securely
-        if (currentUser) {
-          await SecureStore.setItemAsync(
-            'supabaseSession',
-            JSON.stringify(session)
-          );
-          // ✅ Fetch/refresh profile when session changes
-          useUserStore.getState().fetchProfile(currentUser.id);
-        } else {
-          await SecureStore.deleteItemAsync('supabaseSession');
-          useUserStore.getState().clearProfile();
+        // ⚠️ Skip INITIAL_SESSION event during initialization
+        // This prevents race condition where listener clears data before initAuth completes
+        if (event === 'INITIAL_SESSION' && isInitializing) {
+          console.log('⏭️ Skipping INITIAL_SESSION during initialization');
+          return;
+        }
+
+        const currentUser = session?.user ?? null;
+
+        // Only update state if it's not the initial load or if session exists
+        if (!isInitializing || currentUser) {
+          setUser(currentUser);
+          setIsAuthenticated(!!currentUser);
+
+          // ✅ Persist session securely on any auth change
+          if (currentUser && session) {
+            console.log('💾 Persisting session for:', currentUser.email);
+            await SecureStore.setItemAsync(
+              'supabaseSession',
+              JSON.stringify(session)
+            );
+
+            // ✅ Fetch/refresh profile when session changes
+            if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+              // ✅ Only refresh profile for token refresh or user updates
+              // Skip for SIGNED_IN (handled by signup/login flows)
+              console.log('📊 Refreshing profile...');
+              try {
+                await useUserStore.getState().fetchProfile(currentUser.id);
+                console.log('✅ Profile refresh complete');
+              } catch (error) {
+                console.error('⚠️ Profile refresh failed:', error);
+              }
+            }
+          } else if (event !== 'INITIAL_SESSION') {
+            // Only clear on actual logout, not initial session
+            console.log('🗑️ Clearing session data');
+            await SecureStore.deleteItemAsync('supabaseSession');
+            useUserStore.getState().clearProfile();
+          }
         }
       }
     );
+
+    initAuth();
 
     return () => {
       mounted = false;
@@ -143,7 +280,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ✅ Fetch user profile and role
       await useUserStore.getState().fetchProfile(result.data.user.id);
 
-      router.replace('/(tabs)' as any);
+      // ✅ Navigation handled by _layout.tsx
     }
 
     return { success: true };
@@ -217,7 +354,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await useUserStore.getState().fetchProfile(user.id);
     }
 
-    router.replace('/(tabs)' as any);
+    // ✅ Navigation handled by _layout.tsx
     return { success: true };
   };
 
@@ -239,7 +376,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     role: 'customer' | 'vendor'
   ) => {
-    console.log('🔐 Verifying email OTP...');
+    console.log('🔐 useAuth.verifyEmailOtp - Starting verification...');
 
     // Call Edge Function to verify and create user
     const result = await authService.verifyEmailOtp(
@@ -255,38 +392,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: result.error };
     }
 
-    console.log('✅ User created, signing in...');
+    console.log('✅ User created:', result.data?.user?.id);
 
-    // Now sign in to get a session
-    const signInResult = await authService.signIn(email, password);
+    // Check if Edge Function returned a session
+    if (result.data?.session) {
+      console.log('✅ Session returned from Edge Function, using it directly');
 
-    if (!signInResult.success) {
-      console.error(
-        '❌ Sign in after verification failed:',
-        signInResult.error
-      );
-      return {
-        success: false,
-        error: 'Account created but sign in failed. Please try logging in.',
-      };
+      // Set the session in Supabase client
+      const { data: sessionData, error: setError } =
+        await supabase.auth.setSession({
+          access_token: result.data.session.access_token,
+          refresh_token: result.data.session.refresh_token,
+        });
+
+      if (setError) {
+        console.error('❌ Failed to set session:', setError);
+        return {
+          success: false,
+          error: 'Failed to authenticate. Please try logging in.',
+        };
+      }
+
+      if (sessionData.session) {
+        console.log('✅ Session set successfully');
+
+        setUser(sessionData.session.user);
+        setIsAuthenticated(true);
+
+        await SecureStore.setItemAsync(
+          'supabaseSession',
+          JSON.stringify(sessionData.session)
+        );
+
+        // ✅ Fetch user profile ONCE
+        console.log('📊 Fetching profile after signup...');
+        await useUserStore.getState().fetchProfile(sessionData.session.user.id);
+
+        console.log(
+          '✅ Verification complete - navigation handled by _layout.tsx'
+        );
+        // ✅ Don't navigate here - let _layout.tsx handle it automatically
+        return { success: true };
+      }
     }
 
-    if (signInResult.data) {
-      setUser(signInResult.data.user);
-      setIsAuthenticated(true);
-      await SecureStore.setItemAsync(
-        'supabaseSession',
-        JSON.stringify(signInResult.data)
-      );
-
-      // Fetch user profile and role
-      await useUserStore.getState().fetchProfile(signInResult.data.user.id);
-
-      console.log('🎉 Sign in successful, navigating to app');
-      router.replace('/(tabs)' as any);
-    }
-
-    return { success: true };
+    // This shouldn't happen anymore since Edge Function always returns session
+    console.error(
+      '⚠️ No session in Edge Function response - this is unexpected'
+    );
+    return {
+      success: false,
+      error:
+        'Account created but authentication failed. Please try logging in.',
+    };
   };
 
   // ✅ Sign-out using auth service
@@ -298,7 +456,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       useUserStore.getState().clearProfile();
       setIsAuthenticated(false);
       setUser(null);
-      router.replace('/login');
+      // ✅ Navigation handled by _layout.tsx
     }
   };
 
@@ -314,7 +472,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (isLoading) return null; // could render a splash screen
+  // ✅ Show splash screen while loading
+  if (isLoading) {
+    return (
+      <View style={styles.splashContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.splashText}>Loading LUAGRO...</Text>
+      </View>
+    );
+  }
 
   return (
     <AuthContext.Provider
@@ -322,6 +488,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         hasCompletedOnboarding,
         user,
+        isLoading,
         login,
         signup,
         verifyOtp,
@@ -335,6 +502,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  splashText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
+});
 
 export function useAuth() {
   const context = useContext(AuthContext);

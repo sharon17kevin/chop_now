@@ -12,21 +12,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Add this function to clear all storage
-const clearAllStorage = async () => {
-  try {
-    const keys = await AsyncStorage.getAllKeys();
-    await AsyncStorage.multiRemove(keys);
-    console.log('Storage cleared successfully');
-  } catch (error) {
-    console.error('Error clearing storage:', error);
-  }
-};
-
-//You can call this function to clear storage
-//clearAllStorage();
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -53,7 +38,7 @@ function RootLayoutNav() {
 
     if (isAuthenticated && !inAuthGroup) {
       // User is authenticated but not inside the protected group
-      router.replace('/(tabs)');
+      router.replace('/(tabs)' as any);
       return;
     }
   }, [isAuthenticated, hasCompletedOnboarding, segments]);
