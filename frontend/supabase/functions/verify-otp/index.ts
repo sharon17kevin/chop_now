@@ -129,7 +129,7 @@ Deno.serve(async (req)=>{
       password,
       email_confirm: true,
       user_metadata: {
-        name: name || '',  // ✅ Ensure name is always a string
+        full_name: name || '',  // ✅ Changed from 'name' to 'full_name'
         role
       }
     });
@@ -188,7 +188,7 @@ Deno.serve(async (req)=>{
       .insert({
         id: authData.user.id,
         email: normalizedEmail,
-        name: name || '',  // ✅ Ensure name is always a string, not null
+        full_name: name || '',  // ✅ Changed from 'name' to 'full_name'
         role: role
       });
 

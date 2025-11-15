@@ -6,11 +6,16 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Modal,
-  TextInput,
+  Alert,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { CreditCard, Plus, Trash2, Check } from 'lucide-react-native';
+import {
+  CreditCard,
+  Plus,
+  Trash2,
+  Check,
+  AlertCircle,
+} from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '@/components/AppHeader';
@@ -20,17 +25,18 @@ interface PaymentMethod {
   type: string;
   card_last_four: string;
   card_brand: string;
+  card_exp_month: number;
+  card_exp_year: number;
   is_default: boolean;
+  payment_provider: string;
 }
 
 export default function PaymentScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardBrand, setCardBrand] = useState('');
-  
+
   const { colors } = useTheme();
 
   useEffect(() => {
@@ -39,7 +45,6 @@ export default function PaymentScreen() {
 
   async function fetchPaymentMethods() {
     try {
-      setLoading(true);
       setError(null);
 
       const {
@@ -56,6 +61,7 @@ export default function PaymentScreen() {
         .from('payment_methods')
         .select('*')
         .eq('user_id', user.id)
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -70,63 +76,65 @@ export default function PaymentScreen() {
     }
   }
 
-  async function addPaymentMethod() {
-    try {
-      if (cardNumber.length < 4) {
-        setError('Please enter a valid card number');
-        return;
-      }
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError('Please sign in to add payment method');
-        return;
-      }
-
-      const lastFour = cardNumber.slice(-4);
-      const isFirstCard = paymentMethods.length === 0;
-
-      const { error: insertError } = await supabase
-        .from('payment_methods')
-        .insert({
-          user_id: user.id,
-          type: 'card',
-          card_last_four: lastFour,
-          card_brand: cardBrand || 'Visa',
-          is_default: isFirstCard,
-        });
-
-      if (insertError) throw insertError;
-
-      setModalVisible(false);
-      setCardNumber('');
-      setCardBrand('');
-      fetchPaymentMethods();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to add payment method'
-      );
-    }
+  async function handleRefresh() {
+    setRefreshing(true);
+    await fetchPaymentMethods();
+    setRefreshing(false);
   }
 
-  async function deletePaymentMethod(id: string) {
-    try {
-      const { error: deleteError } = await supabase
-        .from('payment_methods')
-        .delete()
-        .eq('id', id);
+  async function handleAddPaymentMethod() {
+    Alert.alert(
+      'Add Payment Method',
+      'Payment gateway integration (Paystack/Flutterwave) will be implemented here. This will securely tokenize your card without storing sensitive data.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Coming Soon',
+          style: 'default',
+        },
+      ]
+    );
 
-      if (deleteError) throw deleteError;
+    // TODO: Integrate Paystack/Flutterwave SDK
+    // 1. Initialize payment gateway
+    // 2. Show secure card input form
+    // 3. Tokenize card on provider's servers
+    // 4. Store only the token and display info (last 4 digits, brand, expiry)
+    // 5. Never store full card number, CVV, or PIN
+  }
 
-      setPaymentMethods((prev) => prev.filter((item) => item.id !== id));
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to delete payment method'
-      );
-    }
+  async function deletePaymentMethod(id: string, cardInfo: string) {
+    Alert.alert(
+      'Delete Payment Method',
+      `Are you sure you want to remove ${cardInfo}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error: deleteError } = await supabase
+                .from('payment_methods')
+                .update({ is_active: false })
+                .eq('id', id);
+
+              if (deleteError) throw deleteError;
+
+              setPaymentMethods((prev) =>
+                prev.filter((item) => item.id !== id)
+              );
+            } catch (err) {
+              setError(
+                err instanceof Error
+                  ? err.message
+                  : 'Failed to delete payment method'
+              );
+            }
+          },
+        },
+      ]
+    );
   }
 
   async function setDefaultPaymentMethod(id: string) {
@@ -137,11 +145,13 @@ export default function PaymentScreen() {
 
       if (!user) return;
 
+      // Clear all defaults first
       await supabase
         .from('payment_methods')
         .update({ is_default: false })
         .eq('user_id', user.id);
 
+      // Set new default
       const { error: updateError } = await supabase
         .from('payment_methods')
         .update({ is_default: true })
@@ -157,117 +167,144 @@ export default function PaymentScreen() {
     }
   }
 
-  const renderItem = ({ item }: { item: PaymentMethod }) => (
-    <TouchableOpacity
-      style={[styles.cardItem, item.is_default && styles.defaultCard]}
-      onPress={() => setDefaultPaymentMethod(item.id)}>
-      <CreditCard size={24} color="#007AFF" />
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardBrand}>{item.card_brand}</Text>
-        <Text style={styles.cardNumber}>•••• {item.card_last_four}</Text>
-        {item.is_default && (
-          <View style={styles.defaultBadge}>
-            <Text style={styles.defaultText}>Default</Text>
-          </View>
-        )}
-      </View>
-      {item.is_default && (
-        <Check size={20} color="#34C759" style={styles.checkIcon} />
-      )}
+  const getCardBrandColor = (brand: string) => {
+    const brandLower = brand.toLowerCase();
+    if (brandLower.includes('visa')) return '#1A1F71';
+    if (brandLower.includes('mastercard')) return '#EB001B';
+    if (brandLower.includes('verve')) return '#EE312A';
+    return '#059669';
+  };
+
+  const isCardExpired = (month: number, year: number) => {
+    const now = new Date();
+    const expiry = new Date(year, month - 1);
+    return expiry < now;
+  };
+
+  const renderItem = ({ item }: { item: PaymentMethod }) => {
+    const expired = isCardExpired(item.card_exp_month, item.card_exp_year);
+    const cardInfo = `${item.card_brand} •••• ${item.card_last_four}`;
+
+    return (
       <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => deletePaymentMethod(item.id)}>
-        <Trash2 size={20} color="#FF3B30" />
+        style={[
+          styles.cardItem,
+          item.is_default && styles.defaultCard,
+          expired && styles.expiredCard,
+        ]}
+        onPress={() => !expired && setDefaultPaymentMethod(item.id)}
+        activeOpacity={0.7}
+        disabled={expired}
+      >
+        <View
+          style={[
+            styles.cardIcon,
+            { backgroundColor: getCardBrandColor(item.card_brand) + '15' },
+          ]}
+        >
+          <CreditCard size={20} color={getCardBrandColor(item.card_brand)} />
+        </View>
+
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardBrand}>{item.card_brand}</Text>
+          <Text style={styles.cardNumber}>•••• {item.card_last_four}</Text>
+          <Text style={[styles.cardExpiry, expired && styles.expiredText]}>
+            Expires {item.card_exp_month}/{item.card_exp_year}
+          </Text>
+          {item.is_default && (
+            <View style={styles.defaultBadge}>
+              <Check size={12} color="#059669" />
+              <Text style={styles.defaultText}>Default</Text>
+            </View>
+          )}
+          {expired && (
+            <View style={styles.expiredBadge}>
+              <AlertCircle size={12} color="#EF4444" />
+              <Text style={styles.expiredBadgeText}>Expired</Text>
+            </View>
+          )}
+        </View>
+
+        {item.is_default && !expired && <Check size={20} color="#059669" />}
+
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => deletePaymentMethod(item.id, cardInfo)}
+        >
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView
+        edges={['top']}
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <AppHeader title="Payment Methods" />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#059669" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView
       edges={['top']}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <AppHeader title="Payment Methods" />
+
       {error && (
         <View style={styles.errorBanner}>
+          <AlertCircle size={16} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchPaymentMethods}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       )}
+
       <FlatList
         data={paymentMethods}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No payment methods added</Text>
+            <View style={styles.emptyIconContainer}>
+              <CreditCard size={48} color="#D1D5DB" />
+            </View>
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No payment methods
+            </Text>
             <Text style={styles.emptySubtext}>
-              Add a payment method to make purchases easier
+              Add a payment method for faster checkout
             </Text>
           </View>
         }
       />
 
+      <View style={styles.securityNote}>
+        <AlertCircle size={16} color="#6B7280" />
+        <Text style={styles.securityText}>
+          Your payment information is secured and encrypted
+        </Text>
+      </View>
+
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => setModalVisible(true)}>
-        <Plus size={24} color="#FFFFFF" />
+        onPress={handleAddPaymentMethod}
+        activeOpacity={0.8}
+      >
+        <Plus size={20} color="#FFFFFF" />
         <Text style={styles.addButtonText}>Add Payment Method</Text>
       </TouchableOpacity>
-
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Payment Method</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Card Number"
-              value={cardNumber}
-              onChangeText={setCardNumber}
-              keyboardType="numeric"
-              maxLength={16}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Card Brand (e.g., Visa, Mastercard)"
-              value={cardBrand}
-              onChangeText={setCardBrand}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setModalVisible(false);
-                  setCardNumber('');
-                  setCardBrand('');
-                }}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={addPaymentMethod}>
-                <Text style={styles.saveButtonText}>Add Card</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -275,42 +312,47 @@ export default function PaymentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-  },
-  header: {
-    fontSize: 32,
-    fontWeight: '700',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
   },
   listContainer: {
     padding: 16,
-    flexGrow: 1,
+    paddingBottom: 120,
   },
   cardItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   defaultCard: {
+    borderColor: '#059669',
     borderWidth: 2,
-    borderColor: '#34C759',
+    backgroundColor: '#F0FDF4',
+  },
+  expiredCard: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+    opacity: 0.7,
+  },
+  cardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardInfo: {
     flex: 1,
@@ -318,138 +360,152 @@ const styles = StyleSheet.create({
   },
   cardBrand: {
     fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '700',
+    marginBottom: 2,
+    color: '#1F2937',
+    textTransform: 'uppercase',
   },
   cardNumber: {
-    fontSize: 14,
-    color: '#8E8E93',
+    fontSize: 15,
+    color: '#6B7280',
+    marginBottom: 4,
+    letterSpacing: 0.5,
   },
-  defaultBadge: {
-    backgroundColor: '#34C759',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 4,
-    alignSelf: 'flex-start',
-  },
-  defaultText: {
-    color: '#FFFFFF',
+  cardExpiry: {
     fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  expiredText: {
+    color: '#EF4444',
     fontWeight: '600',
   },
-  checkIcon: {
-    marginRight: 8,
+  defaultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  defaultText: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  expiredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  expiredBadgeText: {
+    fontSize: 11,
+    color: '#EF4444',
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   deleteButton: {
     padding: 8,
+    marginLeft: 8,
   },
   addButton: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    margin: 16,
+    backgroundColor: '#059669',
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#007AFF',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   addButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 8,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#1C1C1E',
-  },
-  emptySubtext: {
-    fontSize: 15,
-    color: '#8E8E93',
-    textAlign: 'center',
   },
   errorBanner: {
-    backgroundColor: '#FFE5E5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
     padding: 12,
     marginHorizontal: 16,
-    marginTop: 16,
+    marginBottom: 8,
     borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+    gap: 8,
   },
   errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    color: '#991B1B',
+    fontSize: 13,
   },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '85%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 24,
+  retryText: {
+    color: '#EF4444',
     fontWeight: '700',
-    marginBottom: 24,
-    textAlign: 'center',
+    fontSize: 13,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 8,
-    padding: 12,
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 60,
+    marginTop: 40,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
-    fontSize: 16,
   },
-  modalButtons: {
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#1F2937',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  securityNote: {
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  cancelButton: {
-    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
     padding: 12,
     borderRadius: 8,
-    marginRight: 8,
-    backgroundColor: '#F2F2F7',
+    gap: 8,
   },
-  cancelButtonText: {
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#8E8E93',
-  },
-  saveButton: {
+  securityText: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    marginLeft: 8,
-    backgroundColor: '#007AFF',
-  },
-  saveButtonText: {
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 16,
   },
 });

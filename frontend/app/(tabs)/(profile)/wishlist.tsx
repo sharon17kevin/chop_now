@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { Trash2, ShoppingCart } from 'lucide-react-native';
+import { Trash2, ShoppingCart, Heart } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '@/components/AppHeader';
 import { useTheme } from '@/hooks/useTheme';
@@ -28,6 +28,7 @@ interface WishlistItem {
 export default function WishlistScreen() {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { colors } = useTheme();
 
@@ -37,7 +38,6 @@ export default function WishlistScreen() {
 
   async function fetchWishlist() {
     try {
-      setLoading(true);
       setError(null);
 
       const {
@@ -91,16 +91,24 @@ export default function WishlistScreen() {
     }
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    await fetchWishlist();
+    setRefreshing(false);
+  }
+
   const renderItem = ({ item }: { item: WishlistItem }) => (
     <View style={styles.itemContainer}>
       <Image
         source={{
-          uri: item.product.image_url || 'https://via.placeholder.com/80',
+          uri: item.product.image_url || 'https://via.placeholder.com/100',
         }}
         style={styles.image}
       />
       <View style={styles.infoContainer}>
-        <Text style={styles.name}>{item.product.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {item.product.name}
+        </Text>
         <Text style={styles.description} numberOfLines={2}>
           {item.product.description}
         </Text>
@@ -108,13 +116,17 @@ export default function WishlistScreen() {
       </View>
       <View style={styles.actionsContainer}>
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={styles.actionButton}
           onPress={() => removeFromWishlist(item.id)}
+          activeOpacity={0.7}
         >
-          <Trash2 size={20} color="#FF3B30" />
+          <Trash2 size={18} color="#EF4444" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cartButton}>
-          <ShoppingCart size={20} color="#007AFF" />
+        <TouchableOpacity
+          style={[styles.actionButton, styles.cartButton]}
+          activeOpacity={0.7}
+        >
+          <ShoppingCart size={18} color="#059669" />
         </TouchableOpacity>
       </View>
     </View>
@@ -122,44 +134,74 @@ export default function WishlistScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView
+        edges={['top']}
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <AppHeader title="Favourites" />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#059669" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchWishlist}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView
+        edges={['top']}
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <AppHeader title="Favourites" />
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchWishlist}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Heart size={48} color="#D1D5DB" />
+          </View>
+          <Text style={[styles.emptyText, { color: colors.text }]}>
+            Unable to load favorites
+          </Text>
+          <Text style={styles.emptySubtext}>
+            Check your connection and try again
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView
       edges={['top']}
-      style={{ flex: 1, backgroundColor: colors.secondary }}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <AppHeader title="Favourites" />
-      {wishlist.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Your wishlist is empty</Text>
-          <Text style={styles.emptySubtext}>
-            Add items you love to your wishlist
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={wishlist}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-        />
-      )}
+
+      <FlatList
+        data={wishlist}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Heart size={48} color="#D1D5DB" />
+            </View>
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No favorites yet
+            </Text>
+            <Text style={styles.emptySubtext}>
+              Items you favorite will appear here
+            </Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -167,24 +209,16 @@ export default function WishlistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-  },
-  header: {
-    fontSize: 32,
-    fontWeight: '700',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
   },
   listContainer: {
     padding: 16,
+    flexGrow: 1,
   },
   itemContainer: {
     flexDirection: 'row',
@@ -193,16 +227,16 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
   },
   image: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: '#E5E5EA',
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
   },
   infoContainer: {
     flex: 1,
@@ -212,62 +246,84 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#1F2937',
     marginBottom: 4,
   },
   description: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: '#6B7280',
     marginBottom: 8,
+    lineHeight: 18,
   },
   price: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#059669',
   },
   actionsContainer: {
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
     marginLeft: 8,
   },
-  deleteButton: {
-    padding: 8,
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cartButton: {
-    padding: 8,
+    backgroundColor: '#F0FDF4',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    marginTop: 100,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   emptyText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     marginBottom: 8,
-    color: '#1C1C1E',
   },
   emptySubtext: {
-    fontSize: 15,
-    color: '#8E8E93',
+    fontSize: 14,
+    color: '#9CA3AF',
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#EF4444',
   },
   errorText: {
-    fontSize: 16,
-    color: '#FF3B30',
-    marginBottom: 16,
-    textAlign: 'center',
-    paddingHorizontal: 40,
+    color: '#EF4444',
+    fontSize: 14,
+    flex: 1,
   },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  retryText: {
+    color: '#EF4444',
+    fontSize: 14,
     fontWeight: '600',
+    marginLeft: 12,
   },
 });

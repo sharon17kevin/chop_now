@@ -113,13 +113,13 @@ export default function NotificationsScreen() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'order':
-        return <Package size={24} color="#007AFF" />;
+        return <Package size={20} color="#059669" />;
       case 'promotion':
-        return <Tag size={24} color="#34C759" />;
+        return <Tag size={20} color="#F59E0B" />;
       case 'alert':
-        return <AlertCircle size={24} color="#FF9500" />;
+        return <AlertCircle size={20} color="#EF4444" />;
       default:
-        return <Bell size={24} color="#8E8E93" />;
+        return <Bell size={20} color="#6B7280" />;
     }
   };
 
@@ -142,24 +142,42 @@ export default function NotificationsScreen() {
     <TouchableOpacity
       style={[styles.notifItem, !item.is_read && styles.unreadNotif]}
       onPress={() => !item.is_read && markAsRead(item.id)}
+      activeOpacity={0.7}
     >
-      <View style={styles.iconContainer}>{getNotificationIcon(item.type)}</View>
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: !item.is_read ? '#F0FDF4' : '#F9FAFB' },
+        ]}
+      >
+        {getNotificationIcon(item.type)}
+      </View>
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>{item.title}</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, !item.is_read && styles.unreadTitle]}>
+            {item.title}
+          </Text>
+          {!item.is_read && <View style={styles.unreadDot} />}
+        </View>
         <Text style={styles.message} numberOfLines={2}>
           {item.message}
         </Text>
         <Text style={styles.time}>{formatDate(item.created_at)}</Text>
       </View>
-      {!item.is_read && <View style={styles.unreadDot} />}
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView
+        edges={['top']}
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <AppHeader title="Notifications" />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#059669" />
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -168,24 +186,33 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView
       edges={['top']}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <AppHeader title="Notifications" />
-      <View style={{...styles.headerContainer, backgroundColor: colors.background}}>
-        {unreadCount > 0 && (
+
+      {unreadCount > 0 && (
+        <View
+          style={[styles.headerContainer, { backgroundColor: colors.card }]}
+        >
           <TouchableOpacity
             style={styles.markAllButton}
             onPress={markAllAsRead}
           >
-            <Check size={16} color="#007AFF" />
-            <Text style={styles.markAllText}>Mark all read</Text>
+            <Check size={16} color="#059669" />
+            <Text style={styles.markAllText}>
+              Mark all as read ({unreadCount})
+            </Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
 
       {error && (
         <View style={styles.errorBanner}>
+          <AlertCircle size={16} color="#EF4444" />
           <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchNotifications}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -194,12 +221,18 @@ export default function NotificationsScreen() {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
+        refreshing={loading}
+        onRefresh={fetchNotifications}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Bell size={64} color="#E5E5EA" />
-            <Text style={styles.emptyText}>No notifications</Text>
+            <View style={styles.emptyIconContainer}>
+              <Bell size={48} color="#D1D5DB" />
+            </View>
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No notifications yet
+            </Text>
             <Text style={styles.emptySubtext}>
-              You'll see notifications here when you have updates
+              We'll notify you when there's something new
             </Text>
           </View>
         }
@@ -211,37 +244,31 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
   },
   headerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    fontSize: 32,
-    fontWeight: '700',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   markAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#E8F4FF',
+    borderRadius: 8,
+    backgroundColor: '#F0FDF4',
   },
   markAllText: {
-    color: '#007AFF',
+    color: '#059669',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 4,
@@ -258,42 +285,58 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
   },
   unreadNotif: {
-    backgroundColor: '#F0F8FF',
-    borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
+    backgroundColor: '#FFFBEB',
+    borderLeftWidth: 3,
+    borderLeftColor: '#059669',
   },
   iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   contentContainer: {
     flex: 1,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+  },
+  unreadTitle: {
+    fontWeight: '700',
+    color: '#111827',
   },
   message: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: '#6B7280',
     marginBottom: 8,
     lineHeight: 20,
   },
   time: {
     fontSize: 12,
-    color: '#C7C7CC',
+    color: '#9CA3AF',
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#059669',
     marginLeft: 8,
   },
   emptyContainer: {
@@ -303,28 +346,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     marginTop: 100,
   },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   emptyText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    marginTop: 16,
     marginBottom: 8,
-    color: '#1C1C1E',
   },
   emptySubtext: {
-    fontSize: 15,
-    color: '#8E8E93',
+    fontSize: 14,
+    color: '#9CA3AF',
     textAlign: 'center',
+    lineHeight: 20,
   },
   errorBanner: {
-    backgroundColor: '#FFE5E5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
     padding: 12,
     marginHorizontal: 16,
-    marginTop: 16,
+    marginTop: 8,
+    marginBottom: 8,
     borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#EF4444',
   },
   errorText: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 14,
-    textAlign: 'center',
+    flex: 1,
+    marginLeft: 8,
+  },
+  retryText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 12,
   },
 });

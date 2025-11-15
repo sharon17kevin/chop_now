@@ -4,9 +4,50 @@ import { supabase } from '../lib/supabase'
 interface UserProfile {
   id: string
   email: string
-  name?: string
+  full_name?: string
   role: 'customer' | 'vendor' | 'admin' | null
   created_at?: string
+  updated_at?: string
+  
+  // Basic profile fields
+  phone?: string
+  address?: string
+  profile_image?: string
+  bio?: string
+  date_of_birth?: string
+  
+  // Location fields
+  city?: string
+  state?: string
+  country?: string
+  postal_code?: string
+  latitude?: number
+  longitude?: number
+  
+  // Vendor-specific fields
+  farm_name?: string
+  farm_location?: string
+  farm_description?: string
+  business_phone?: string
+  verified?: boolean
+  business_hours?: Record<string, any>
+  delivery_zones?: string[]
+  
+  // Stats and engagement
+  rating?: number
+  total_orders?: number
+  total_sales?: number
+  favorite_count?: number
+  notification_preferences?: {
+    push?: boolean
+    email?: boolean
+    sms?: boolean
+  }
+  is_active?: boolean
+  last_login?: string
+  
+  // Social media
+  social_media?: Record<string, string>
 }
 
 interface UserStore {
@@ -47,7 +88,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // Create the fetch promise
     const fetchPromise = supabase
       .from('profiles')
-      .select('id, email, name, role, created_at')
+      .select('*')
       .eq('id', userId)
       .single()
 
@@ -89,7 +130,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
         id: data.id,
         email: data.email,
         role: data.role,
-        name: data.name
+        full_name: data.full_name
       })
 
       set({ profile: data, isLoadingProfile: false })

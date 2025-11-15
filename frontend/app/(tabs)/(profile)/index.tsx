@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '@/lib/supabase';
 import {
   User,
   MapPin,
@@ -21,12 +24,24 @@ import {
   LogOut,
   ChevronRight,
   Star,
+  AlertCircle,
+  Package,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserStore } from '@/stores/useUserStore';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface Order {
+  id: string;
+  created_at: string;
+  total_amount: number;
+  status: string;
+  items_count: number;
+  vendor_name?: string;
+}
 
 const menuItems = [
   {
@@ -80,62 +95,119 @@ const menuItems = [
   },
 ];
 
-const recentOrders = [
-  {
-    id: 1,
-    farmer: 'Green Valley Farm',
-    items: 3,
-    total: 24.47,
-    date: '2 days ago',
-    status: 'Delivered',
-  },
-  {
-    id: 2,
-    farmer: 'Berry Fields',
-    items: 2,
-    total: 18.99,
-    date: '1 week ago',
-    status: 'Delivered',
-  },
-];
-
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { logout } = useAuth();
+  const { profile, fetchProfile } = useUserStore();
+
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRecentOrders();
+  }, []);
+
+  async function fetchRecentOrders() {
+    try {
+      setError(null);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('orders')
+        .select(
+          'id, created_at, total_amount, status, items_count, vendor_name'
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (fetchError) throw fetchError;
+
+      setRecentOrders(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([fetchProfile(), fetchRecentOrders()]);
+    setRefreshing(false);
+  }
+
+  function getTimeAgo(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    return `${Math.floor(diffDays / 365)} years ago`;
+  }
+
+  function getStatusColor(status: string): string {
+    const statusLower = status.toLowerCase();
+    if (statusLower === 'delivered' || statusLower === 'completed')
+      return '#059669';
+    if (statusLower === 'cancelled') return '#EF4444';
+    if (statusLower === 'processing' || statusLower === 'pending')
+      return '#F59E0B';
+    return '#6B7280';
+  }
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out and clear all data?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🔥 Clearing all storage...');
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            console.log('🔥 Starting logout process...');
 
-              // Clear all storage
-              await SecureStore.deleteItemAsync('supabaseSession');
-              await AsyncStorage.clear();
+            // Sign out from Supabase first
+            await logout();
 
-              // Sign out from Supabase
-              await logout();
+            // Clear session from SecureStore
+            await SecureStore.deleteItemAsync('supabaseSession');
 
-              console.log('✅ All storage cleared, signed out');
-            } catch (error) {
-              console.error('❌ Error during logout:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            // Clear only auth-related AsyncStorage (preserve onboarding state)
+            const keys = await AsyncStorage.getAllKeys();
+            const authKeys = keys.filter(
+              (key) =>
+                !key.includes('onboarding') && !key.includes('Onboarding')
+            );
+            if (authKeys.length > 0) {
+              await AsyncStorage.multiRemove(authKeys);
             }
-          },
+
+            console.log('✅ Logout complete');
+          } catch (error) {
+            console.error('❌ Error during logout:', error);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -143,14 +215,28 @@ export default function ProfileScreen() {
       edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#059669"
+            colors={['#059669']}
+          />
+        }
+      >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Image
-              source={{
-                uri: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400',
-              }}
+              source={
+                profile?.profile_image
+                  ? { uri: profile.profile_image }
+                  : {
+                      uri: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400',
+                    }
+              }
               style={styles.avatar}
             />
             <TouchableOpacity
@@ -164,25 +250,35 @@ export default function ProfileScreen() {
               <Text style={styles.editButtonText}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>Sarah Johnson</Text>
+          <Text style={styles.userName}>
+            {profile?.full_name || profile?.email || 'Guest User'}
+          </Text>
           <View style={styles.locationRow}>
             <MapPin size={16} color="#6B7280" />
-            <Text style={styles.userLocation}>San Francisco, CA</Text>
+            <Text style={styles.userLocation}>
+              {profile?.city && profile?.state
+                ? `${profile.city}, ${profile.state}`
+                : profile?.city || profile?.state || 'Location not set'}
+            </Text>
           </View>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>24</Text>
+              <Text style={styles.statValue}>{profile?.total_orders || 0}</Text>
               <Text style={styles.statLabel}>Orders</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>4.9</Text>
+              <Text style={styles.statValue}>
+                {profile?.rating ? profile.rating.toFixed(1) : '0.0'}
+              </Text>
               <View style={styles.ratingRow}>
                 <Star size={12} color="#FCD34D" fill="#FCD34D" />
                 <Text style={styles.statLabel}>Rating</Text>
               </View>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>12</Text>
+              <Text style={styles.statValue}>
+                {profile?.favorite_count || 0}
+              </Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
           </View>
@@ -202,21 +298,69 @@ export default function ProfileScreen() {
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
-          {recentOrders.map((order) => (
-            <TouchableOpacity key={order.id} style={styles.orderCard}>
-              <View style={styles.orderInfo}>
-                <Text style={styles.farmerName}>{order.farmer}</Text>
-                <Text style={styles.orderDetails}>
-                  {order.items} items • ${order.total.toFixed(2)}
-                </Text>
-                <Text style={styles.orderDate}>{order.date}</Text>
+
+          {error && (
+            <View style={styles.errorContainer}>
+              <AlertCircle size={16} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity onPress={fetchRecentOrders}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {loading && !refreshing ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#059669" />
+              <Text style={styles.loadingText}>Loading orders...</Text>
+            </View>
+          ) : recentOrders.length === 0 ? (
+            <View style={styles.emptyOrdersContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Package size={32} color="#D1D5DB" />
               </View>
-              <View style={styles.orderStatus}>
-                <Text style={styles.statusText}>{order.status}</Text>
-                <ChevronRight size={16} color="#6B7280" />
-              </View>
-            </TouchableOpacity>
-          ))}
+              <Text style={styles.emptyOrdersText}>No orders yet</Text>
+              <Text style={styles.emptyOrdersSubtext}>
+                Start shopping to see your orders here
+              </Text>
+            </View>
+          ) : (
+            recentOrders.map((order) => (
+              <TouchableOpacity
+                key={order.id}
+                style={styles.orderCard}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(tabs)/(orders)' as any,
+                  })
+                }
+              >
+                <View style={styles.orderInfo}>
+                  <Text style={styles.farmerName}>
+                    {order.vendor_name || 'Vendor'}
+                  </Text>
+                  <Text style={styles.orderDetails}>
+                    {order.items_count || 0} items • ₦
+                    {order.total_amount.toFixed(2)}
+                  </Text>
+                  <Text style={styles.orderDate}>
+                    {getTimeAgo(order.created_at)}
+                  </Text>
+                </View>
+                <View style={styles.orderStatus}>
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: getStatusColor(order.status) },
+                    ]}
+                  >
+                    {order.status}
+                  </Text>
+                  <ChevronRight size={16} color="#6B7280" />
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Menu Items */}
@@ -446,5 +590,63 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 14,
     color: '#9CA3AF',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    color: '#991B1B',
+    fontSize: 13,
+  },
+  retryText: {
+    color: '#EF4444',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  emptyOrdersContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyOrdersText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  emptyOrdersSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });
