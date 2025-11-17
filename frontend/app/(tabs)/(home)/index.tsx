@@ -100,7 +100,9 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={{ ...styles.header, backgroundColor: colors.secondary }}>
         <View>
-          <Text style={styles.greeting}>Delivering to</Text>
+          <Text style={{ ...styles.greeting, color: '#FFFFFF' }}>
+            Delivering to
+          </Text>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() =>
@@ -110,12 +112,14 @@ export default function HomeScreen() {
             }
             style={styles.locationRow}
           >
-            <MapPin size={16} color="#059669" />
-            <Text style={styles.location}>San Francisco, CA</Text>
+            <MapPin size={16} color="#FFFFFF" />
+            <Text style={{ ...styles.location, color: '#FFFFFF' }}>
+              San Francisco, CA
+            </Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.cartButton}>
-          <ShoppingCart size={24} color="#059669" />
+          <ShoppingCart size={24} color="#FFFFFF" />
           <View style={styles.cartBadge}>
             <Text style={styles.cartBadgeText}>3</Text>
           </View>
@@ -123,22 +127,32 @@ export default function HomeScreen() {
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Search size={20} color="#6B7280" style={styles.searchIcon} />
+      <View
+        style={{
+          ...styles.searchContainer,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+        }}
+      >
+        <Search
+          size={20}
+          color={colors.textSecondary}
+          style={styles.searchIcon}
+        />
         <TextInput
-          style={styles.searchInput}
+          style={{ ...styles.searchInput, color: colors.text }}
           placeholder="Search for fresh produce..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textTetiary}
         />
       </View>
       <View
         style={{
           ...styles.sliderContainer,
           borderBottomWidth: 1,
-          borderBottomColor: 'rgba(0,0,0,0.1)', // light gray, subtle separation
-          backgroundColor: '#fff',
+          borderBottomColor: colors.border,
+          backgroundColor: colors.card,
         }}
       >
         <SliderToggle
@@ -163,10 +177,10 @@ export default function HomeScreen() {
             <View
               style={{
                 ...styles.heroBanner,
-                backgroundColor: '#fff', // required for shadow to show
-                shadowColor: '#000',
+                backgroundColor: colors.card,
+                shadowColor: colors.text,
                 shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.2,
+                shadowOpacity: 0.1,
                 shadowRadius: 3,
                 elevation: 2,
               }}
@@ -178,7 +192,7 @@ export default function HomeScreen() {
                   borderTopLeftRadius: 16,
                   borderBottomLeftRadius: 16,
                   height: 200,
-                  backgroundColor: '#fff',
+                  backgroundColor: colors.card,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -186,7 +200,12 @@ export default function HomeScreen() {
                 <Text style={{ ...styles.heroTitle, color: colors.text }}>
                   Green Valley Farm
                 </Text>
-                <Text style={{ ...styles.heroSubtitle, color: colors.text }}>
+                <Text
+                  style={{
+                    ...styles.heroSubtitle,
+                    color: colors.textSecondary,
+                  }}
+                >
                   Organic vegetables and fruits
                 </Text>
               </View>
@@ -224,9 +243,7 @@ export default function HomeScreen() {
               {categories.map((category) => (
                 <FilterSquare
                   key={category.id}
-                  icon={
-                    <Car color={colors.secondary} fill={colors.secondary} />
-                  }
+                  icon={<Car color={colors.primary} fill={colors.primary} />}
                   text={category.name}
                 />
               ))}
@@ -236,7 +253,9 @@ export default function HomeScreen() {
           {/* Top Rated*/}
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={styles.part}>
-              <Text style={styles.sectionTitle}>Top Rated Near You</Text>
+              <Text style={{ ...styles.sectionTitle, color: colors.text }}>
+                Top Rated Near You
+              </Text>
             </View>
             <View style={{ width: '100%' }}>
               <Carousel
@@ -263,7 +282,9 @@ export default function HomeScreen() {
           {/* Ready To Eat */}
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={styles.part}>
-              <Text style={styles.sectionTitle}>Ready To Eat</Text>
+              <Text style={{ ...styles.sectionTitle, color: colors.text }}>
+                Ready To Eat
+              </Text>
               <View
                 style={{
                   paddingVertical: 10,
@@ -280,7 +301,9 @@ export default function HomeScreen() {
           {/* Recommendations */}
           <View style={{ width: '100%', paddingBottom: 10, marginBottom: 20 }}>
             <View style={styles.part}>
-              <Text style={styles.sectionTitle}>Recommendations</Text>
+              <Text style={{ ...styles.sectionTitle, color: colors.text }}>
+                Recommendations
+              </Text>
             </View>
 
             <FlatList
@@ -295,25 +318,61 @@ export default function HomeScreen() {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   activeOpacity={0.9}
-                  style={[styles.productCard, { marginRight: 16 }]}
+                  style={[
+                    {
+                      ...styles.productCard,
+                      backgroundColor: colors.card,
+                      shadowColor: colors.text,
+                    },
+                    { marginRight: 16 },
+                  ]}
                 >
                   <Image
                     source={{ uri: item.image }}
                     style={styles.productImage}
                   />
                   <View style={styles.productInfo}>
-                    <Text style={styles.productName}>{item.name}</Text>
-                    <Text style={styles.farmerName}>{item.farmer}</Text>
+                    <Text style={{ ...styles.productName, color: colors.text }}>
+                      {item.name}
+                    </Text>
+                    <Text
+                      style={{
+                        ...styles.farmerName,
+                        color: colors.textSecondary,
+                      }}
+                    >
+                      {item.farmer}
+                    </Text>
                     <View style={styles.ratingRow}>
                       <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                      <Text style={styles.rating}>{item.rating}</Text>
-                      <Text style={styles.location}>• {item.location}</Text>
+                      <Text style={{ ...styles.rating, color: colors.text }}>
+                        {item.rating}
+                      </Text>
+                      <Text
+                        style={{
+                          ...styles.location,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        • {item.location}
+                      </Text>
                     </View>
                     <View style={styles.priceRow}>
-                      <Text style={styles.price}>${item.price}</Text>
-                      <Text style={styles.unit}>{item.unit}</Text>
+                      <Text style={{ ...styles.price, color: colors.primary }}>
+                        ${item.price}
+                      </Text>
+                      <Text
+                        style={{ ...styles.unit, color: colors.textSecondary }}
+                      >
+                        {item.unit}
+                      </Text>
                     </View>
-                    <TouchableOpacity style={styles.addToCartButton}>
+                    <TouchableOpacity
+                      style={{
+                        ...styles.addToCartButton,
+                        backgroundColor: colors.primary,
+                      }}
+                    >
                       <Text style={styles.addToCartText}>Add to Cart</Text>
                     </TouchableOpacity>
                   </View>
@@ -331,7 +390,6 @@ export default function HomeScreen() {
               })}
             />
           </View>
-          
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -366,7 +424,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
   },
   locationRow: {
     flexDirection: 'row',
@@ -375,7 +433,7 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#FFFFFF',
     marginLeft: 4,
   },
   cartButton: {
@@ -386,7 +444,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 0,
-    backgroundColor: '#EF4444',
+    backgroundColor: '#DC2626',
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -419,7 +477,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1C1917',
   },
   heroBanner: {
     width: '100%',
@@ -457,11 +515,11 @@ const styles = StyleSheet.create({
   heroSubtitle: {
     fontSize: 14,
     textAlign: 'left',
-    opacity: 0.9,
+    opacity: 0.8,
     marginBottom: 16,
   },
   heroButton: {
-    backgroundColor: '#059669',
+    backgroundColor: '#f6891f',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -486,11 +544,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#1C1917',
     marginBottom: 16,
   },
   seeAllText: {
-    color: '#059669',
+    color: '#f6891f',
     fontWeight: '600',
   },
   categoriesContainer: {
@@ -525,11 +583,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginRight: 16,
-    //width: width * 0.7,
     width: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
   },
@@ -545,12 +602,12 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#1C1917',
     marginBottom: 4,
   },
   farmerName: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#78716C',
     marginBottom: 8,
   },
   ratingRow: {
@@ -560,7 +617,7 @@ const styles = StyleSheet.create({
   },
   rating: {
     fontSize: 12,
-    color: '#374151',
+    color: '#1C1917',
     marginLeft: 4,
   },
   priceRow: {
@@ -571,15 +628,15 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#f6891f',
   },
   unit: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#78716C',
     marginLeft: 4,
   },
   addToCartButton: {
-    backgroundColor: '#059669',
+    backgroundColor: '#f6891f',
     paddingVertical: 8,
     borderRadius: 6,
     alignItems: 'center',
@@ -612,7 +669,7 @@ const styles = StyleSheet.create({
   },
   farmerDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#78716C',
     marginBottom: 4,
   },
 });

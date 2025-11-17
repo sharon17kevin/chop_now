@@ -1,6 +1,6 @@
 import OrderCard from '@/components/OrderCard';
 import { typography } from '@/styles/typography';
-import { useTheme } from '@react-navigation/native';
+import { useTheme } from '@/hooks/useTheme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Package } from 'lucide-react-native';
 import React from 'react';
@@ -113,28 +113,49 @@ export default function CartScreen() {
       edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.card, borderBottomColor: colors.border },
+        ]}
+      >
         <TouchableOpacity
           onPress={() => router.back()}
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.filter }]}
         >
-          <ArrowLeft size={24} color="#1F2937" />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Orders</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          My Orders
+        </Text>
         <View style={{ width: 40 }} />
       </View>
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: colors.card }]}>
         {tabs.map((tab) => (
           <TouchableOpacity
             key={tab}
             onPress={() => setSelectedTab(tab)}
             activeOpacity={0.7}
-            style={[styles.tab, selectedTab === tab && styles.activeTab]}
+            style={[
+              styles.tab,
+              { backgroundColor: colors.filter },
+              selectedTab === tab && [
+                styles.activeTab,
+                {
+                  backgroundColor: colors.success,
+                  shadowColor: colors.success,
+                },
+              ],
+            ]}
           >
             <Text
               style={[
                 styles.tabText,
-                selectedTab === tab && styles.activeTabText,
+                { color: colors.textSecondary },
+                selectedTab === tab && [
+                  styles.activeTabText,
+                  { color: colors.buttonText },
+                ],
               ]}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -148,11 +169,20 @@ export default function CartScreen() {
       >
         {filteredOrders.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Package size={48} color="#D1D5DB" />
+            <View
+              style={[
+                styles.emptyIconContainer,
+                { backgroundColor: colors.card, shadowColor: colors.text },
+              ]}
+            >
+              <Package size={48} color={colors.textTetiary} />
             </View>
-            <Text style={styles.emptyText}>No {selectedTab} orders yet</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No {selectedTab} orders yet
+            </Text>
+            <Text
+              style={[styles.emptySubtext, { color: colors.textSecondary }]}
+            >
               Your {selectedTab} orders will appear here
             </Text>
           </View>
@@ -167,7 +197,6 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
@@ -175,22 +204,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
     letterSpacing: 0.3,
   },
   tabsContainer: {
@@ -198,7 +223,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
     marginBottom: 8,
   },
   tab: {
@@ -206,13 +230,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   activeTab: {
-    backgroundColor: '#059669',
-    shadowColor: '#059669',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -221,10 +242,8 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6B7280',
   },
   activeTabText: {
-    color: '#FFFFFF',
     fontWeight: '700',
   },
   scrollView: {
@@ -239,11 +258,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -252,13 +269,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
   },

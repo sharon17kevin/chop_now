@@ -142,9 +142,23 @@ export default function ProfileScreen() {
   }
 
   async function handleRefresh() {
-    setRefreshing(true);
-    await Promise.all([fetchProfile(), fetchRecentOrders()]);
-    setRefreshing(false);
+    try {
+      setRefreshing(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        await Promise.all([fetchProfile(user.id), fetchRecentOrders()]);
+      } else {
+        await fetchRecentOrders();
+      }
+    } catch (err) {
+      console.error('Error during refresh:', err);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function getTimeAgo(dateString: string): string {
@@ -164,11 +178,11 @@ export default function ProfileScreen() {
   function getStatusColor(status: string): string {
     const statusLower = status.toLowerCase();
     if (statusLower === 'delivered' || statusLower === 'completed')
-      return '#059669';
-    if (statusLower === 'cancelled') return '#EF4444';
+      return colors.success;
+    if (statusLower === 'cancelled') return colors.error;
     if (statusLower === 'processing' || statusLower === 'pending')
-      return '#F59E0B';
-    return '#6B7280';
+      return colors.warning;
+    return colors.textSecondary;
   }
 
   const handleLogout = async () => {
@@ -221,13 +235,13 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#059669"
-            colors={['#059669']}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
         {/* Profile Header */}
-        <View style={styles.profileHeader}>
+        <View style={[styles.profileHeader, { backgroundColor: colors.card }]}>
           <View style={styles.avatarContainer}>
             <Image
               source={
@@ -245,17 +259,23 @@ export default function ProfileScreen() {
                   pathname: 'profile' as any,
                 })
               }
-              style={styles.editButton}
+              style={[styles.editButton, { backgroundColor: colors.primary }]}
             >
-              <Text style={styles.editButtonText}>Edit</Text>
+              <Text
+                style={[styles.editButtonText, { color: colors.buttonText }]}
+              >
+                Edit
+              </Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>
+          <Text style={[styles.userName, { color: colors.text }]}>
             {profile?.full_name || profile?.email || 'Guest User'}
           </Text>
           <View style={styles.locationRow}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.userLocation}>
+            <MapPin size={16} color={colors.textSecondary} />
+            <Text
+              style={[styles.userLocation, { color: colors.textSecondary }]}
+            >
               {profile?.city && profile?.state
                 ? `${profile.city}, ${profile.state}`
                 : profile?.city || profile?.state || 'Location not set'}
@@ -263,31 +283,43 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{profile?.total_orders || 0}</Text>
-              <Text style={styles.statLabel}>Orders</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
+                {profile?.total_orders || 0}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                Orders
+              </Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
                 {profile?.rating ? profile.rating.toFixed(1) : '0.0'}
               </Text>
               <View style={styles.ratingRow}>
                 <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                <Text style={styles.statLabel}>Rating</Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Rating
+                </Text>
               </View>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
                 {profile?.favorite_count || 0}
               </Text>
-              <Text style={styles.statLabel}>Favorites</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                Favorites
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Recent Orders */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Orders</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Recent Orders
+            </Text>
             <TouchableOpacity
               onPress={() =>
                 router.push({
@@ -295,32 +327,62 @@ export default function ProfileScreen() {
                 })
               }
             >
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={[styles.seeAllText, { color: colors.primary }]}>
+                See All
+              </Text>
             </TouchableOpacity>
           </View>
 
           {error && (
-            <View style={styles.errorContainer}>
-              <AlertCircle size={16} color="#EF4444" />
-              <Text style={styles.errorText}>{error}</Text>
+            <View
+              style={[
+                styles.errorContainer,
+                {
+                  backgroundColor: colors.errorBackground,
+                  borderLeftColor: colors.error,
+                },
+              ]}
+            >
+              <AlertCircle size={16} color={colors.error} />
+              <Text style={[styles.errorText, { color: colors.error }]}>
+                {error}
+              </Text>
               <TouchableOpacity onPress={fetchRecentOrders}>
-                <Text style={styles.retryText}>Retry</Text>
+                <Text style={[styles.retryText, { color: colors.error }]}>
+                  Retry
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#059669" />
-              <Text style={styles.loadingText}>Loading orders...</Text>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text
+                style={[styles.loadingText, { color: colors.textSecondary }]}
+              >
+                Loading orders...
+              </Text>
             </View>
           ) : recentOrders.length === 0 ? (
             <View style={styles.emptyOrdersContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Package size={32} color="#D1D5DB" />
+              <View
+                style={[
+                  styles.emptyIconContainer,
+                  { backgroundColor: colors.filter },
+                ]}
+              >
+                <Package size={32} color={colors.textSecondary} />
               </View>
-              <Text style={styles.emptyOrdersText}>No orders yet</Text>
-              <Text style={styles.emptyOrdersSubtext}>
+              <Text style={[styles.emptyOrdersText, { color: colors.text }]}>
+                No orders yet
+              </Text>
+              <Text
+                style={[
+                  styles.emptyOrdersSubtext,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 Start shopping to see your orders here
               </Text>
             </View>
@@ -328,7 +390,7 @@ export default function ProfileScreen() {
             recentOrders.map((order) => (
               <TouchableOpacity
                 key={order.id}
-                style={styles.orderCard}
+                style={[styles.orderCard, { borderBottomColor: colors.border }]}
                 onPress={() =>
                   router.push({
                     pathname: '/(tabs)/(orders)' as any,
@@ -336,14 +398,21 @@ export default function ProfileScreen() {
                 }
               >
                 <View style={styles.orderInfo}>
-                  <Text style={styles.farmerName}>
+                  <Text style={[styles.farmerName, { color: colors.text }]}>
                     {order.vendor_name || 'Vendor'}
                   </Text>
-                  <Text style={styles.orderDetails}>
+                  <Text
+                    style={[
+                      styles.orderDetails,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {order.items_count || 0} items • ₦
                     {order.total_amount.toFixed(2)}
                   </Text>
-                  <Text style={styles.orderDate}>
+                  <Text
+                    style={[styles.orderDate, { color: colors.textTetiary }]}
+                  >
                     {getTimeAgo(order.created_at)}
                   </Text>
                 </View>
@@ -356,7 +425,7 @@ export default function ProfileScreen() {
                   >
                     {order.status}
                   </Text>
-                  <ChevronRight size={16} color="#6B7280" />
+                  <ChevronRight size={16} color={colors.textSecondary} />
                 </View>
               </TouchableOpacity>
             ))
@@ -364,7 +433,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Menu Items */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           {menuItems.map((item) => {
             const IconComponent = item.icon;
             return (
@@ -375,32 +444,56 @@ export default function ProfileScreen() {
                   })
                 }
                 key={item.id}
-                style={styles.menuItem}
+                style={[styles.menuItem, { borderBottomColor: colors.border }]}
               >
-                <View style={styles.menuIconContainer}>
-                  <IconComponent size={20} color="#059669" />
+                <View
+                  style={[
+                    styles.menuIconContainer,
+                    { backgroundColor: colors.filter },
+                  ]}
+                >
+                  <IconComponent size={20} color={colors.primary} />
                 </View>
                 <View style={styles.menuContent}>
-                  <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.menuSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {item.subtitle}
+                  </Text>
                 </View>
-                <ChevronRight size={16} color="#6B7280" />
+                <ChevronRight size={16} color={colors.textSecondary} />
               </TouchableOpacity>
             );
           })}
         </View>
 
         {/* Sign Out */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.signOutButton} onPress={handleLogout}>
-            <LogOut size={20} color="#EF4444" />
-            <Text style={styles.signOutText}>Sign Out</Text>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <TouchableOpacity
+            style={[
+              styles.signOutButton,
+              { backgroundColor: colors.destructiveBackground },
+            ]}
+            onPress={handleLogout}
+          >
+            <LogOut size={20} color={colors.error} />
+            <Text style={[styles.signOutText, { color: colors.error }]}>
+              Sign Out
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* App Version */}
         <View style={styles.footer}>
-          <Text style={styles.versionText}>FarmFresh v1.0.0</Text>
+          <Text style={[styles.versionText, { color: colors.textSecondary }]}>
+            FarmFresh v1.0.0
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -410,12 +503,10 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   profileHeader: {
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#FFFFFF',
     marginBottom: 20,
   },
   avatarContainer: {
@@ -431,20 +522,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#059669',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
   editButtonText: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
   },
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 8,
   },
   locationRow: {
@@ -454,7 +542,6 @@ const styles = StyleSheet.create({
   },
   userLocation: {
     fontSize: 16,
-    color: '#6B7280',
     marginLeft: 4,
   },
   statsRow: {
@@ -468,7 +555,6 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#059669',
     marginBottom: 4,
   },
   ratingRow: {
@@ -477,11 +563,9 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginLeft: 2,
   },
   section: {
-    backgroundColor: '#FFFFFF',
     marginBottom: 20,
     paddingVertical: 16,
   },
@@ -495,10 +579,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
   },
   seeAllText: {
-    color: '#059669',
     fontWeight: '600',
   },
   orderCard: {
@@ -508,7 +590,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   orderInfo: {
     flex: 1,
@@ -516,17 +597,14 @@ const styles = StyleSheet.create({
   farmerName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 4,
   },
   orderDetails: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   orderDate: {
     fontSize: 12,
-    color: '#9CA3AF',
   },
   orderStatus: {
     flexDirection: 'row',
@@ -534,7 +612,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 14,
-    color: '#059669',
     fontWeight: '600',
     marginRight: 4,
   },
@@ -544,12 +621,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   menuIconContainer: {
     width: 40,
     height: 40,
-    backgroundColor: '#F0FDF4',
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -561,12 +636,10 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
     marginBottom: 2,
   },
   menuSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
   },
   signOutButton: {
     flexDirection: 'row',
@@ -574,13 +647,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     marginHorizontal: 20,
-    backgroundColor: '#FEF2F2',
     borderRadius: 12,
   },
   signOutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#EF4444',
     marginLeft: 8,
   },
   footer: {
@@ -589,7 +660,6 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 14,
-    color: '#9CA3AF',
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -600,27 +670,22 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#6B7280',
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
     padding: 12,
     marginHorizontal: 20,
     marginBottom: 12,
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#EF4444',
     gap: 8,
   },
   errorText: {
     flex: 1,
-    color: '#991B1B',
     fontSize: 13,
   },
   retryText: {
-    color: '#EF4444',
     fontWeight: '700',
     fontSize: 13,
   },
@@ -633,7 +698,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -641,12 +705,10 @@ const styles = StyleSheet.create({
   emptyOrdersText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 4,
   },
   emptyOrdersSubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
   },
 });

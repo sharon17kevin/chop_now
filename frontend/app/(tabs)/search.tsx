@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Filter, Star } from 'lucide-react-native';
+import { useTheme } from '@/hooks/useTheme';
 
 const searchResults = [
   {
@@ -19,7 +20,8 @@ const searchResults = [
     unit: 'per lb',
     farmer: 'Orchard Hills',
     rating: 4.6,
-    image: 'https://images.pexels.com/photos/102104/pexels-photo-102104.jpeg?auto=compress&cs=tinysrgb&w=400',
+    image:
+      'https://images.pexels.com/photos/102104/pexels-photo-102104.jpeg?auto=compress&cs=tinysrgb&w=400',
   },
   {
     id: 2,
@@ -28,7 +30,8 @@ const searchResults = [
     unit: 'per bag',
     farmer: 'Green Leaf Farm',
     rating: 4.8,
-    image: 'https://images.pexels.com/photos/2872755/pexels-photo-2872755.jpeg?auto=compress&cs=tinysrgb&w=400',
+    image:
+      'https://images.pexels.com/photos/2872755/pexels-photo-2872755.jpeg?auto=compress&cs=tinysrgb&w=400',
   },
   {
     id: 3,
@@ -37,7 +40,8 @@ const searchResults = [
     unit: 'per ear',
     farmer: 'Sunny Acres',
     rating: 4.7,
-    image: 'https://images.pexels.com/photos/547263/pexels-photo-547263.jpeg?auto=compress&cs=tinysrgb&w=400',
+    image:
+      'https://images.pexels.com/photos/547263/pexels-photo-547263.jpeg?auto=compress&cs=tinysrgb&w=400',
   },
 ];
 
@@ -50,6 +54,7 @@ const popularSearches = [
 ];
 
 export default function SearchScreen() {
+  const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
@@ -59,23 +64,34 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>Search</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Search</Text>
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Search size={20} color="#6B7280" style={styles.searchIcon} />
+      <View
+        style={[
+          styles.searchContainer,
+          { backgroundColor: colors.card, shadowColor: colors.text },
+        ]}
+      >
+        <Search
+          size={20}
+          color={colors.textSecondary}
+          style={styles.searchIcon}
+        />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="What are you looking for?"
           value={searchQuery}
           onChangeText={handleSearch}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textSecondary}
         />
         <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color="#059669" />
+          <Filter size={20} color={colors.success} />
         </TouchableOpacity>
       </View>
 
@@ -84,15 +100,25 @@ export default function SearchScreen() {
           <>
             {/* Popular Searches */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Popular Searches</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Popular Searches
+              </Text>
               <View style={styles.tagsContainer}>
                 {popularSearches.map((search, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={styles.tagButton}
+                    style={[
+                      styles.tagButton,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
+                    ]}
                     onPress={() => handleSearch(search)}
                   >
-                    <Text style={styles.tagText}>{search}</Text>
+                    <Text style={[styles.tagText, { color: colors.text }]}>
+                      {search}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -100,15 +126,31 @@ export default function SearchScreen() {
 
             {/* Recent Searches */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Searches</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Recent Searches
+              </Text>
               <View style={styles.recentSearches}>
                 <TouchableOpacity style={styles.recentSearchItem}>
-                  <Search size={16} color="#6B7280" />
-                  <Text style={styles.recentSearchText}>organic carrots</Text>
+                  <Search size={16} color={colors.textSecondary} />
+                  <Text
+                    style={[
+                      styles.recentSearchText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    organic carrots
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.recentSearchItem}>
-                  <Search size={16} color="#6B7280" />
-                  <Text style={styles.recentSearchText}>farm fresh milk</Text>
+                  <Search size={16} color={colors.textSecondary} />
+                  <Text
+                    style={[
+                      styles.recentSearchText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    farm fresh milk
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -116,26 +158,61 @@ export default function SearchScreen() {
         ) : (
           // Search Results
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Results for "{searchQuery}" ({searchResults.length})
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Results for &quot;{searchQuery}&quot; ({searchResults.length})
             </Text>
             {searchResults.map((product) => (
-              <TouchableOpacity key={product.id} style={styles.resultCard}>
-                <Image source={{ uri: product.image }} style={styles.resultImage} />
+              <TouchableOpacity
+                key={product.id}
+                style={[
+                  styles.resultCard,
+                  { backgroundColor: colors.card, shadowColor: colors.text },
+                ]}
+              >
+                <Image
+                  source={{ uri: product.image }}
+                  style={styles.resultImage}
+                />
                 <View style={styles.resultInfo}>
-                  <Text style={styles.resultName}>{product.name}</Text>
-                  <Text style={styles.resultFarmer}>{product.farmer}</Text>
+                  <Text style={[styles.resultName, { color: colors.text }]}>
+                    {product.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.resultFarmer,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {product.farmer}
+                  </Text>
                   <View style={styles.ratingRow}>
                     <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                    <Text style={styles.rating}>{product.rating}</Text>
+                    <Text style={[styles.rating, { color: colors.text }]}>
+                      {product.rating}
+                    </Text>
                   </View>
                   <View style={styles.priceRow}>
-                    <Text style={styles.price}>${product.price}</Text>
-                    <Text style={styles.unit}>{product.unit}</Text>
+                    <Text style={[styles.price, { color: colors.success }]}>
+                      ${product.price}
+                    </Text>
+                    <Text
+                      style={[styles.unit, { color: colors.textSecondary }]}
+                    >
+                      {product.unit}
+                    </Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.addButton}>
-                  <Text style={styles.addButtonText}>Add</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.addButton,
+                    { backgroundColor: colors.success },
+                  ]}
+                >
+                  <Text
+                    style={[styles.addButtonText, { color: colors.buttonText }]}
+                  >
+                    Add
+                  </Text>
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
@@ -149,7 +226,6 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     paddingHorizontal: 20,
@@ -158,18 +234,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginBottom: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
@@ -181,7 +254,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
   },
   filterButton: {
     padding: 4,
@@ -193,7 +265,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 16,
   },
   tagsContainer: {
@@ -202,15 +273,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tagButton: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   tagText: {
-    color: '#374151',
     fontSize: 14,
   },
   recentSearches: {
@@ -223,15 +291,12 @@ const styles = StyleSheet.create({
   },
   recentSearchText: {
     fontSize: 16,
-    color: '#6B7280',
   },
   resultCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
@@ -250,12 +315,10 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 4,
   },
   resultFarmer: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   ratingRow: {
@@ -265,7 +328,6 @@ const styles = StyleSheet.create({
   },
   rating: {
     fontSize: 12,
-    color: '#374151',
     marginLeft: 4,
   },
   priceRow: {
@@ -275,22 +337,18 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#059669',
   },
   unit: {
     fontSize: 12,
-    color: '#6B7280',
     marginLeft: 4,
   },
   addButton: {
-    backgroundColor: '#059669',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     alignSelf: 'center',
   },
   addButtonText: {
-    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
   },

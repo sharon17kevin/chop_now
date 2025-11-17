@@ -33,11 +33,11 @@ const OrderCard: React.FC<OrderCardProps> = ({
   const badgeStyle = () => {
     switch (status) {
       case 'active':
-        return { backgroundColor: '#F59E0B', color: '#fff' };
+        return { backgroundColor: colors.warning, color: colors.buttonText };
       case 'ongoing':
-        return { backgroundColor: '#3B82F6', color: '#fff' };
+        return { backgroundColor: colors.info, color: colors.buttonText };
       case 'completed':
-        return { backgroundColor: '#10B981', color: '#fff' };
+        return { backgroundColor: colors.success, color: colors.buttonText };
       default:
         return { backgroundColor: colors.card, color: colors.text };
     }
@@ -112,7 +112,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           <View style={{ marginTop: 12, alignItems: 'flex-end' }}>
             <TouchableOpacity
               onPress={() => setConfirmOpen(true)}
-              style={styles.deleteButton}
+              style={[styles.deleteButton, { backgroundColor: colors.error }]}
               activeOpacity={0.8}
             >
               <Text style={styles.deleteText}>Delete</Text>
@@ -127,10 +127,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           onRequestClose={() => setConfirmOpen(false)}
         >
           <View
-            style={[
-              styles.modalBackdrop,
-              { backgroundColor: 'rgba(0,0,0,0.4)' },
-            ]}
+            style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}
           >
             <View
               style={[styles.modalContainer, { backgroundColor: colors.card }]}
@@ -151,19 +148,35 @@ const OrderCard: React.FC<OrderCardProps> = ({
               </Text>
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={[styles.modalButton]}
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: colors.filter },
+                  ]}
                   onPress={() => setConfirmOpen(false)}
                 >
-                  <Text style={[styles.modalButtonText]}>Cancel</Text>
+                  <Text
+                    style={[styles.modalButtonText, { color: colors.text }]}
+                  >
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.modalDanger]}
+                  style={[
+                    styles.modalButton,
+                    styles.modalDanger,
+                    { backgroundColor: colors.error },
+                  ]}
                   onPress={() => {
                     setConfirmOpen(false);
                     if (onDelete) onDelete(id);
                   }}
                 >
-                  <Text style={[styles.modalButtonText, { color: '#fff' }]}>
+                  <Text
+                    style={[
+                      styles.modalButtonText,
+                      { color: colors.buttonText },
+                    ]}
+                  >
                     Delete
                   </Text>
                 </TouchableOpacity>
@@ -204,7 +217,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   deleteButton: {
-    backgroundColor: '#EF4444',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -239,12 +251,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   modalButtonText: {
-    color: '#374151',
     fontWeight: '700',
   },
-  modalDanger: {
-    backgroundColor: '#EF4444',
-  },
+  modalDanger: {},
 });
 
 export default OrderCard;

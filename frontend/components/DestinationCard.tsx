@@ -57,17 +57,17 @@ const DestinationCard = ({
         style={[
           styles.main,
           {
-            backgroundColor: '#fff',
-            shadowColor: '#000',
+            backgroundColor: colors.card,
+            shadowColor: colors.text,
             shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.2,
+            shadowOpacity: 0.1,
             shadowRadius: 3,
             elevation: 2,
           },
         ]}
       >
         <View
-          style={[styles.imageContainer, { backgroundColor: colors.secondary }]}
+          style={[styles.imageContainer, { backgroundColor: colors.primary }]}
         >
           <Image source={{ uri: image }} style={styles.image} />
         </View>
@@ -155,7 +155,7 @@ export const DestinationMiniCard = ({
       <View
         style={[
           styles.imageContainer,
-          { position: 'relative', backgroundColor: colors.secondary },
+          { position: 'relative', backgroundColor: colors.filter },
         ]}
       >
         <Image source={{ uri: image }} style={styles.image} />
@@ -189,7 +189,7 @@ export const DestinationMiniCard = ({
           </Text>
           <View style={{ flexDirection: 'row', gap: 5 }}>
             <Clock size={13} color={colors.secondary} />
-            <Text>20-30 mins</Text>
+            <Text style={{color: colors.text}}>20-30 mins</Text>
           </View>
         </View>
       </View>

@@ -110,13 +110,19 @@ export default function CartScreen() {
         <AppHeader title={`Your Order: Empty`} />
 
         <View style={styles.emptyCart}>
-          <ShoppingBag size={80} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySubtitle}>
+          <ShoppingBag size={80} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Your cart is empty
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
             Add some fresh produce from local farmers
           </Text>
-          <TouchableOpacity style={styles.shopButton}>
-            <Text style={styles.shopButtonText}>Start Shopping</Text>
+          <TouchableOpacity
+            style={[styles.shopButton, { backgroundColor: colors.primary }]}
+          >
+            <Text style={[styles.shopButtonText, { color: colors.buttonText }]}>
+              Start Shopping
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -135,33 +141,47 @@ export default function CartScreen() {
       <AppHeader title={`Your Order: ${items.length} items`} />
 
       {/* Promo Code */}
-      <View style={styles.orderSummary}>
-        <Text style={styles.summaryTitle}>Promo Code</Text>
+      <View style={[styles.orderSummary, { backgroundColor: colors.card }]}>
+        <Text style={[styles.summaryTitle, { color: colors.text }]}>
+          Promo Code
+        </Text>
         <View style={styles.promoContainer}>
           <TextInput
-            style={styles.promoInput}
+            style={[
+              styles.promoInput,
+              {
+                borderColor: colors.border,
+                color: colors.text,
+                backgroundColor: colors.filter,
+              },
+            ]}
             placeholder="Enter promo code"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textSecondary}
             value={promoCode}
             onChangeText={setPromoCode}
           />
           <TouchableOpacity
             style={[
               styles.promoButton,
-              promoApplied ? styles.promoApplied : null,
+              { backgroundColor: colors.primary },
+              promoApplied ? { backgroundColor: '#10B981' } : null,
             ]}
             onPress={handleApplyPromo}
             disabled={!promoCode}
           >
-            <Text style={styles.promoButtonText}>
+            <Text
+              style={[styles.promoButtonText, { color: colors.buttonText }]}
+            >
               {promoApplied ? 'Applied' : 'Apply'}
             </Text>
           </TouchableOpacity>
         </View>
         {promoError ? (
-          <Text style={styles.promoError}>{promoError}</Text>
+          <Text style={[styles.promoError, { color: '#e53935' }]}>
+            {promoError}
+          </Text>
         ) : promoApplied ? (
-          <Text style={styles.promoSuccess}>
+          <Text style={[styles.promoSuccess, { color: '#4CAF50' }]}>
             Promo code applied successfully!
           </Text>
         ) : null}
@@ -169,28 +189,44 @@ export default function CartScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.itemsList}>
         {items.map((item) => (
-          <View key={item.id} style={styles.cartItem}>
+          <View
+            key={item.id}
+            style={[styles.cartItem, { backgroundColor: colors.card }]}
+          >
             <Image source={{ uri: item.image }} style={styles.itemImage} />
             <View style={styles.itemDetails}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.farmerName}>{item.farmer}</Text>
-              <Text style={styles.itemPrice}>
+              <Text style={[styles.itemName, { color: colors.text }]}>
+                {item.name}
+              </Text>
+              <Text
+                style={[styles.farmerName, { color: colors.textSecondary }]}
+              >
+                {item.farmer}
+              </Text>
+              <Text style={[styles.itemPrice, { color: colors.primary }]}>
                 ${item.price.toFixed(2)} {item.unit}
               </Text>
             </View>
-            <View style={styles.quantityControls}>
+            <View
+              style={[
+                styles.quantityControls,
+                { backgroundColor: colors.filter },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.quantityButton}
                 onPress={() => updateQuantity(item.id, item.quantity - 1)}
               >
-                <Minus size={16} color="#6B7280" />
+                <Minus size={16} color={colors.textSecondary} />
               </TouchableOpacity>
-              <Text style={styles.quantity}>{item.quantity}</Text>
+              <Text style={[styles.quantity, { color: colors.text }]}>
+                {item.quantity}
+              </Text>
               <TouchableOpacity
                 style={styles.quantityButton}
                 onPress={() => updateQuantity(item.id, item.quantity + 1)}
               >
-                <Plus size={16} color="#6B7280" />
+                <Plus size={16} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -203,29 +239,61 @@ export default function CartScreen() {
         ))}
 
         {/* Order Summary */}
-        <View style={styles.orderSummary}>
-          <Text style={styles.summaryTitle}>Order Summary</Text>
+        <View style={[styles.orderSummary, { backgroundColor: colors.card }]}>
+          <Text style={[styles.summaryTitle, { color: colors.text }]}>
+            Order Summary
+          </Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+            <Text
+              style={[styles.summaryLabel, { color: colors.textSecondary }]}
+            >
+              Subtotal
+            </Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>
+              ${subtotal.toFixed(2)}
+            </Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Fee</Text>
-            <Text style={styles.summaryValue}>${deliveryFee.toFixed(2)}</Text>
+            <Text
+              style={[styles.summaryLabel, { color: colors.textSecondary }]}
+            >
+              Delivery Fee
+            </Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>
+              ${deliveryFee.toFixed(2)}
+            </Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service Fee</Text>
-            <Text style={styles.summaryValue}>${serviceFee.toFixed(2)}</Text>
+            <Text
+              style={[styles.summaryLabel, { color: colors.textSecondary }]}
+            >
+              Service Fee
+            </Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>
+              ${serviceFee.toFixed(2)}
+            </Text>
           </View>
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+          <View
+            style={[
+              styles.summaryRow,
+              styles.totalRow,
+              { borderTopColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.totalLabel, { color: colors.text }]}>
+              Total
+            </Text>
+            <Text style={[styles.totalValue, { color: colors.primary }]}>
+              ${total.toFixed(2)}
+            </Text>
           </View>
         </View>
 
         {/* Payment Method */}
-        <View style={styles.orderSummary}>
-          <Text style={styles.summaryTitle}>Payment Method</Text>
+        <View style={[styles.orderSummary, { backgroundColor: colors.card }]}>
+          <Text style={[styles.summaryTitle, { color: colors.text }]}>
+            Payment Method
+          </Text>
 
           <View style={styles.paymentOptions}>
             {[
@@ -237,18 +305,18 @@ export default function CartScreen() {
                 key={method.label}
                 style={[
                   styles.paymentOption,
-                  selectedPayment === method.label &&
-                    styles.paymentOptionActive,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.filter,
+                  },
+                  selectedPayment === method.label && {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.card,
+                  },
                 ]}
                 onPress={() => setSelectedPayment(method.label)}
               >
                 <View style={styles.paymentLeft}>
-                  {/* <Wallet
-                    size={20}
-                    color={
-                      selectedPayment === method.label ? '#f6891f' : '#888'
-                    }
-                  /> */}
                   <Ionicons
                     name={
                       method.label === 'Wallet'
@@ -258,13 +326,22 @@ export default function CartScreen() {
                         : 'swap-horizontal-outline'
                     }
                     size={20}
-                    color={colors.secondary}
+                    color={
+                      selectedPayment === method.label
+                        ? colors.primary
+                        : colors.textSecondary
+                    }
                     style={{ marginRight: 8 }}
                   />
                   <Text
                     style={[
                       styles.paymentLabel,
-                      selectedPayment === method.label && { color: '#f6891f' },
+                      {
+                        color:
+                          selectedPayment === method.label
+                            ? colors.primary
+                            : colors.text,
+                      },
                     ]}
                   >
                     {method.label}
@@ -272,7 +349,7 @@ export default function CartScreen() {
                 </View>
 
                 {selectedPayment === method.label && (
-                  <CheckCircle size={20} color="#f6891f" />
+                  <CheckCircle size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -280,11 +357,19 @@ export default function CartScreen() {
         </View>
 
         {/* Checkout Button */}
-        <View style={styles.checkoutSection}>
-          <TouchableOpacity style={styles.checkoutButton}>
-            <Text style={styles.checkoutButtonText}>Pay</Text>
+        <View
+          style={[styles.checkoutSection, { backgroundColor: colors.card }]}
+        >
+          <TouchableOpacity
+            style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
+          >
+            <Text
+              style={[styles.checkoutButtonText, { color: colors.buttonText }]}
+            >
+              Pay
+            </Text>
           </TouchableOpacity>
-          <Text style={styles.checkoutNote}>
+          <Text style={[styles.checkoutNote, { color: colors.textSecondary }]}>
             Estimated delivery: Tomorrow, 10:00 AM - 2:00 PM
           </Text>
         </View>
@@ -296,7 +381,6 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     paddingHorizontal: 20,
@@ -305,11 +389,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
   },
   itemCount: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 4,
   },
   emptyCart: {
@@ -321,24 +403,20 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginTop: 20,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 32,
   },
   shopButton: {
-    backgroundColor: '#059669',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
   },
   shopButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -349,7 +427,6 @@ const styles = StyleSheet.create({
   cartItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -371,23 +448,19 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 4,
   },
   farmerName: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   itemPrice: {
     fontSize: 14,
-    color: '#059669',
     fontWeight: '600',
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
     borderRadius: 8,
     marginRight: 12,
   },
@@ -397,14 +470,12 @@ const styles = StyleSheet.create({
   quantity: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
     paddingHorizontal: 16,
   },
   removeButton: {
     padding: 8,
   },
   orderSummary: {
-    backgroundColor: '#FFFFFF',
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
@@ -412,7 +483,6 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 16,
   },
   summaryRow: {
@@ -423,47 +493,38 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 16,
-    color: '#6B7280',
   },
   summaryValue: {
     fontSize: 16,
-    color: '#1F2937',
   },
   totalRow: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
     paddingTop: 12,
     marginTop: 8,
   },
   totalLabel: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
   },
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#059669',
   },
   checkoutSection: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
   },
   checkoutButton: {
-    backgroundColor: '#059669',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 12,
   },
   checkoutButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
   checkoutNote: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
   },
   paymentOptions: {
@@ -476,13 +537,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 10,
-    backgroundColor: '#fff',
-  },
-  paymentOptionActive: {
-    borderColor: '#f6891f',
-    backgroundColor: '#fff5ed',
   },
   paymentLeft: {
     flexDirection: 'row',
@@ -491,7 +546,6 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     fontSize: 16,
-    color: '#333',
   },
 
   promoContainer: {
@@ -502,34 +556,25 @@ const styles = StyleSheet.create({
   promoInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 16,
-    color: '#333',
   },
   promoButton: {
-    backgroundColor: '#f6891f',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
     marginLeft: 10,
   },
-  promoApplied: {
-    backgroundColor: '#4CAF50',
-  },
   promoButtonText: {
-    color: '#fff',
     fontWeight: '700',
   },
   promoError: {
-    color: '#e53935',
     marginTop: 8,
     fontSize: 14,
   },
   promoSuccess: {
-    color: '#4CAF50',
     marginTop: 8,
     fontSize: 14,
   },
