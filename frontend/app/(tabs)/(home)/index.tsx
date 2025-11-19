@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MapPin, Star, ShoppingCart, Car } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
+import { useHomeProducts } from '@/hooks/useHomeProducts';
 import { SliderToggle } from '@/components/SliderToggle';
 import FilterSquare from '@/components/FilterSquare';
 import Carousel from 'react-native-reanimated-carousel';
@@ -22,8 +23,6 @@ import DestinationCard, {
   DestinationMiniCard,
 } from '@/components/DestinationCard';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
-import { Product } from '@/data/products';
 import { ProductSkeleton } from '@/components/ProductSkeleton';
 
 const categories = [
@@ -42,64 +41,16 @@ export default function HomeScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const width = Dimensions.get('window').width;
 
-  // Database state
-  const [topRatedProducts, setTopRatedProducts] = useState<Product[]>([]);
-  const [readyToEatProducts, setReadyToEatProducts] = useState<Product[]>([]);
-  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Fetch products from database
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  async function fetchProducts(isRefreshing = false) {
-    try {
-      if (isRefreshing) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
-      // Fetch all available products with vendor information
-      const { data: products, error } = await supabase
-        .from('products')
-        .select(
-          `
-          *,
-          profiles:vendor_id (full_name)
-        `
-        )
-        .eq('is_available', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      if (products) {
-        // Top Rated: Products sorted by rating (simulated with random for now)
-        const topRated = products.slice(0, 5);
-        setTopRatedProducts(topRated);
-
-        // Ready to Eat: Could be filtered by category or tags
-        const readyToEat = products.slice(5, 10);
-        setReadyToEatProducts(readyToEat);
-
-        // Recommendations: Latest products
-        const recommended = products.slice(0, 6);
-        setRecommendedProducts(recommended);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
-
-  const handleRefresh = () => {
-    fetchProducts(true);
-  };
+  // Use custom hook for product data management
+  const {
+    topRatedProducts,
+    readyToEatProducts,
+    recommendedProducts,
+    loading,
+    refreshing,
+    error,
+    handleRefresh,
+  } = useHomeProducts();
 
   // Handle fade animation
   useEffect(() => {
@@ -166,6 +117,25 @@ export default function HomeScreen() {
           placeholderTextColor={colors.textTetiary}
         />
       </View>
+
+      {/* Error Banner */}
+      {error && (
+        <View
+          style={{
+            backgroundColor: colors.error,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            marginHorizontal: 12,
+            marginVertical: 8,
+            borderRadius: 8,
+          }}
+        >
+          <Text style={{ color: colors.buttonText, fontSize: 14 }}>
+            Error: {error}
+          </Text>
+        </View>
+      )}
+
       <View
         style={{
           ...styles.sliderContainer,
