@@ -1,8 +1,9 @@
 import OrderCard from '@/components/OrderCard';
 import { useTheme } from '@/hooks/useTheme';
 import { useOrders } from '@/hooks/useOrders';
+import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Package } from 'lucide-react-native';
+import { ArrowLeft, Package, ShoppingCart } from 'lucide-react-native';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -12,40 +13,86 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CartScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { user } = useAuth(); // Get authenticated user
   const {
-    activeOrders,
+    activeCartGroups,
     ongoingOrders,
     completedOrders,
     loading,
     refreshing,
     error,
     handleRefresh,
-  } = useOrders();
+  } = useOrders(); // Get orders and cart
 
   const [selectedTab, setSelectedTab] = React.useState<string>('active');
   const tabs = ['active', 'ongoing', 'completed'];
 
-  // Map selected tab to corresponding orders array
-  const getFilteredOrders = () => {
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <SafeAreaView
+        edges={['top']}
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: colors.card, borderBottomColor: colors.border },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.backButton, { backgroundColor: colors.filter }]}
+          >
+            <ArrowLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            My Orders
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <View
+            style={[
+              styles.emptyIconContainer,
+              { backgroundColor: colors.card, shadowColor: colors.text },
+            ]}
+          >
+            <ShoppingCart size={48} color={colors.textTetiary} />
+          </View>
+          <Text style={[styles.emptyText, { color: colors.text }]}>
+            Please log in
+          </Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            You need to be logged in to view your orders and cart
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Get filtered data based on selected tab
+  const getFilteredData = () => {
     switch (selectedTab) {
       case 'active':
-        return activeOrders;
+        return { data: activeCartGroups, isCart: true };
       case 'ongoing':
-        return ongoingOrders;
+        return { data: ongoingOrders, isCart: false };
       case 'completed':
-        return completedOrders;
+        return { data: completedOrders, isCart: false };
       default:
-        return activeOrders;
+        return { data: [], isCart: false };
     }
   };
 
-  const filteredOrders = getFilteredOrders();
+  const { data: filteredData, isCart } = getFilteredData();
 
   return (
     <SafeAreaView
@@ -65,12 +112,21 @@ export default function CartScreen() {
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          My Orders
+          {selectedTab === 'active' ? 'My Cart' : 'My Orders'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
       <View style={[styles.tabsContainer, { backgroundColor: colors.card }]}>
-        <View style={{ borderRadius: 12, overflow: 'hidden', backgroundColor: 'white', flexDirection: 'row', flex: 1, gap: 1 }}>
+        <View
+          style={{
+            borderRadius: 12,
+            overflow: 'hidden',
+            backgroundColor: 'white',
+            flexDirection: 'row',
+            flex: 1,
+            gap: 1,
+          }}
+        >
           {tabs.map((tab) => (
             <TouchableOpacity
               key={tab}
@@ -130,11 +186,12 @@ export default function CartScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.success}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
         >
-          {filteredOrders.length === 0 ? (
+          {filteredData.length === 0 ? (
             <View style={styles.emptyContainer}>
               <View
                 style={[
@@ -142,25 +199,126 @@ export default function CartScreen() {
                   { backgroundColor: colors.card, shadowColor: colors.text },
                 ]}
               >
-                <Package size={48} color={colors.textTetiary} />
+                {selectedTab === 'active' ? (
+                  <ShoppingCart size={48} color={colors.textTetiary} />
+                ) : (
+                  <Package size={48} color={colors.textTetiary} />
+                )}
               </View>
               <Text style={[styles.emptyText, { color: colors.text }]}>
-                No {selectedTab} orders yet
+                No {selectedTab} {selectedTab === 'active' ? 'items' : 'orders'}{' '}
+                yet
               </Text>
               <Text
                 style={[styles.emptySubtext, { color: colors.textSecondary }]}
               >
-                Your {selectedTab} orders will appear here
+                {selectedTab === 'active'
+                  ? 'Start shopping to add items to your cart'
+                  : `Your ${selectedTab} orders will appear here`}
               </Text>
             </View>
+          ) : isCart ? (
+            // Render Cart Groups
+            filteredData.map((group: any) => (
+              <CartVendorGroup
+                key={group.vendor_id}
+                group={group}
+                colors={colors}
+              />
+            ))
           ) : (
-            filteredOrders.map((order) => (
+            // Render Orders
+            filteredData.map((order: any) => (
               <OrderCard key={order.id} {...order} />
             ))
           )}
         </ScrollView>
       )}
     </SafeAreaView>
+  );
+}
+
+// Cart Vendor Group Component
+function CartVendorGroup({ group, colors }: any) {
+  const router = useRouter();
+  return (
+    <View
+      style={[
+        styles.vendorGroup,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          shadowColor: colors.text,
+        },
+      ]}
+    >
+      {/* Vendor Header */}
+      <View style={[styles.vendorHeader, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.vendorName, { color: colors.text }]}>
+          {group.vendor_name}
+        </Text>
+        <Text style={[styles.itemCount, { color: colors.textSecondary }]}>
+          {group.items.reduce(
+            (sum: number, item: any) => sum + item.quantity,
+            0
+          )}{' '}
+          items
+        </Text>
+      </View>
+
+      {/* Cart Items */}
+      {group.items.slice(0, 2).map((item: any) => (
+        <View
+          key={item.id}
+          style={[styles.cartItemRow, { borderBottomColor: colors.filter }]}
+        >
+          <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+          <View style={styles.itemDetails}>
+            <Text style={[styles.itemName, { color: colors.text }]}>
+              {item.name}
+            </Text>
+            <Text style={[styles.itemPrice, { color: colors.primary }]}>
+              ₦{(item.price * item.quantity).toLocaleString()} ({item.quantity}
+              x)
+            </Text>
+          </View>
+        </View>
+      ))}
+      {group.items.length > 2 && (
+        <Text
+          style={{
+            color: colors.secondary,
+            paddingLeft: 10,
+            paddingVertical: 5,
+            fontSize: 15,
+          }}
+        >
+          And more ...
+        </Text>
+      )}
+
+      {/* Total */}
+      <View style={[styles.vendorTotal, { borderTopColor: colors.border }]}>
+        <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
+          Subtotal:
+        </Text>
+        <Text style={[styles.totalAmount, { color: colors.primary }]}>
+          ₦{group.total.toLocaleString()}
+        </Text>
+      </View>
+
+      {/* Checkout Button */}
+      <TouchableOpacity
+        style={[styles.checkoutButton, { backgroundColor: colors.secondary }]}
+        onPress={() =>
+          router.push({
+            pathname: 'checkout' as any,
+          })
+        }
+      >
+        <Text style={styles.checkoutButtonText}>Checkout</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -262,5 +420,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  vendorGroup: {
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  vendorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+  },
+  vendorName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  itemCount: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cartItemRow: {
+    flexDirection: 'row',
+    padding: 12,
+    gap: 12,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+  },
+  itemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+  itemDetails: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  itemPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  vendorTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  totalAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  checkoutButton: {
+    marginHorizontal: 12,
+    marginBottom: 12,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  checkoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

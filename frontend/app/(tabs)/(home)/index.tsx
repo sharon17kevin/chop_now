@@ -320,6 +320,8 @@ export default function HomeScreen() {
                 >
                   {readyToEatProducts.map((item) => (
                     <DestinationCard
+                      id={item.id}
+                      description={item.description}
                       key={item.id}
                       image={item.image_url}
                       name={item.name}

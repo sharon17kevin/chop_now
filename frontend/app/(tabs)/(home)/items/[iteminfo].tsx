@@ -1,47 +1,49 @@
+import { DestinationMiniCard } from '@/components/DestinationCard';
+import ExpandingTile from '@/components/ExpandingTile';
+import Indicator from '@/components/Indicator';
+import { miniCardsData } from '@/data/mockData';
+import { useTheme } from '@/hooks/useTheme';
+import { useUserStore } from '@/stores/useUserStore';
+import { supabase } from '@/lib/supabase';
+import { typography } from '@/styles/typography';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Clock, Heart, Share, Star } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
   Dimensions,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  Image,
   View,
-  Animated,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import React, { useState } from 'react';
+import { useSharedValue } from 'react-native-reanimated';
+import Carousel from 'react-native-reanimated-carousel';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import AppHeader from '@/components/AppHeader';
-import { useTheme } from '@/hooks/useTheme';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { typography } from '@/styles/typography';
-import { ArrowLeft, Clock, Heart, Share, Star } from 'lucide-react-native';
-import ExpandingTile from '@/components/ExpandingTile';
-import Carousel from 'react-native-reanimated-carousel';
-import {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import Indicator from '@/components/Indicator';
-import { miniCardsData } from '@/data/mockData';
-import { DestinationMiniCard } from '@/components/DestinationCard';
 
 const { width } = Dimensions.get('window');
-
-const images = [
-  'https://images.pexels.com/photos/1002703/pexels-photo-1002703.jpeg',
-  'https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg',
-  'https://images.pexels.com/photos/34950/pexels-photo.jpg',
-];
 
 export default function ItemInfoScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { item } = useLocalSearchParams();
-  const [activeIndex, setActiveIndex] = useState(0);
+  const { id, description, name, address, image, isOpen, category, price } =
+    useLocalSearchParams();
+
+  const isOpenBool = isOpen === 'true';
+  const priceNum = parseFloat(price?.toString() || '0');
+
+  const images = [
+    image?.toString() ||
+      'https://images.pexels.com/photos/1002703/pexels-photo-1002703.jpeg',
+    'https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg',
+    'https://images.pexels.com/photos/34950/pexels-photo.jpg',
+  ];
 
   const ratingData = {
     average: 4.6,
@@ -59,112 +61,111 @@ export default function ItemInfoScreen() {
     0
   );
 
-  const itemName = item
-    ? item
-        .toString()
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, (l) => l.toUpperCase())
-    : 'Item';
-
-  // Get item description based on name
-  const getItemDescription = (name: string) => {
-    const itemDescriptions: {
-      [key: string]: { title: string; description: string; address: string };
-    } = {
-      'chicken-republic': {
-        title: 'Chicken Republic',
-        description:
-          'A beloved fast-food chain specializing in delicious fried chicken, grilled chicken, and local favorites. Known for their crispy chicken, jollof rice, and friendly service. Perfect for quick meals and family dining with locations across Nigeria.',
-        address: '123 Victoria Island, Lagos, Nigeria',
-      },
-      'dominos-pizza': {
-        title: "Domino's Pizza",
-        description:
-          'World-famous pizza chain offering fresh, hot pizzas delivered to your door. Features a wide variety of toppings, sides, and beverages. Known for their 30-minute delivery guarantee and quality ingredients.',
-        address: '456 Ikeja GRA, Lagos, Nigeria',
-      },
-      'cafe-neo': {
-        title: 'Cafe Neo',
-        description:
-          'A modern coffee shop chain serving premium coffee, pastries, and light meals. Perfect for meetings, work sessions, or casual hangouts. Features comfortable seating and free Wi-Fi in a relaxed atmosphere.',
-        address: '789 Lekki Phase 1, Lagos, Nigeria',
-      },
-      kilimanjaro: {
-        title: 'Kilimanjaro',
-        description:
-          'A popular item chain offering a mix of local and international cuisine. Known for their generous portions, affordable prices, and family-friendly atmosphere. Great for casual dining and group gatherings.',
-        address: '321 Surulere, Lagos, Nigeria',
-      },
-      'spice-route': {
-        title: 'Spice Route',
-        description:
-          'Authentic Indian item serving traditional dishes from various regions of India. Features aromatic spices, tandoori specialties, and vegetarian options. Perfect for those craving bold flavors and authentic Indian cuisine.',
-        address: '654 Allen Avenue, Ikeja, Lagos, Nigeria',
-      },
-      'the-grill': {
-        title: 'The Grill',
-        description:
-          'Premium steakhouse and grill item offering high-quality meats, seafood, and grilled specialties. Features an upscale atmosphere, extensive wine list, and professional service. Ideal for special occasions and business dining.',
-        address: '987 Banana Island, Lagos, Nigeria',
-      },
-      'bukka-hut': {
-        title: 'Bukka Hut',
-        description:
-          'Traditional Nigerian item serving authentic local dishes and street food favorites. Known for their amala, ewedu, and other Yoruba specialties. Offers a true taste of Nigerian culture and hospitality.',
-        address: '147 Yaba, Lagos, Nigeria',
-      },
-      wakkis: {
-        title: 'Wakkis',
-        description:
-          'Contemporary Indian item with a modern twist on traditional dishes. Features fusion cuisine, creative presentations, and a vibrant atmosphere. Perfect for those who enjoy innovative takes on classic Indian flavors.',
-        address: '258 Maryland, Ikeja, Lagos, Nigeria',
-      },
-      nkoyo: {
-        title: 'Nkoyo',
-        description:
-          'Upscale Nigerian item offering refined interpretations of traditional dishes. Features elegant dining, premium ingredients, and sophisticated service. Ideal for special occasions and fine dining experiences.',
-        address: '369 Ikoyi, Lagos, Nigeria',
-      },
-      jevinik: {
-        title: 'Jevinik',
-        description:
-          'African fusion item combining traditional African flavors with modern culinary techniques. Features diverse menu options, cultural ambiance, and innovative dishes. Perfect for exploring African cuisine in a contemporary setting.',
-        address: '741 Victoria Island, Lagos, Nigeria',
-      },
-    };
-
-    return (
-      itemDescriptions[name.toLowerCase()] || {
-        title: itemName,
-        description:
-          'A wonderful item offering delicious food and great service. Perfect for dining with family and friends in a comfortable and welcoming atmosphere.',
-        address: 'item Address, City, Country',
-      }
-    );
-  };
-
-  const itemInfo = getItemDescription(item?.toString() || '');
-
   const handleShare = () => {
-    console.log('Sharing item:', item);
+    console.log('Sharing item:', name);
   };
 
   const progress = useSharedValue(0);
   const insets = useSafeAreaInsets();
   const ITEM_WIDTH = Math.round(width * 0.86);
-  // quantity state and handlers (placeholders)
+
+  // quantity state and handlers
   const [qty, setQty] = useState(1);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
   const increment = () => setQty((q) => q + 1);
   const decrement = () => setQty((q) => Math.max(1, q - 1));
 
-  // Placeholder add-to-bag handler. Replace with real cart/store integration.
-  const handleAddToBag = () => {
-    // TODO: wire this to your cart/store (e.g. zustand addToCart)
-    // For now, navigate to /cart as a placeholder
+  // Add to cart handler - saves to cart_items table
+  const handleAddToBag = async () => {
     try {
-      router.push('/cart');
-    } catch (e) {
-      console.warn('handleAddToBag: navigation failed', e);
+      setIsAddingToCart(true);
+
+      // Get user from Zustand store
+      const profile = useUserStore.getState().profile;
+
+      if (!profile?.id) {
+        Alert.alert(
+          'Login Required',
+          'Please log in to add items to your cart'
+        );
+        return;
+      }
+
+      // Get product data from route params
+      const productId = id?.toString() || '';
+      // const vendorId = 'some-vendor-uuid';   // Will be fetched from product data
+
+      // Check if item already in cart
+      const { data: existingItem, error: fetchError } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', profile.id)
+        .eq('product_id', productId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error checking cart:', fetchError);
+        throw fetchError;
+      }
+
+      if (existingItem) {
+        // Update existing cart item quantity
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: existingItem.quantity + qty })
+          .eq('id', existingItem.id);
+
+        if (updateError) {
+          console.error('Error updating cart:', updateError);
+          throw updateError;
+        }
+
+        Alert.alert(
+          'Cart Updated',
+          `Added ${qty} more. Total: ${existingItem.quantity + qty}`,
+          [
+            { text: 'Continue Shopping', style: 'cancel' },
+            {
+              text: 'View Cart',
+              onPress: () => router.push('/(tabs)/(orders)'),
+            },
+          ]
+        );
+      } else {
+        // Add new cart item
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            user_id: profile.id,
+            product_id: productId,
+            quantity: qty,
+          });
+
+        if (insertError) {
+          console.error('Error adding to cart:', insertError);
+          throw insertError;
+        }
+
+        Alert.alert('Added to Cart', `${qty} item(s) added successfully!`, [
+          { text: 'Continue Shopping', style: 'cancel' },
+          {
+            text: 'View Cart',
+            onPress: () => router.push('/(tabs)/(orders)'),
+          },
+        ]);
+      }
+
+      // Reset quantity after adding
+      setQty(1);
+    } catch (error: any) {
+      console.error('Add to cart error:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Failed to add item to cart. Please try again.'
+      );
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
@@ -253,11 +254,27 @@ export default function ItemInfoScreen() {
           >
             <View style={{ gap: 10 }}>
               <Text style={[typography.h3, { color: colors.text }]}>
-                {itemInfo.title}
+                {name}
               </Text>
-              <Text style={[typography.h3, { color: colors.secondary }]}>
-                $15.99
+              <Text style={[typography.body2, { color: colors.textSecondary }]}>
+                {category}
               </Text>
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+              >
+                <Text style={[typography.h3, { color: colors.secondary }]}>
+                  ₦{priceNum.toFixed(2)}
+                </Text>
+                <Text
+                  style={{
+                    color: isOpenBool ? colors.success : colors.error,
+                    fontWeight: '600',
+                    fontSize: 14,
+                  }}
+                >
+                  • {isOpenBool ? 'Open' : 'Closed'}
+                </Text>
+              </View>
             </View>
             <Heart size={24} color={colors.secondary} />
           </View>
@@ -325,8 +342,10 @@ export default function ItemInfoScreen() {
 
           <ExpandingTile
             title="Description"
-            address={itemInfo.address}
-            description={itemInfo.description}
+            address={address as string}
+            description={`${description} This location is currently ${
+              isOpenBool ? 'open' : 'closed'
+            }.`}
           />
         </View>
 
@@ -352,7 +371,7 @@ export default function ItemInfoScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/reviews',
-                  params: { item },
+                  params: { item: id },
                 })
               }
             >
@@ -418,7 +437,9 @@ export default function ItemInfoScreen() {
         {/*Similar*/}
         <View style={{ width: '100%', marginBottom: 20 }}>
           <View style={styles.container}>
-            <Text style={styles.sectionTitle}>Similar Options</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Similar Options
+            </Text>
           </View>
           <View style={{ width: '100%' }}>
             <Carousel
@@ -470,9 +491,18 @@ export default function ItemInfoScreen() {
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={handleAddToBag}
-          style={[styles.addBagButton, { backgroundColor: colors.secondary }]}
+          disabled={isAddingToCart}
+          style={[
+            styles.addBagButton,
+            { backgroundColor: colors.secondary },
+            isAddingToCart && { opacity: 0.6 },
+          ]}
         >
-          <Text style={styles.addBagText}>Add {qty} to Bag</Text>
+          {isAddingToCart ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.addBagText}>Add {qty} to Bag</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -88,7 +88,15 @@ const OrderCard: React.FC<OrderCardProps> = ({
     <TouchableWithoutFeedback
       onPress={() =>
         router.push({
-          pathname: 'checkout' as any,
+          pathname: '/(tabs)/(orders)/breakdown' as any,
+          params: {
+            orderId: id,
+            status: status,
+            total: total,
+            createdAt: created_at,
+            deliveryAddress: delivery_address,
+            vendorName: profiles?.full_name,
+          },
         })
       }
     >

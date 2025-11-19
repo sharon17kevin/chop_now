@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useUserStore } from '@/stores/useUserStore';
 
 export interface Order {
   id: string;
@@ -16,11 +17,33 @@ export interface Order {
   };
 }
 
+export interface CartItem {
+  id: string;
+  product_id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image_url: string;
+  unit: string;
+}
+
+export interface CartGroup {
+  vendor_id: string;
+  vendor_name: string;
+  items: CartItem[];
+  total: number;
+}
+
 interface UseOrdersReturn {
-  orders: Order[];
-  activeOrders: Order[];
+  // Active cart (pending checkout)
+  activeCartGroups: CartGroup[];
+  
+  // Ongoing orders
   ongoingOrders: Order[];
+  
+  // Completed orders
   completedOrders: Order[];
+  
   loading: boolean;
   refreshing: boolean;
   error: string | null;
@@ -28,7 +51,9 @@ interface UseOrdersReturn {
 }
 
 export const useOrders = (): UseOrdersReturn => {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [activeCartGroups, setActiveCartGroups] = useState<CartGroup[]>([]);
+  const [ongoingOrders, setOngoingOrders] = useState<Order[]>([]);
+  const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,41 +68,153 @@ export const useOrders = (): UseOrdersReturn => {
 
       setError(null);
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error('No authenticated user');
+      // Get user from Zustand store (already authenticated)
+      const profile = useUserStore.getState().profile;
+      
+      if (!profile?.id) {
+        console.warn('⚠️ No user profile found in store');
+        setActiveCartGroups([]);
+        setOngoingOrders([]);
+        setCompletedOrders([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
       }
 
-      // Fetch orders for current user with vendor information
-      const { data: userOrders, error: queryError } = await supabase
-        .from('orders')
-        .select(
+      const userId = profile.id;
+      console.log('🔍 Fetching orders for user:', userId);
+
+      // ===== FETCH ACTIVE CART ITEMS (pending checkout) =====
+      try {
+        const { data: cartData, error: cartError } = await supabase
+          .from('cart_items')
+          .select(
+            `
+            *,
+            products:product_id (
+              id,
+              name,
+              price,
+              image_url,
+              unit,
+              vendor_id,
+              profiles:vendor_id (full_name)
+            )
           `
-          *,
-          profiles:vendor_id (full_name)
-        `
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+          )
+          .eq('user_id', userId);
 
-      if (queryError) {
-        throw queryError;
+        if (cartError) {
+          console.error('❌ Cart fetch error:', cartError);
+          throw cartError;
+        }
+
+        // Group cart items by vendor
+        const groupedByVendor = (cartData || []).reduce((acc, item: any) => {
+          try {
+            const product = item.products;
+            if (!product) {
+              console.warn('⚠️ Product not found for cart item:', item.id);
+              return acc;
+            }
+
+            const vendorId = product.vendor_id;
+            const vendorName = product.profiles?.full_name || 'Unknown Vendor';
+
+            if (!acc[vendorId]) {
+              acc[vendorId] = {
+                vendor_id: vendorId,
+                vendor_name: vendorName,
+                items: [],
+                total: 0,
+              };
+            }
+
+            const cartItem: CartItem = {
+              id: item.id,
+              product_id: item.product_id,
+              name: product.name,
+              price: product.price,
+              quantity: item.quantity,
+              image_url: product.image_url,
+              unit: product.unit,
+            };
+
+            acc[vendorId].items.push(cartItem);
+            acc[vendorId].total += cartItem.price * cartItem.quantity;
+
+            return acc;
+          } catch (err) {
+            console.error('❌ Error processing cart item:', err);
+            return acc;
+          }
+        }, {} as Record<string, CartGroup>);
+
+        setActiveCartGroups(Object.values(groupedByVendor));
+        console.log('✅ Cart loaded:', Object.keys(groupedByVendor).length, 'vendor groups');
+      } catch (cartErr) {
+        console.error('❌ Error fetching cart items:', cartErr);
+        // Don't throw - cart might not have items yet
+        setActiveCartGroups([]);
       }
 
-      if (userOrders) {
-        setOrders(userOrders as Order[]);
-        console.log('✅ Fetched', userOrders.length, 'orders');
-      } else {
-        setOrders([]);
+      // ===== FETCH ONGOING ORDERS (confirmed/processing) =====
+      try {
+        const { data: ongoingData, error: ongoingError } = await supabase
+          .from('orders')
+          .select(
+            `
+            *,
+            profiles:vendor_id (full_name)
+          `
+          )
+          .eq('user_id', userId)
+          .in('status', ['confirmed', 'processing'])
+          .order('created_at', { ascending: false });
+
+        if (ongoingError) {
+          console.error('❌ Ongoing orders fetch error:', ongoingError);
+          throw ongoingError;
+        }
+
+        setOngoingOrders((ongoingData as Order[]) || []);
+        console.log('✅ Ongoing orders loaded:', ongoingData?.length || 0);
+      } catch (ongoingErr) {
+        console.error('❌ Error fetching ongoing orders:', ongoingErr);
+        setOngoingOrders([]);
       }
+
+      // ===== FETCH COMPLETED ORDERS (delivered) =====
+      try {
+        const { data: completedData, error: completedError } = await supabase
+          .from('orders')
+          .select(
+            `
+            *,
+            profiles:vendor_id (full_name)
+          `
+          )
+          .eq('user_id', userId)
+          .eq('status', 'delivered')
+          .order('created_at', { ascending: false });
+
+        if (completedError) {
+          console.error('❌ Completed orders fetch error:', completedError);
+          throw completedError;
+        }
+
+        setCompletedOrders((completedData as Order[]) || []);
+        console.log('✅ Completed orders loaded:', completedData?.length || 0);
+      } catch (completedErr) {
+        console.error('❌ Error fetching completed orders:', completedErr);
+        setCompletedOrders([]);
+      }
+
+      console.log('✅ All orders fetched successfully');
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch orders';
-      console.error('Error fetching orders:', errorMessage);
+      console.error('❌ useOrders error:', errorMessage);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -89,24 +226,13 @@ export const useOrders = (): UseOrdersReturn => {
     await fetchOrders(true);
   };
 
-  // Filter orders by status
-  const activeOrders = orders.filter((o) => o.status === 'pending');
-  const ongoingOrders = orders.filter(
-    (o) =>
-      o.status === 'confirmed' ||
-      o.status === 'processing' ||
-      o.status === 'cancelled'
-  );
-  const completedOrders = orders.filter((o) => o.status === 'delivered');
-
   // Fetch orders on mount
   useEffect(() => {
     fetchOrders();
   }, []);
 
   return {
-    orders,
-    activeOrders,
+    activeCartGroups,
     ongoingOrders,
     completedOrders,
     loading,

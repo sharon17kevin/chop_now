@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
-import React from 'react';
 import { useTheme } from '@/hooks/useTheme';
-import { ArrowDown, ArrowUp, Clock, Star } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { Clock, Star } from 'lucide-react-native';
+import React from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface Props {
+  id: string;
+  description: string;
   image: string;
   name: string;
   address: string;
@@ -14,6 +16,8 @@ interface Props {
 }
 
 const DestinationCard = ({
+  id,
+  description,
   image,
   name,
   address,
@@ -21,29 +25,22 @@ const DestinationCard = ({
   category,
   price = 1600,
 }: Props) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
 
   const handlePress = () => {
-    // Convert item name to URL-friendly format that matches the item page keys
-    let itemSlug = name.toLowerCase().replace(/\s+/g, '-');
-
-    // Handle special cases to match the item page keys exactly
-    if (name === "Domino's Pizza") {
-      itemSlug = 'dominos-pizza';
-    } else if (name === 'Cafe Neo') {
-      itemSlug = 'cafe-neo';
-    } else if (name === 'Spice Route') {
-      itemSlug = 'spice-route';
-    } else if (name === 'The Grill') {
-      itemSlug = 'the-grill';
-    } else if (name === 'Bukka Hut') {
-      itemSlug = 'bukka-hut';
-    }
 
     router.push({
       pathname: '/items/[iteminfo]' as any,
-      params: { item: itemSlug },
+      params: { id: id,
+        name: name,
+        address: address,
+        image: image,
+        description: description,
+        isOpen: isOpen.toString(),
+        category: category,
+        price: price
+      },
     });
   };
 

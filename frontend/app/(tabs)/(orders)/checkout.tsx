@@ -1,15 +1,17 @@
 import AppHeader from '@/components/AppHeader';
 import { useTheme } from '@/hooks/useTheme';
+import { useUserStore } from '@/stores/useUserStore';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
 import {
   CheckCircle,
   Minus,
   Plus,
   ShoppingBag,
   Trash2,
-  Wallet,
 } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Image,
   ScrollView,
@@ -18,84 +20,208 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const cartItems = [
-  {
-    id: 1,
-    name: 'Organic Tomatoes',
-    price: 4.99,
-    quantity: 2,
-    unit: 'per lb',
-    farmer: 'Green Valley Farm',
-    image:
-      'https://images.pexels.com/photos/533280/pexels-photo-533280.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: 2,
-    name: 'Fresh Strawberries',
-    price: 6.99,
-    quantity: 1,
-    unit: 'per basket',
-    farmer: 'Berry Fields',
-    image:
-      'https://images.pexels.com/photos/46174/strawberries-berries-fruit-freshness-46174.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: 3,
-    name: 'Farm Fresh Eggs',
-    price: 5.49,
-    quantity: 3,
-    unit: 'per dozen',
-    farmer: 'Sunny Side Farm',
-    image:
-      'https://images.pexels.com/photos/162712/egg-white-food-protein-162712.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-];
+interface CartItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  products: {
+    id: string;
+    name: string;
+    price: number;
+    image_url: string;
+    unit: string;
+    vendor_id: string;
+    profiles: {
+      full_name: string;
+    };
+  };
+}
 
-export default function CartScreen() {
-  const [items, setItems] = useState(cartItems);
+export default function CheckoutScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
+
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState('Wallet');
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState('');
 
+  // Fetch cart items from database
+  useEffect(() => {
+    fetchCartItems();
+  }, []);
+
+  const fetchCartItems = async () => {
+    try {
+      setLoading(true);
+
+      // Get user from Zustand store
+      const profile = useUserStore.getState().profile;
+
+      if (!profile?.id) {
+        console.warn('No user profile found');
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch cart items with product details
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select(
+          `
+          id,
+          product_id,
+          quantity,
+          products:product_id (
+            id,
+            name,
+            price,
+            image_url,
+            unit,
+            vendor_id,
+            profiles:vendor_id (full_name)
+          )
+        `
+        )
+        .eq('user_id', profile.id);
+
+      if (error) {
+        console.error('Error fetching cart items:', error);
+        throw error;
+      }
+
+      setItems((data || []) as any);
+    } catch (error) {
+      console.error('Failed to load cart:', error);
+      Alert.alert('Error', 'Failed to load cart items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleApplyPromo = () => {
-    if (promoCode.trim().toLowerCase() === 'WELCOME10') {
+    if (promoCode.trim().toUpperCase() === 'WELCOME10') {
       setPromoApplied(true);
       setPromoError('');
-      // Apply discount logic here
     } else {
       setPromoError('Invalid promo code');
       setPromoApplied(false);
     }
   };
 
-  const updateQuantity = (id: number, newQuantity: number) => {
+  const updateQuantity = async (cartItemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      setItems(items.filter((item) => item.id !== id));
-    } else {
+      await removeItem(cartItemId);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity: newQuantity })
+        .eq('id', cartItemId);
+
+      if (error) throw error;
+
+      // Update local state
       setItems(
         items.map((item) =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
+          item.id === cartItemId ? { ...item, quantity: newQuantity } : item
         )
       );
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      Alert.alert('Error', 'Failed to update quantity');
     }
   };
 
-  const removeItem = (id: number) => {
-    setItems(items.filter((item) => item.id !== id));
+  const removeItem = async (cartItemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('id', cartItemId);
+
+      if (error) throw error;
+
+      // Update local state
+      setItems(items.filter((item) => item.id !== cartItemId));
+
+      Alert.alert('Removed', 'Item removed from cart');
+    } catch (error) {
+      console.error('Error removing item:', error);
+      Alert.alert('Error', 'Failed to remove item');
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (items.length === 0) {
+      Alert.alert('Empty Cart', 'Your cart is empty');
+      return;
+    }
+
+    // TODO: Implement payment processing
+    Alert.alert(
+      'Checkout',
+      `Process payment of ₦${total.toFixed(2)} via ${selectedPayment}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            // After successful payment:
+            // 1. Create order(s) from cart items
+            // 2. Clear cart
+            // 3. Navigate to order confirmation
+            Alert.alert('Success', 'Payment processing not yet implemented');
+          },
+        },
+      ]
+    );
   };
 
   const subtotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + (item.products?.price || 0) * item.quantity,
     0
   );
   const deliveryFee = 2.99;
   const serviceFee = 1.49;
-  const total = subtotal + deliveryFee + serviceFee;
+  const discount = promoApplied ? subtotal * 0.1 : 0; // 10% discount
+  const total = subtotal + deliveryFee + serviceFee - discount;
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        edges={['top']}
+        style={{
+          ...styles.container,
+          flex: 1,
+          backgroundColor: colors.background,
+        }}
+      >
+        <AppHeader title="Your Cart" />
+        <View style={styles.emptyCart}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text
+            style={[
+              styles.emptySubtitle,
+              { color: colors.textSecondary, marginTop: 16 },
+            ]}
+          >
+            Loading your cart...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -107,7 +233,7 @@ export default function CartScreen() {
           backgroundColor: colors.background,
         }}
       >
-        <AppHeader title={`Your Order: Empty`} />
+        <AppHeader title="Your Cart: Empty" />
 
         <View style={styles.emptyCart}>
           <ShoppingBag size={80} color={colors.textSecondary} />
@@ -141,7 +267,12 @@ export default function CartScreen() {
       <AppHeader title={`Your Order: ${items.length} items`} />
 
       {/* Promo Code */}
-      <View style={[styles.orderSummary, { backgroundColor: colors.card }]}>
+      <View
+        style={[
+          styles.orderSummary,
+          { backgroundColor: colors.card, borderBottomColor: colors.border },
+        ]}
+      >
         <Text style={[styles.summaryTitle, { color: colors.text }]}>
           Promo Code
         </Text>
@@ -164,7 +295,7 @@ export default function CartScreen() {
             style={[
               styles.promoButton,
               { backgroundColor: colors.primary },
-              promoApplied ? { backgroundColor: '#10B981' } : null,
+              promoApplied ? { backgroundColor: colors.success } : null,
             ]}
             onPress={handleApplyPromo}
             disabled={!promoCode}
@@ -177,34 +308,42 @@ export default function CartScreen() {
           </TouchableOpacity>
         </View>
         {promoError ? (
-          <Text style={[styles.promoError, { color: '#e53935' }]}>
+          <Text style={[styles.promoError, { color: colors.error }]}>
             {promoError}
           </Text>
         ) : promoApplied ? (
-          <Text style={[styles.promoSuccess, { color: '#4CAF50' }]}>
+          <Text style={[styles.promoSuccess, { color: colors.success }]}>
             Promo code applied successfully!
           </Text>
         ) : null}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.itemsList}>
+        {/* Cart Items */}
         {items.map((item) => (
           <View
             key={item.id}
-            style={[styles.cartItem, { backgroundColor: colors.card }]}
+            style={[
+              styles.cartItem,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
           >
-            <Image source={{ uri: item.image }} style={styles.itemImage} />
+            <Image
+              source={{ uri: item.products?.image_url || '' }}
+              style={styles.itemImage}
+            />
             <View style={styles.itemDetails}>
               <Text style={[styles.itemName, { color: colors.text }]}>
-                {item.name}
+                {item.products?.name || 'Unknown Product'}
               </Text>
               <Text
                 style={[styles.farmerName, { color: colors.textSecondary }]}
               >
-                {item.farmer}
+                {item.products?.profiles?.full_name || 'Unknown Vendor'}
               </Text>
               <Text style={[styles.itemPrice, { color: colors.primary }]}>
-                ${item.price.toFixed(2)} {item.unit}
+                ₦{(item.products?.price || 0).toFixed(2)} /{' '}
+                {item.products?.unit || 'unit'}
               </Text>
             </View>
             <View
@@ -233,13 +372,18 @@ export default function CartScreen() {
               style={styles.removeButton}
               onPress={() => removeItem(item.id)}
             >
-              <Trash2 size={18} color="#EF4444" />
+              <Trash2 size={18} color={colors.error} />
             </TouchableOpacity>
           </View>
         ))}
 
         {/* Order Summary */}
-        <View style={[styles.orderSummary, { backgroundColor: colors.card }]}>
+        <View
+          style={[
+            styles.orderSummary,
+            { backgroundColor: colors.card, borderBottomColor: colors.border },
+          ]}
+        >
           <Text style={[styles.summaryTitle, { color: colors.text }]}>
             Order Summary
           </Text>
@@ -250,7 +394,7 @@ export default function CartScreen() {
               Subtotal
             </Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>
-              ${subtotal.toFixed(2)}
+              ₦{subtotal.toFixed(2)}
             </Text>
           </View>
           <View style={styles.summaryRow}>
@@ -260,7 +404,7 @@ export default function CartScreen() {
               Delivery Fee
             </Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>
-              ${deliveryFee.toFixed(2)}
+              ₦{deliveryFee.toFixed(2)}
             </Text>
           </View>
           <View style={styles.summaryRow}>
@@ -270,9 +414,24 @@ export default function CartScreen() {
               Service Fee
             </Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>
-              ${serviceFee.toFixed(2)}
+              ₦{serviceFee.toFixed(2)}
             </Text>
           </View>
+          {promoApplied && (
+            <View style={styles.summaryRow}>
+              <Text
+                style={[
+                  styles.summaryLabel,
+                  { color: colors.success, fontWeight: '700' },
+                ]}
+              >
+                Discount (10%)
+              </Text>
+              <Text style={[styles.summaryValue, { color: colors.success }]}>
+                -₦{discount.toFixed(2)}
+              </Text>
+            </View>
+          )}
           <View
             style={[
               styles.summaryRow,
@@ -284,7 +443,7 @@ export default function CartScreen() {
               Total
             </Text>
             <Text style={[styles.totalValue, { color: colors.primary }]}>
-              ${total.toFixed(2)}
+              ₦{total.toFixed(2)}
             </Text>
           </View>
         </View>
@@ -362,11 +521,12 @@ export default function CartScreen() {
         >
           <TouchableOpacity
             style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
+            onPress={handleCheckout}
           >
             <Text
               style={[styles.checkoutButtonText, { color: colors.buttonText }]}
             >
-              Pay
+              Pay ₦{total.toFixed(2)}
             </Text>
           </TouchableOpacity>
           <Text style={[styles.checkoutNote, { color: colors.textSecondary }]}>
