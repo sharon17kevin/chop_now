@@ -10,6 +10,7 @@ import {
   Dimensions,
   Animated,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MapPin, Star, ShoppingCart, Car } from 'lucide-react-native';
@@ -17,11 +18,13 @@ import { useTheme } from '@/hooks/useTheme';
 import { SliderToggle } from '@/components/SliderToggle';
 import FilterSquare from '@/components/FilterSquare';
 import Carousel from 'react-native-reanimated-carousel';
-import { miniCardsData } from '@/data/mockData';
 import DestinationCard, {
   DestinationMiniCard,
 } from '@/components/DestinationCard';
 import { useRouter } from 'expo-router';
+import { supabase } from '@/lib/supabase';
+import { Product } from '@/data/products';
+import { ProductSkeleton } from '@/components/ProductSkeleton';
 
 const categories = [
   { id: 1, name: 'Fruits', icon: '🍎', color: '#EF4444' },
@@ -31,56 +34,72 @@ const categories = [
   { id: 5, name: 'Herbs', icon: '🌿', color: '#10B981' },
 ];
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: 'Organic Tomatoes',
-    price: 4.99,
-    unit: 'per lb',
-    farmer: 'Green Valley Farm',
-    rating: 4.8,
-    image:
-      'https://images.pexels.com/photos/533280/pexels-photo-533280.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: '2.5 miles away',
-  },
-  {
-    id: 2,
-    name: 'Fresh Strawberries',
-    price: 6.99,
-    unit: 'per basket',
-    farmer: 'Berry Fields',
-    rating: 4.9,
-    image:
-      'https://images.pexels.com/photos/46174/strawberries-berries-fruit-freshness-46174.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: '1.8 miles away',
-  },
-  {
-    id: 3,
-    name: 'Farm Fresh Eggs',
-    price: 5.49,
-    unit: 'per dozen',
-    farmer: 'Sunny Side Farm',
-    rating: 4.7,
-    image:
-      'https://images.pexels.com/photos/162712/egg-white-food-protein-162712.jpeg?auto=compress&cs=tinysrgb&w=400',
-    location: '3.2 miles away',
-  },
-];
-
-const CARD_WIDTH = 100;
-const SPACING = 12;
-
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { colors } = useTheme();
   const router = useRouter();
   const [mode, setMode] = useState<string>('private');
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const [width, setWidth] = useState(Dimensions.get('window').width);
+  const width = Dimensions.get('window').width;
 
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const ITEM_WIDTH = 100; // each tab width
-  const SPACING = 10;
+  // Database state
+  const [topRatedProducts, setTopRatedProducts] = useState<Product[]>([]);
+  const [readyToEatProducts, setReadyToEatProducts] = useState<Product[]>([]);
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch products from database
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  async function fetchProducts(isRefreshing = false) {
+    try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      // Fetch all available products with vendor information
+      const { data: products, error } = await supabase
+        .from('products')
+        .select(
+          `
+          *,
+          profiles:vendor_id (full_name)
+        `
+        )
+        .eq('is_available', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (products) {
+        // Top Rated: Products sorted by rating (simulated with random for now)
+        const topRated = products.slice(0, 5);
+        setTopRatedProducts(topRated);
+
+        // Ready to Eat: Could be filtered by category or tags
+        const readyToEat = products.slice(5, 10);
+        setReadyToEatProducts(readyToEat);
+
+        // Recommendations: Latest products
+        const recommended = products.slice(0, 6);
+        setRecommendedProducts(recommended);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  const handleRefresh = () => {
+    fetchProducts(true);
+  };
 
   // Handle fade animation
   useEffect(() => {
@@ -90,7 +109,7 @@ export default function HomeScreen() {
       duration: 350,
       useNativeDriver: true,
     }).start();
-  }, [mode]);
+  }, [mode, fadeAnim]);
 
   return (
     <SafeAreaView
@@ -171,7 +190,17 @@ export default function HomeScreen() {
           flex: 1,
         }}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+        >
           {/* Hero Banner */}
           <View style={styles.part}>
             <View
@@ -257,26 +286,47 @@ export default function HomeScreen() {
                 Top Rated Near You
               </Text>
             </View>
-            <View style={{ width: '100%' }}>
-              <Carousel
-                loop
-                autoPlay
-                autoPlayInterval={2000}
-                width={300}
-                height={250}
-                data={miniCardsData}
-                renderItem={({ item }) => <DestinationMiniCard {...item} />}
-                style={{
-                  width: width,
-                }}
-                onConfigurePanGesture={
-                  (g) =>
-                    g
-                      .activeOffsetX([-10, 10]) // require a horizontal drag
-                      .failOffsetY([-10, 10]) // let vertical drags pass through
-                }
-              />
-            </View>
+            {loading ? (
+              <View style={{ width: '100%', paddingHorizontal: 20 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <ProductSkeleton variant="carousel" />
+                  <ProductSkeleton variant="carousel" />
+                  <ProductSkeleton variant="carousel" />
+                </ScrollView>
+              </View>
+            ) : topRatedProducts.length > 0 ? (
+              <View style={{ width: '100%' }}>
+                <Carousel
+                  loop
+                  autoPlay
+                  autoPlayInterval={2000}
+                  width={300}
+                  height={250}
+                  data={topRatedProducts}
+                  renderItem={({ item }) => (
+                    <DestinationMiniCard
+                      image={item.image_url}
+                      name={item.name}
+                      address={item.profiles?.full_name || 'Vendor'}
+                      isOpen={true}
+                      category={item.category}
+                    />
+                  )}
+                  style={{
+                    width: width,
+                  }}
+                  onConfigurePanGesture={(g) =>
+                    g.activeOffsetX([-10, 10]).failOffsetY([-10, 10])
+                  }
+                />
+              </View>
+            ) : (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary }}>
+                  No products available
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Ready To Eat */}
@@ -285,16 +335,38 @@ export default function HomeScreen() {
               <Text style={{ ...styles.sectionTitle, color: colors.text }}>
                 Ready To Eat
               </Text>
-              <View
-                style={{
-                  paddingVertical: 10,
-                  gap: 16, // consistent vertical spacing
-                }}
-              >
-                {miniCardsData.map((item, index) => (
-                  <DestinationCard key={index} {...item} price={1600} />
-                ))}
-              </View>
+              {loading ? (
+                <View style={{ paddingVertical: 10, gap: 16 }}>
+                  <ProductSkeleton variant="list" />
+                  <ProductSkeleton variant="list" />
+                  <ProductSkeleton variant="list" />
+                </View>
+              ) : readyToEatProducts.length > 0 ? (
+                <View
+                  style={{
+                    paddingVertical: 10,
+                    gap: 16,
+                  }}
+                >
+                  {readyToEatProducts.map((item) => (
+                    <DestinationCard
+                      key={item.id}
+                      image={item.image_url}
+                      name={item.name}
+                      address={item.profiles?.full_name || 'Vendor'}
+                      category={item.category}
+                      isOpen={item.is_available}
+                      price={item.price}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Text style={{ color: colors.textSecondary }}>
+                    No products available
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -306,89 +378,117 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            <FlatList
-              data={featuredProducts}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-              }}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={[
-                    {
-                      ...styles.productCard,
-                      backgroundColor: colors.card,
-                      shadowColor: colors.text,
-                    },
-                    { marginRight: 16 },
-                  ]}
-                >
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.productImage}
-                  />
-                  <View style={styles.productInfo}>
-                    <Text style={{ ...styles.productName, color: colors.text }}>
-                      {item.name}
-                    </Text>
-                    <Text
-                      style={{
-                        ...styles.farmerName,
-                        color: colors.textSecondary,
-                      }}
-                    >
-                      {item.farmer}
-                    </Text>
-                    <View style={styles.ratingRow}>
-                      <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                      <Text style={{ ...styles.rating, color: colors.text }}>
-                        {item.rating}
+            {loading ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                }}
+              >
+                <ProductSkeleton variant="card" />
+                <ProductSkeleton variant="card" />
+                <ProductSkeleton variant="card" />
+              </ScrollView>
+            ) : recommendedProducts.length > 0 ? (
+              <FlatList
+                data={recommendedProducts}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                }}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[
+                      {
+                        ...styles.productCard,
+                        backgroundColor: colors.card,
+                        shadowColor: colors.text,
+                      },
+                      { marginRight: 16 },
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={styles.productImage}
+                    />
+                    <View style={styles.productInfo}>
+                      <Text
+                        style={{ ...styles.productName, color: colors.text }}
+                      >
+                        {item.name}
                       </Text>
                       <Text
                         style={{
-                          ...styles.location,
+                          ...styles.farmerName,
                           color: colors.textSecondary,
                         }}
                       >
-                        • {item.location}
+                        {item.profiles?.full_name || 'Vendor'}
                       </Text>
-                    </View>
-                    <View style={styles.priceRow}>
-                      <Text style={{ ...styles.price, color: colors.primary }}>
-                        ${item.price}
-                      </Text>
-                      <Text
-                        style={{ ...styles.unit, color: colors.textSecondary }}
+                      <View style={styles.ratingRow}>
+                        <Star size={12} color="#FCD34D" fill="#FCD34D" />
+                        <Text style={{ ...styles.rating, color: colors.text }}>
+                          {item.rating || 4.5}
+                        </Text>
+                        <Text
+                          style={{
+                            ...styles.location,
+                            color: colors.textSecondary,
+                          }}
+                        >
+                          • {item.stock} in stock
+                        </Text>
+                      </View>
+                      <View style={styles.priceRow}>
+                        <Text
+                          style={{ ...styles.price, color: colors.primary }}
+                        >
+                          ₦{item.price.toLocaleString()}
+                        </Text>
+                        <Text
+                          style={{
+                            ...styles.unit,
+                            color: colors.textSecondary,
+                          }}
+                        >
+                          {item.unit}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={{
+                          ...styles.addToCartButton,
+                          backgroundColor: colors.primary,
+                        }}
                       >
-                        {item.unit}
-                      </Text>
+                        <Text style={styles.addToCartText}>Add to Cart</Text>
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                      style={{
-                        ...styles.addToCartButton,
-                        backgroundColor: colors.primary,
-                      }}
-                    >
-                      <Text style={styles.addToCartText}>Add to Cart</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              )}
-              snapToInterval={200 + 16}
-              decelerationRate="fast"
-              snapToAlignment="start"
-              nestedScrollEnabled
-              directionalLockEnabled
-              getItemLayout={(_, index) => ({
-                length: 200 + 16,
-                offset: (200 + 16) * index,
-                index,
-              })}
-            />
+                  </TouchableOpacity>
+                )}
+                snapToInterval={200 + 16}
+                decelerationRate="fast"
+                snapToAlignment="start"
+                nestedScrollEnabled
+                directionalLockEnabled
+                getItemLayout={(_, index) => ({
+                  length: 200 + 16,
+                  offset: (200 + 16) * index,
+                  index,
+                })}
+              />
+            ) : (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary }}>
+                  No products available
+                </Text>
+              </View>
+            )}
           </View>
         </ScrollView>
       </View>
