@@ -329,6 +329,8 @@ export default function HomeScreen() {
                       category={item.category}
                       isOpen={item.is_available}
                       price={item.price}
+                      vendorId={item.vendor_id}
+                      vendorName={item.profiles?.full_name}
                     />
                   ))}
                 </View>

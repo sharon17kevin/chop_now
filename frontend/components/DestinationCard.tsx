@@ -13,6 +13,8 @@ interface Props {
   isOpen: boolean;
   category: string;
   price: number;
+  vendorId?: string;
+  vendorName?: string;
 }
 
 const DestinationCard = ({
@@ -24,30 +26,44 @@ const DestinationCard = ({
   isOpen,
   category,
   price = 1600,
+  vendorId,
+  vendorName,
 }: Props) => {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const handlePress = () => {
+  const handleProductPress = () => {
+    // Navigate to vendor page instead of product details
+    if (vendorId) {
+      router.push({
+        pathname: '/vendor/[vendorId]' as any,
+        params: {
+          vendorId: vendorId,
+          vendorName: vendorName || address || 'Vendor',
+          vendorAddress: address,
+        },
+      });
+    }
+  };
 
-    router.push({
-      pathname: '/items/[iteminfo]' as any,
-      params: { id: id,
-        name: name,
-        address: address,
-        image: image,
-        description: description,
-        isOpen: isOpen.toString(),
-        category: category,
-        price: price
-      },
-    });
+  const handleVendorPress = (e: any) => {
+    e.stopPropagation();
+    if (vendorId) {
+      router.push({
+        pathname: '/vendor/[vendorId]' as any,
+        params: {
+          vendorId: vendorId,
+          vendorName: vendorName || 'Vendor',
+          vendorAddress: address,
+        },
+      });
+    }
   };
 
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={handlePress}
+      onPress={handleProductPress}
       activeOpacity={0.8}
     >
       <View
@@ -73,11 +89,22 @@ const DestinationCard = ({
             <Text style={[{ color: colors.textTrans, fontWeight: '600' }]}>
               {name}
             </Text>
-            <Text numberOfLines={2} style={[{ color: colors.textTrans }]}>
-              {address} |
-              <Text style={{ color: isOpen ? colors.success : colors.error }}>
-                {isOpen ? ' Open' : ' Closed'}
+            <TouchableOpacity onPress={handleVendorPress} activeOpacity={0.7}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  { color: colors.secondary, fontWeight: '600', fontSize: 12 },
+                ]}
+              >
+                by {address}
               </Text>
+            </TouchableOpacity>
+            <Text
+              style={[
+                { color: isOpen ? colors.success : colors.error, fontSize: 12 },
+              ]}
+            >
+              {isOpen ? 'Available' : 'Out of Stock'}
             </Text>
           </View>
           <View
@@ -89,18 +116,24 @@ const DestinationCard = ({
         <View style={styles.statsContainer}>
           <View style={[styles.statItem, { alignItems: 'flex-start' }]}>
             <View style={{ flexDirection: 'row', gap: 5 }}>
+              <Text
+                style={[
+                  { color: colors.textTrans, fontWeight: '700', fontSize: 16 },
+                ]}
+              >
+                ₦{price.toLocaleString()}
+              </Text>
+            </View>
+            <View
+              style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}
+            >
               <Star
                 size={13}
                 fill={colors.secondary}
                 color={colors.secondary}
               />
               <Text style={[{ color: colors.textTrans, fontWeight: '600' }]}>
-                Rating
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 5 }}>
-              <Text style={[{ color: colors.textTrans, fontWeight: '600' }]}>
-                {price}
+                4.5
               </Text>
             </View>
           </View>
@@ -186,7 +219,7 @@ export const DestinationMiniCard = ({
           </Text>
           <View style={{ flexDirection: 'row', gap: 5 }}>
             <Clock size={13} color={colors.secondary} />
-            <Text style={{color: colors.text}}>20-30 mins</Text>
+            <Text style={{ color: colors.text }}>20-30 mins</Text>
           </View>
         </View>
       </View>

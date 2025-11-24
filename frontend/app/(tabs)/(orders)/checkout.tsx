@@ -320,6 +320,7 @@ export default function CheckoutScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.itemsList}>
         {/* Cart Items */}
+        <View style={{ height: 10 }}/>
         {items.map((item) => (
           <View
             key={item.id}

@@ -7,5 +7,7 @@ export default function Layout() {
     <Stack.Screen name="newaddress" options={{ headerShown: false }} />
     <Stack.Screen name="reviews" options={{ headerShown: false }} />
     <Stack.Screen name="items/[iteminfo]" options={{ headerShown: false }} />
+    <Stack.Screen name="vendor/[vendorId]" options={{ headerShown: false }} />
+    <Stack.Screen name="vendor/vendorInfo" options={{ headerShown: false }} />
   </Stack>
 }
