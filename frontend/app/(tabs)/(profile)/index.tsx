@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import {
-  User,
   MapPin,
   ShoppingBag,
   Heart,
@@ -24,24 +23,16 @@ import {
   LogOut,
   ChevronRight,
   Star,
-  AlertCircle,
   Package,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStore } from '@/stores/useUserStore';
+import { useOrders } from '@/hooks/useOrders';
+import { formatTimeAgo } from '@/utils/time';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-interface Order {
-  id: string;
-  created_at: string;
-  total_amount: number;
-  status: string;
-  items_count: number;
-  vendor_name?: string;
-}
 
 const menuItems = [
   {
@@ -101,45 +92,23 @@ export default function ProfileScreen() {
   const { logout } = useAuth();
   const { profile, fetchProfile } = useUserStore();
 
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchRecentOrders();
-  }, []);
+  // Use the shared orders hook and get last 2 orders
+  const {
+    ongoingOrders,
+    completedOrders,
+    loading,
+    handleRefresh: refetchOrders,
+  } = useOrders();
 
-  async function fetchRecentOrders() {
-    try {
-      setError(null);
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: fetchError } = await supabase
-        .from('orders')
-        .select(
-          'id, created_at, total_amount, status, items_count, vendor_name'
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      if (fetchError) throw fetchError;
-
-      setRecentOrders(data || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load orders');
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Combine and sort to get last 2 orders
+  const recentOrders = [...ongoingOrders, ...completedOrders]
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    .slice(0, 2);
 
   async function handleRefresh() {
     try {
@@ -150,29 +119,15 @@ export default function ProfileScreen() {
       } = await supabase.auth.getUser();
 
       if (user) {
-        await Promise.all([fetchProfile(user.id), fetchRecentOrders()]);
+        await Promise.all([fetchProfile(user.id), refetchOrders()]);
       } else {
-        await fetchRecentOrders();
+        await refetchOrders();
       }
     } catch (err) {
       console.error('Error during refresh:', err);
     } finally {
       setRefreshing(false);
     }
-  }
-
-  function getTimeAgo(dateString: string): string {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-    return `${Math.floor(diffDays / 365)} years ago`;
   }
 
   function getStatusColor(status: string): string {
@@ -333,28 +288,6 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {error && (
-            <View
-              style={[
-                styles.errorContainer,
-                {
-                  backgroundColor: colors.errorBackground,
-                  borderLeftColor: colors.error,
-                },
-              ]}
-            >
-              <AlertCircle size={16} color={colors.error} />
-              <Text style={[styles.errorText, { color: colors.error }]}>
-                {error}
-              </Text>
-              <TouchableOpacity onPress={fetchRecentOrders}>
-                <Text style={[styles.retryText, { color: colors.error }]}>
-                  Retry
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.primary} />
@@ -399,7 +332,7 @@ export default function ProfileScreen() {
               >
                 <View style={styles.orderInfo}>
                   <Text style={[styles.farmerName, { color: colors.text }]}>
-                    {order.vendor_name || 'Vendor'}
+                    {order.profiles?.full_name || 'Vendor'}
                   </Text>
                   <Text
                     style={[
@@ -407,13 +340,12 @@ export default function ProfileScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {order.items_count || 0} items • ₦
-                    {order.total_amount.toFixed(2)}
+                    ₦{order.total?.toLocaleString() || '0'}
                   </Text>
                   <Text
                     style={[styles.orderDate, { color: colors.textTetiary }]}
                   >
-                    {getTimeAgo(order.created_at)}
+                    {formatTimeAgo(order.created_at)}
                   </Text>
                 </View>
                 <View style={styles.orderStatus}>
