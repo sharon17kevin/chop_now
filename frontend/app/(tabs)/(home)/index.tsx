@@ -1,29 +1,27 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  Dimensions,
-  Animated,
-  FlatList,
-  RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MapPin, Star, ShoppingCart, Car } from 'lucide-react-native';
-import { useTheme } from '@/hooks/useTheme';
-import { useHomeProducts } from '@/hooks/useHomeProducts';
-import { SliderToggle } from '@/components/SliderToggle';
-import FilterSquare from '@/components/FilterSquare';
-import Carousel from 'react-native-reanimated-carousel';
 import DestinationCard, {
   DestinationMiniCard,
 } from '@/components/DestinationCard';
-import { useRouter } from 'expo-router';
+import FilterSquare from '@/components/FilterSquare';
 import { ProductSkeleton } from '@/components/ProductSkeleton';
+import { useHomeProducts } from '@/hooks/useHomeProducts';
+import { useTheme } from '@/hooks/useTheme';
+import { useRouter } from 'expo-router';
+import { Bell, Car, MapPin, Search, Star } from 'lucide-react-native';
+import React, { useState } from 'react';
+import {
+  Dimensions,
+  FlatList,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import Carousel from 'react-native-reanimated-carousel';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const categories = [
   { id: 1, name: 'Fruits', icon: '🍎', color: '#EF4444' },
@@ -37,8 +35,8 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { colors } = useTheme();
   const router = useRouter();
-  const [mode, setMode] = useState<string>('private');
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  // const [mode, setMode] = useState<string>('private');
+  // const fadeAnim = useRef(new Animated.Value(1)).current;
   const width = Dimensions.get('window').width;
 
   // Use custom hook for product data management
@@ -63,14 +61,14 @@ export default function HomeScreen() {
   };
 
   // Handle fade animation
-  useEffect(() => {
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 350,
-      useNativeDriver: true,
-    }).start();
-  }, [mode, fadeAnim]);
+  // useEffect(() => {
+  //   fadeAnim.setValue(0);
+  //   Animated.timing(fadeAnim, {
+  //     toValue: 1,
+  //     duration: 350,
+  //     useNativeDriver: true,
+  //   }).start();
+  // }, [mode, fadeAnim]);
 
   return (
     <SafeAreaView
@@ -99,7 +97,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.cartButton}>
-          <ShoppingCart size={24} color="#FFFFFF" />
+          <Bell size={24} color="#FFFFFF" />
           <View style={styles.cartBadge}>
             <Text style={styles.cartBadgeText}>3</Text>
           </View>
