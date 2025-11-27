@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSearch } from '@/hooks/useSearch';
 import { useWishlist } from '@/hooks/useWishlist';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const popularSearches = [
   'Organic tomatoes',
@@ -46,8 +46,16 @@ const sortOptions = [
 export default function SearchScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Set search query from navigation params
+  useEffect(() => {
+    if (params.query && typeof params.query === 'string') {
+      setSearchQuery(params.query);
+    }
+  }, [params.query]);
 
   // Debounce search query to avoid excessive API calls
   const debouncedQuery = useDebounce(searchQuery, 400);
@@ -78,6 +86,50 @@ export default function SearchScreen() {
   const handleWishlistToggle = async (productId: string, e: any) => {
     e.stopPropagation();
     await toggleWishlist(productId);
+  };
+
+  const handleAddToCart = async (product: any, e: any) => {
+    e.stopPropagation();
+
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert('Please log in to add items to cart');
+        return;
+      }
+
+      // Check if already in cart
+      const { data: existing } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .eq('product_id', product.id)
+        .single();
+
+      if (existing) {
+        // Update quantity
+        await supabase
+          .from('cart_items')
+          .update({ quantity: existing.quantity + 1 })
+          .eq('id', existing.id);
+      } else {
+        // Add new item
+        await supabase.from('cart_items').insert({
+          user_id: user.id,
+          product_id: product.id,
+          quantity: 1,
+        });
+      }
+
+      alert(`Added ${product.name} to cart!`);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+      alert('Failed to add to cart');
+    }
   };
 
   const handleCategoryFilter = (category: string) => {
@@ -296,6 +348,7 @@ export default function SearchScreen() {
                       styles.addButton,
                       { backgroundColor: colors.secondary },
                     ]}
+                    onPress={(e) => handleAddToCart(product, e)}
                   >
                     <Text
                       style={[

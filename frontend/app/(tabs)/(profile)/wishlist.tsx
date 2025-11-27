@@ -13,6 +13,7 @@ import { Trash2, ShoppingCart, Heart } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '@/components/AppHeader';
 import { useTheme } from '@/hooks/useTheme';
+import { useRouter } from 'expo-router';
 
 interface WishlistItem {
   id: string;
@@ -35,6 +36,7 @@ export default function WishlistScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { colors } = useTheme();
+  const router = useRouter();
 
   useEffect(() => {
     fetchWishlist();
@@ -123,60 +125,120 @@ export default function WishlistScreen() {
     setRefreshing(false);
   }
 
+  const handleAddToCart = async (item: WishlistItem, e: any) => {
+    e.stopPropagation();
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert('Please log in to add items to cart');
+        return;
+      }
+
+      // Check if already in cart
+      const { data: existing } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .eq('product_id', item.product.id)
+        .single();
+
+      if (existing) {
+        // Update quantity
+        await supabase
+          .from('cart_items')
+          .update({ quantity: existing.quantity + 1 })
+          .eq('id', existing.id);
+      } else {
+        // Add new item
+        await supabase.from('cart_items').insert({
+          user_id: user.id,
+          product_id: item.product.id,
+          quantity: 1,
+        });
+      }
+
+      alert(`Added ${item.product.name} to cart!`);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+      alert('Failed to add to cart');
+    }
+  };
+
+  const handleItemPress = (item: WishlistItem) => {
+    router.push({
+      pathname: '/(tabs)/(home)/vendor/[vendorId]',
+      params: {
+        vendorId: item.product.vendor_id,
+        vendorName: item.product.vendor?.full_name || 'Vendor',
+        productId: item.product.id,
+      },
+    });
+  };
+
   const renderItem = ({ item }: { item: WishlistItem }) => (
-    <View
-      style={[
-        styles.itemContainer,
-        { backgroundColor: colors.card, shadowColor: colors.text },
-      ]}
-    >
-      <Image
-        source={{
-          uri: item.product.image_url || 'https://via.placeholder.com/100',
-        }}
-        style={[styles.image, { backgroundColor: colors.filter }]}
-      />
-      <View style={styles.infoContainer}>
-        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-          {item.product.name}
-        </Text>
-        <Text
-          style={[styles.description, { color: colors.textSecondary }]}
-          numberOfLines={2}
-        >
-          {item.product.description}
-        </Text>
-        {item.product.vendor && (
-          <Text
-            style={[styles.vendor, { color: colors.primary }]}
-            numberOfLines={1}
-          >
-            by {item.product.vendor.full_name}
+    <TouchableOpacity onPress={() => handleItemPress(item)} activeOpacity={0.7}>
+      <View
+        style={[
+          styles.itemContainer,
+          { backgroundColor: colors.card, shadowColor: colors.text },
+        ]}
+      >
+        <Image
+          source={{
+            uri: item.product.image_url || 'https://via.placeholder.com/100',
+          }}
+          style={[styles.image, { backgroundColor: colors.filter }]}
+        />
+        <View style={styles.infoContainer}>
+          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+            {item.product.name}
           </Text>
-        )}
-        <Text style={[styles.price, { color: colors.primary }]}>
-          ₦{item.product.price.toLocaleString()}
-        </Text>
+          <Text
+            style={[styles.description, { color: colors.textSecondary }]}
+            numberOfLines={2}
+          >
+            {item.product.description}
+          </Text>
+          {item.product.vendor && (
+            <Text
+              style={[styles.vendor, { color: colors.primary }]}
+              numberOfLines={1}
+            >
+              by {item.product.vendor.full_name}
+            </Text>
+          )}
+          <Text style={[styles.price, { color: colors.primary }]}>
+            ₦{item.product.price.toLocaleString()}
+          </Text>
+        </View>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              { backgroundColor: colors.errorBackground },
+            ]}
+            onPress={(e) => {
+              e.stopPropagation();
+              removeFromWishlist(item.id);
+            }}
+            activeOpacity={0.7}
+          >
+            <Trash2 size={18} color={colors.error} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.filter }]}
+            onPress={(e) => handleAddToCart(item, e)}
+            activeOpacity={0.7}
+          >
+            <ShoppingCart size={18} color={colors.success} />
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            { backgroundColor: colors.errorBackground },
-          ]}
-          onPress={() => removeFromWishlist(item.id)}
-          activeOpacity={0.7}
-        >
-          <Trash2 size={18} color={colors.error} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: colors.filter }]}
-          activeOpacity={0.7}
-        >
-          <ShoppingCart size={18} color={colors.success} />
-        </TouchableOpacity>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading) {

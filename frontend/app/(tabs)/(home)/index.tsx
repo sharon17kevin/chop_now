@@ -52,6 +52,16 @@ export default function HomeScreen() {
     handleRefresh,
   } = useHomeProducts();
 
+  // Handle search submission
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      router.push({
+        pathname: '/(tabs)/search',
+        params: { query: searchQuery.trim() },
+      });
+    }
+  };
+
   // Handle fade animation
   useEffect(() => {
     fadeAnim.setValue(0);
@@ -104,17 +114,21 @@ export default function HomeScreen() {
           borderColor: colors.border,
         }}
       >
-        <Search
-          size={20}
-          color={colors.textSecondary}
-          style={styles.searchIcon}
-        />
+        <TouchableOpacity onPress={handleSearchSubmit}>
+          <Search
+            size={20}
+            color={colors.textSecondary}
+            style={styles.searchIcon}
+          />
+        </TouchableOpacity>
         <TextInput
           style={{ ...styles.searchInput, color: colors.text }}
           placeholder="Search for fresh produce..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor={colors.textTetiary}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
         />
       </View>
 
@@ -136,7 +150,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <View
+      {/* <View
         style={{
           ...styles.sliderContainer,
           borderBottomWidth: 1,
@@ -152,7 +166,7 @@ export default function HomeScreen() {
           size={width * 0.23}
           thumbColor="#fff"
         />
-      </View>
+      </View> */}
       <View
         style={{
           backgroundColor: colors.background,

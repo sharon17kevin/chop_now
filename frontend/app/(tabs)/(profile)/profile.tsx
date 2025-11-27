@@ -10,8 +10,17 @@ import {
   Alert,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { User, Save, Mail, Phone, MapPin, Edit, ArrowLeft } from 'lucide-react-native';
+import {
+  User,
+  Save,
+  Mail,
+  Phone,
+  MapPin,
+  Edit,
+  ArrowLeft,
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useTheme } from '@/hooks/useTheme';
 
 interface Profile {
   full_name: string;
@@ -21,6 +30,7 @@ interface Profile {
 }
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
   const [profile, setProfile] = useState<Profile>({
     full_name: '',
     email: '',
@@ -134,39 +144,31 @@ export default function ProfileScreen() {
     }
   }
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.card }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={{
-            backgroundColor: 'white',
+            backgroundColor: colors.filter,
             width: 40,
             height: 40,
             borderRadius: 20,
             padding: 8,
             elevation: 3,
-            shadowColor: '#000',
+            shadowColor: colors.text,
             shadowOpacity: 0.1,
             shadowRadius: 4,
           }}
         >
-          <ArrowLeft />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.header}>Profile</Text>
+        <Text style={[styles.header, { color: colors.text }]}>Profile</Text>
         <TouchableOpacity
-          style={styles.editButton}
+          style={[styles.editButton, { backgroundColor: colors.filter }]}
           onPress={() => setIsEditing(!isEditing)}
         >
-          <Edit size={20} color="#007AFF" />
+          <Edit size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -174,100 +176,167 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{error}</Text>
+        {loading ? (
+          <View style={styles.centerContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading profile...
+            </Text>
           </View>
-        )}
-
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <User size={48} color="#8E8E93" />
-          </View>
-          {isEditing && (
-            <TouchableOpacity style={styles.changePhotoButton}>
-              <Text style={styles.changePhotoText}>Change Photo</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputContainer}>
-            <User size={20} color="#8E8E93" />
-            <TextInput
-              style={styles.input}
-              value={profile.full_name}
-              onChangeText={(text) =>
-                setProfile({ ...profile, full_name: text })
-              }
-              placeholder="Enter your full name"
-              editable={isEditing}
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputContainer}>
-            <Mail size={20} color="#8E8E93" />
-            <TextInput
-              style={styles.input}
-              value={profile.email}
-              onChangeText={(text) => setProfile({ ...profile, email: text })}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={isEditing}
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Phone</Text>
-          <View style={styles.inputContainer}>
-            <Phone size={20} color="#8E8E93" />
-            <TextInput
-              style={styles.input}
-              value={profile.phone}
-              onChangeText={(text) => setProfile({ ...profile, phone: text })}
-              placeholder="Enter your phone number"
-              keyboardType="phone-pad"
-              editable={isEditing}
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Address</Text>
-          <View style={styles.inputContainer}>
-            <MapPin size={20} color="#8E8E93" />
-            <TextInput
-              style={styles.input}
-              value={profile.address}
-              onChangeText={(text) => setProfile({ ...profile, address: text })}
-              placeholder="Enter your address"
-              multiline
-              editable={isEditing}
-            />
-          </View>
-        </View>
-
-        {isEditing && (
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={saveProfile}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Save size={20} color="#FFFFFF" />
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              </>
+        ) : (
+          <>
+            {error && (
+              <View
+                style={[
+                  styles.errorBanner,
+                  { backgroundColor: colors.errorBackground },
+                ]}
+              >
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                  {error}
+                </Text>
+              </View>
             )}
-          </TouchableOpacity>
+
+            <View style={styles.avatarContainer}>
+              <View style={[styles.avatar, { backgroundColor: colors.filter }]}>
+                <User size={48} color={colors.textSecondary} />
+              </View>
+              {isEditing && (
+                <TouchableOpacity
+                  style={[
+                    styles.changePhotoButton,
+                    { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text style={styles.changePhotoText}>Change Photo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Full Name
+              </Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  { backgroundColor: colors.card, shadowColor: colors.text },
+                ]}
+              >
+                <User size={20} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  value={profile.full_name}
+                  onChangeText={(text) =>
+                    setProfile({ ...profile, full_name: text })
+                  }
+                  placeholder="Enter your full name"
+                  placeholderTextColor={colors.textTetiary}
+                  editable={isEditing}
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Email
+              </Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  { backgroundColor: colors.card, shadowColor: colors.text },
+                ]}
+              >
+                <Mail size={20} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  value={profile.email}
+                  onChangeText={(text) =>
+                    setProfile({ ...profile, email: text })
+                  }
+                  placeholder="Enter your email"
+                  placeholderTextColor={colors.textTetiary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={isEditing}
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Phone
+              </Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  { backgroundColor: colors.card, shadowColor: colors.text },
+                ]}
+              >
+                <Phone size={20} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  value={profile.phone}
+                  onChangeText={(text) =>
+                    setProfile({ ...profile, phone: text })
+                  }
+                  placeholder="Enter your phone number"
+                  placeholderTextColor={colors.textTetiary}
+                  keyboardType="phone-pad"
+                  editable={isEditing}
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Address
+              </Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  { backgroundColor: colors.card, shadowColor: colors.text },
+                ]}
+              >
+                <MapPin size={20} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  value={profile.address}
+                  onChangeText={(text) =>
+                    setProfile({ ...profile, address: text })
+                  }
+                  placeholder="Enter your address"
+                  placeholderTextColor={colors.textTetiary}
+                  multiline
+                  editable={isEditing}
+                />
+              </View>
+            </View>
+
+            {isEditing && (
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  {
+                    backgroundColor: colors.secondary,
+                    shadowColor: colors.primary,
+                  },
+                ]}
+                onPress={saveProfile}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Save size={20} color="#FFFFFF" />
+                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </ScrollView>
     </View>
@@ -277,13 +346,17 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
-  centerContainer: {
+  centerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
   },
   headerContainer: {
     flexDirection: 'row',
@@ -292,7 +365,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     fontSize: 32,
@@ -301,7 +373,6 @@ const styles = StyleSheet.create({
   editButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#E8F4FF',
   },
   scrollView: {
     flex: 1,
@@ -317,7 +388,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#E5E5EA',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -326,7 +396,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#007AFF',
   },
   changePhotoText: {
     color: '#FFFFFF',
@@ -340,7 +409,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8E8E93',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -348,10 +416,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -361,18 +427,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     marginLeft: 12,
-    color: '#1C1C1E',
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
     marginHorizontal: 20,
     padding: 16,
     borderRadius: 12,
     marginTop: 16,
-    shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -385,14 +448,12 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   errorBanner: {
-    backgroundColor: '#FFE5E5',
     padding: 12,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 8,
   },
   errorText: {
-    color: '#FF3B30',
     fontSize: 14,
     textAlign: 'center',
   },

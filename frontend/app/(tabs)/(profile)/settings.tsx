@@ -131,32 +131,29 @@ export default function SettingsScreen() {
     <TouchableOpacity
       style={[
         styles.themeOption,
-        settings.theme === theme && styles.selectedTheme,
+        { backgroundColor: colors.card, shadowColor: colors.text },
+        settings.theme === theme && {
+          borderColor: colors.primary,
+          backgroundColor: colors.filter,
+        },
       ]}
       onPress={() => updateSettings({ theme })}
     >
       <Icon
         size={24}
-        color={settings.theme === theme ? '#007AFF' : '#8E8E93'}
+        color={settings.theme === theme ? colors.primary : colors.textSecondary}
       />
       <Text
         style={[
           styles.themeLabel,
-          settings.theme === theme && styles.selectedThemeLabel,
+          { color: colors.textSecondary },
+          settings.theme === theme && { color: colors.primary },
         ]}
       >
         {label}
       </Text>
     </TouchableOpacity>
   );
-
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
 
   return (
     <SafeAreaView
@@ -165,50 +162,92 @@ export default function SettingsScreen() {
     >
       <AppHeader title="Settings" />
       <ScrollView showsVerticalScrollIndicator={false}>
-        {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{error}</Text>
+        {loading ? (
+          <View style={styles.centerContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading settings...
+            </Text>
           </View>
+        ) : (
+          <>
+            {error && (
+              <View
+                style={[
+                  styles.errorBanner,
+                  { backgroundColor: colors.errorBackground },
+                ]}
+              >
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                  {error}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.section}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.textSecondary }]}
+              >
+                App Appearance
+              </Text>
+              <View style={styles.themeContainer}>
+                <ThemeOption theme="light" icon={Sun} label="Light" />
+                <ThemeOption theme="dark" icon={Moon} label="Dark" />
+                <ThemeOption theme="system" icon={Smartphone} label="System" />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.textSecondary }]}
+              >
+                Notifications
+              </Text>
+              <View
+                style={[
+                  styles.settingItem,
+                  { backgroundColor: colors.card, shadowColor: colors.text },
+                ]}
+              >
+                <Text style={[styles.settingLabel, { color: colors.text }]}>
+                  Push Notifications
+                </Text>
+                <Switch
+                  value={settings.notifications_enabled}
+                  onValueChange={(value) =>
+                    updateSettings({ notifications_enabled: value })
+                  }
+                  trackColor={{ false: colors.disabled, true: colors.success }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.textSecondary }]}
+              >
+                Support
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.linkItem,
+                  { backgroundColor: colors.card, shadowColor: colors.text },
+                ]}
+                onPress={() =>
+                  router.push({
+                    pathname: 'support' as any,
+                  })
+                }
+              >
+                <HelpCircle size={20} color={colors.textSecondary} />
+                <Text style={[styles.linkText, { color: colors.text }]}>
+                  Help and Support
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App Appearance</Text>
-          <View style={styles.themeContainer}>
-            <ThemeOption theme="light" icon={Sun} label="Light" />
-            <ThemeOption theme="dark" icon={Moon} label="Dark" />
-            <ThemeOption theme="system" icon={Smartphone} label="System" />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
-          <View style={styles.settingItem}>
-            <Text style={styles.settingLabel}>Push Notifications</Text>
-            <Switch
-              value={settings.notifications_enabled}
-              onValueChange={(value) =>
-                updateSettings({ notifications_enabled: value })
-              }
-              trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          <TouchableOpacity
-            style={styles.linkItem}
-            onPress={() =>
-              router.push({
-                pathname: 'support' as any,
-              })
-            }
-          >
-            <HelpCircle size={20} color="#8E8E93" />
-            <Text style={styles.linkText}>Help and Support</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -217,13 +256,17 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
-  centerContainer: {
+  centerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
   },
   header: {
     fontSize: 32,
@@ -240,7 +283,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8E8E93',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -251,39 +293,27 @@ const styles = StyleSheet.create({
   },
   themeOption: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  selectedTheme: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E8F4FF',
-  },
   themeLabel: {
     marginTop: 8,
     fontSize: 14,
     fontWeight: '600',
-    color: '#8E8E93',
-  },
-  selectedThemeLabel: {
-    color: '#007AFF',
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -296,10 +326,8 @@ const styles = StyleSheet.create({
   linkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -311,14 +339,12 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   errorBanner: {
-    backgroundColor: '#FFE5E5',
     padding: 12,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 8,
   },
   errorText: {
-    color: '#FF3B30',
     fontSize: 14,
     textAlign: 'center',
   },
