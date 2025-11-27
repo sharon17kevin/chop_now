@@ -1,5 +1,5 @@
 // app/(tabs)/(home)/vendor/[vendorId].tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,17 +22,20 @@ import {
   Plus,
   Minus,
   ShoppingBag,
+  Heart,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useVendorProducts } from '@/hooks/useVendorProducts';
 import ProductCard from '@/components/ProductCard';
 import { supabase } from '@/lib/supabase';
 import { useUserStore } from '@/stores/useUserStore';
+import { useWishlist } from '@/hooks/useWishlist';
 
 export default function VendorPage() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { vendorId, vendorName, vendorAddress, vendorRating } =
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const { vendorId, vendorName, vendorAddress, vendorRating, productId } =
     useLocalSearchParams();
 
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -50,6 +53,25 @@ export default function VendorPage() {
   } = useVendorProducts(vendorId as string);
 
   const currentProducts = productsByCategory[selectedCategory] || [];
+
+  // Auto-open product if navigated with productId
+  useEffect(() => {
+    if (productId && !loading) {
+      // Find the product across all categories
+      let foundProduct = null;
+      for (const category in productsByCategory) {
+        foundProduct = productsByCategory[category].find(
+          (p: any) => p.id === productId
+        );
+        if (foundProduct) {
+          setSelectedCategory(category);
+          setSelectedProduct(foundProduct);
+          setQuantity(1);
+          break;
+        }
+      }
+    }
+  }, [productId, loading, productsByCategory]);
 
   // Handle product card press
   const handleProductPress = (product: any) => {
@@ -80,6 +102,12 @@ export default function VendorPage() {
     if (quantity > 1) {
       setQuantity((q) => q - 1);
     }
+  };
+
+  // Toggle wishlist
+  const handleWishlistToggle = async () => {
+    if (!selectedProduct) return;
+    await toggleWishlist(selectedProduct.id);
   };
 
   // Add to cart
@@ -276,6 +304,24 @@ export default function VendorPage() {
             style={[styles.closeButton, { backgroundColor: colors.filter }]}
           >
             <X size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          {/* Wishlist Button */}
+          <TouchableOpacity
+            onPress={handleWishlistToggle}
+            style={[styles.wishlistButton, { backgroundColor: colors.card }]}
+          >
+            <Heart
+              size={24}
+              color={
+                isInWishlist(selectedProduct.id)
+                  ? colors.error
+                  : colors.textSecondary
+              }
+              fill={
+                isInWishlist(selectedProduct.id) ? colors.error : 'transparent'
+              }
+            />
           </TouchableOpacity>
 
           {/* Product Image */}
@@ -591,6 +637,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+  },
+  wishlistButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   detailImage: {
     width: '100%',

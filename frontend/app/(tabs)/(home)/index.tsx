@@ -280,6 +280,9 @@ export default function HomeScreen() {
                       address={item.profiles?.full_name || 'Vendor'}
                       isOpen={true}
                       category={item.category}
+                      productId={item.id}
+                      vendorId={item.vendor_id}
+                      vendorName={item.profiles?.full_name}
                     />
                   )}
                   style={{
@@ -331,6 +334,7 @@ export default function HomeScreen() {
                       price={item.price}
                       vendorId={item.vendor_id}
                       vendorName={item.profiles?.full_name}
+                      productId={item.id}
                     />
                   ))}
                 </View>

@@ -1,8 +1,9 @@
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
-import { Clock, Star } from 'lucide-react-native';
+import { Clock, Star, Heart } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useWishlist } from '@/hooks/useWishlist';
 
 interface Props {
   id: string;
@@ -15,6 +16,7 @@ interface Props {
   price: number;
   vendorId?: string;
   vendorName?: string;
+  productId?: string; // For wishlist functionality
 }
 
 const DestinationCard = ({
@@ -28,12 +30,16 @@ const DestinationCard = ({
   price = 1600,
   vendorId,
   vendorName,
+  productId,
 }: Props) => {
   const { colors } = useTheme();
   const router = useRouter();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+
+  const inWishlist = productId ? isInWishlist(productId) : false;
 
   const handleProductPress = () => {
-    // Navigate to vendor page instead of product details
+    // Navigate to vendor page with product details
     if (vendorId) {
       router.push({
         pathname: '/vendor/[vendorId]' as any,
@@ -41,6 +47,7 @@ const DestinationCard = ({
           vendorId: vendorId,
           vendorName: vendorName || address || 'Vendor',
           vendorAddress: address,
+          productId: productId, // Pass productId to auto-open product
         },
       });
     }
@@ -58,6 +65,13 @@ const DestinationCard = ({
         },
       });
     }
+  };
+
+  const handleWishlistToggle = async (e: any) => {
+    e.stopPropagation();
+    if (!productId) return;
+
+    await toggleWishlist(productId);
   };
 
   return (
@@ -83,6 +97,20 @@ const DestinationCard = ({
           style={[styles.imageContainer, { backgroundColor: colors.primary }]}
         >
           <Image source={{ uri: image }} style={styles.image} />
+
+          {/* Wishlist button - top right */}
+          {productId && (
+            <TouchableOpacity
+              onPress={handleWishlistToggle}
+              style={[styles.wishlistButton, { backgroundColor: colors.card }]}
+            >
+              <Heart
+                size={20}
+                color={inWishlist ? colors.error : colors.textSecondary}
+                fill={inWishlist ? colors.error : 'transparent'}
+              />
+            </TouchableOpacity>
+          )}
         </View>
         <View style={styles.infoContainer}>
           <View style={{ flex: 1 }}>
@@ -149,12 +177,42 @@ export const DestinationMiniCard = ({
   address,
   isOpen,
   category,
-}: Pick<Props, 'image' | 'name' | 'address' | 'isOpen' | 'category'>) => {
+  productId,
+  vendorId,
+  vendorName,
+}: Pick<
+  Props,
+  | 'image'
+  | 'name'
+  | 'address'
+  | 'isOpen'
+  | 'category'
+  | 'productId'
+  | 'vendorId'
+  | 'vendorName'
+>) => {
   const { colors } = useTheme();
   const router = useRouter();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+
+  const inWishlist = productId ? isInWishlist(productId) : false;
 
   const handlePress = () => {
-    // Convert item name to URL-friendly format that matches the item page keys
+    // Navigate to vendor page with product details if available
+    if (vendorId && productId) {
+      router.push({
+        pathname: '/vendor/[vendorId]' as any,
+        params: {
+          vendorId: vendorId,
+          vendorName: vendorName || name,
+          vendorAddress: address,
+          productId: productId,
+        },
+      });
+      return;
+    }
+
+    // Fallback: Convert item name to URL-friendly format that matches the item page keys
     let itemSlug = name.toLowerCase().replace(/\s+/g, '-');
 
     // Handle special cases to match the item page keys exactly
@@ -174,6 +232,13 @@ export const DestinationMiniCard = ({
       pathname: 'places/[item]' as any,
       params: { item: itemSlug },
     });
+  };
+
+  const handleWishlistToggle = async (e: any) => {
+    e.stopPropagation();
+    if (!productId) return;
+
+    await toggleWishlist(productId);
   };
 
   return (
@@ -205,6 +270,23 @@ export const DestinationMiniCard = ({
             30% OFF
           </Text>
         </View>
+
+        {/* Wishlist button - top right */}
+        {productId && (
+          <TouchableOpacity
+            onPress={handleWishlistToggle}
+            style={[
+              styles.miniWishlistButton,
+              { backgroundColor: colors.card },
+            ]}
+          >
+            <Heart
+              size={18}
+              color={inWishlist ? colors.error : colors.textSecondary}
+              fill={inWishlist ? colors.error : 'transparent'}
+            />
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.miniInfoContainer}>
         <View style={{ flex: 1, paddingTop: 3 }}>
@@ -296,5 +378,35 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     overflow: 'hidden',
     padding: 10,
+  },
+  wishlistButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  miniWishlistButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

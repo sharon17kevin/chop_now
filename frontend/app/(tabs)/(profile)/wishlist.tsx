@@ -22,6 +22,10 @@ interface WishlistItem {
     price: number;
     image_url: string;
     description: string;
+    vendor_id: string;
+    vendor?: {
+      full_name: string;
+    };
   };
 }
 
@@ -55,12 +59,16 @@ export default function WishlistScreen() {
         .select(
           `
           id,
-          product:products (
+          product:products!inner (
             id,
             name,
             price,
             image_url,
-            description
+            description,
+            vendor_id,
+            profiles!products_vendor_id_fkey (
+              full_name
+            )
           )
         `
         )
@@ -68,7 +76,25 @@ export default function WishlistScreen() {
 
       if (fetchError) throw fetchError;
 
-      setWishlist(data || []);
+      // Transform the data to match interface
+      const transformedData = (data || []).map((item: any) => ({
+        id: item.id,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          image_url: item.product.image_url,
+          description: item.product.description,
+          vendor_id: item.product.vendor_id,
+          vendor: item.product.profiles?.[0]
+            ? {
+                full_name: item.product.profiles[0].full_name,
+              }
+            : undefined,
+        },
+      }));
+
+      setWishlist(transformedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load wishlist');
     } finally {
@@ -98,35 +124,56 @@ export default function WishlistScreen() {
   }
 
   const renderItem = ({ item }: { item: WishlistItem }) => (
-    <View style={styles.itemContainer}>
+    <View
+      style={[
+        styles.itemContainer,
+        { backgroundColor: colors.card, shadowColor: colors.text },
+      ]}
+    >
       <Image
         source={{
           uri: item.product.image_url || 'https://via.placeholder.com/100',
         }}
-        style={styles.image}
+        style={[styles.image, { backgroundColor: colors.filter }]}
       />
       <View style={styles.infoContainer}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
           {item.product.name}
         </Text>
-        <Text style={styles.description} numberOfLines={2}>
+        <Text
+          style={[styles.description, { color: colors.textSecondary }]}
+          numberOfLines={2}
+        >
           {item.product.description}
         </Text>
-        <Text style={styles.price}>${item.product.price.toFixed(2)}</Text>
+        {item.product.vendor && (
+          <Text
+            style={[styles.vendor, { color: colors.primary }]}
+            numberOfLines={1}
+          >
+            by {item.product.vendor.full_name}
+          </Text>
+        )}
+        <Text style={[styles.price, { color: colors.primary }]}>
+          ₦{item.product.price.toLocaleString()}
+        </Text>
       </View>
       <View style={styles.actionsContainer}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[
+            styles.actionButton,
+            { backgroundColor: colors.errorBackground },
+          ]}
           onPress={() => removeFromWishlist(item.id)}
           activeOpacity={0.7}
         >
-          <Trash2 size={18} color="#EF4444" />
+          <Trash2 size={18} color={colors.error} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, styles.cartButton]}
+          style={[styles.actionButton, { backgroundColor: colors.filter }]}
           activeOpacity={0.7}
         >
-          <ShoppingCart size={18} color="#059669" />
+          <ShoppingCart size={18} color={colors.success} />
         </TouchableOpacity>
       </View>
     </View>
@@ -140,7 +187,7 @@ export default function WishlistScreen() {
       >
         <AppHeader title="Favourites" />
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#059669" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -153,20 +200,37 @@ export default function WishlistScreen() {
         style={[styles.container, { backgroundColor: colors.background }]}
       >
         <AppHeader title="Favourites" />
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View
+          style={[
+            styles.errorBanner,
+            {
+              backgroundColor: colors.errorBackground,
+              borderLeftColor: colors.error,
+            },
+          ]}
+        >
+          <Text style={[styles.errorText, { color: colors.error }]}>
+            {error}
+          </Text>
           <TouchableOpacity onPress={fetchWishlist}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={[styles.retryText, { color: colors.error }]}>
+              Retry
+            </Text>
           </TouchableOpacity>
         </View>
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconContainer}>
-            <Heart size={48} color="#D1D5DB" />
+          <View
+            style={[
+              styles.emptyIconContainer,
+              { backgroundColor: colors.filter },
+            ]}
+          >
+            <Heart size={48} color={colors.textTetiary} />
           </View>
           <Text style={[styles.emptyText, { color: colors.text }]}>
             Unable to load favorites
           </Text>
-          <Text style={styles.emptySubtext}>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
             Check your connection and try again
           </Text>
         </View>
@@ -190,13 +254,20 @@ export default function WishlistScreen() {
         onRefresh={handleRefresh}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Heart size={48} color="#D1D5DB" />
+            <View
+              style={[
+                styles.emptyIconContainer,
+                { backgroundColor: colors.filter },
+              ]}
+            >
+              <Heart size={48} color={colors.textTetiary} />
             </View>
             <Text style={[styles.emptyText, { color: colors.text }]}>
               No favorites yet
             </Text>
-            <Text style={styles.emptySubtext}>
+            <Text
+              style={[styles.emptySubtext, { color: colors.textSecondary }]}
+            >
               Items you favorite will appear here
             </Text>
           </View>
@@ -222,11 +293,9 @@ const styles = StyleSheet.create({
   },
   itemContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -236,7 +305,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
   },
   infoContainer: {
     flex: 1,
@@ -246,19 +314,21 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
     marginBottom: 4,
   },
   description: {
     fontSize: 13,
-    color: '#6B7280',
     marginBottom: 8,
     lineHeight: 18,
+  },
+  vendor: {
+    fontSize: 12,
+    marginBottom: 4,
+    fontWeight: '600',
   },
   price: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#059669',
   },
   actionsContainer: {
     justifyContent: 'space-evenly',
@@ -269,12 +339,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FEF2F2',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  cartButton: {
-    backgroundColor: '#F0FDF4',
   },
   emptyContainer: {
     flex: 1,
@@ -287,7 +353,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -299,29 +364,24 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 20,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
     padding: 12,
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 8,
     borderRadius: 8,
     borderLeftWidth: 3,
-    borderLeftColor: '#EF4444',
   },
   errorText: {
-    color: '#EF4444',
     fontSize: 14,
     flex: 1,
   },
   retryText: {
-    color: '#EF4444',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 12,

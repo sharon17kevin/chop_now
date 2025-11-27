@@ -7,43 +7,16 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Filter, Star } from 'lucide-react-native';
+import { Search, Filter, Heart, X } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
-
-const searchResults = [
-  {
-    id: 1,
-    name: 'Organic Apples',
-    price: 3.99,
-    unit: 'per lb',
-    farmer: 'Orchard Hills',
-    rating: 4.6,
-    image:
-      'https://images.pexels.com/photos/102104/pexels-photo-102104.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: 2,
-    name: 'Baby Spinach',
-    price: 2.49,
-    unit: 'per bag',
-    farmer: 'Green Leaf Farm',
-    rating: 4.8,
-    image:
-      'https://images.pexels.com/photos/2872755/pexels-photo-2872755.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: 3,
-    name: 'Sweet Corn',
-    price: 1.99,
-    unit: 'per ear',
-    farmer: 'Sunny Acres',
-    rating: 4.7,
-    image:
-      'https://images.pexels.com/photos/547263/pexels-photo-547263.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-];
+import { useDebounce } from '@/hooks/useDebounce';
+import { useSearch } from '@/hooks/useSearch';
+import { useWishlist } from '@/hooks/useWishlist';
+import { useRouter } from 'expo-router';
 
 const popularSearches = [
   'Organic tomatoes',
@@ -53,15 +26,78 @@ const popularSearches = [
   'Seasonal vegetables',
 ];
 
+const categories = [
+  'All',
+  'Vegetables',
+  'Fruits',
+  'Dairy',
+  'Meat',
+  'Bakery',
+  'Beverages',
+];
+
+const sortOptions = [
+  { label: 'Most Recent', value: 'recent' },
+  { label: 'Price: Low to High', value: 'price_asc' },
+  { label: 'Price: High to Low', value: 'price_desc' },
+  { label: 'Name A-Z', value: 'name' },
+];
+
 export default function SearchScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Debounce search query to avoid excessive API calls
+  const debouncedQuery = useDebounce(searchQuery, 400);
+
+  // Use search hook with debounced query and filters
+  const { results, loading, error, filters, setFilters, clearFilters } =
+    useSearch(debouncedQuery);
+
+  // Wishlist functionality
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setIsSearching(query.length > 0);
   };
+
+  const handleProductPress = (product: any) => {
+    router.push({
+      pathname: '/vendor/[vendorId]' as any,
+      params: {
+        vendorId: product.vendor_id,
+        vendorName: product.vendor?.full_name || 'Vendor',
+        vendorAddress: product.vendor?.full_name || '',
+        productId: product.id,
+      },
+    });
+  };
+
+  const handleWishlistToggle = async (productId: string, e: any) => {
+    e.stopPropagation();
+    await toggleWishlist(productId);
+  };
+
+  const handleCategoryFilter = (category: string) => {
+    setFilters({ category: category === 'All' ? null : category });
+  };
+
+  const handleSortChange = (sortValue: string) => {
+    setFilters({ sortBy: sortValue as any });
+  };
+
+  const handleClearFilters = () => {
+    clearFilters();
+    setShowFilters(false);
+  };
+
+  const activeFiltersCount = Object.values(filters).filter(
+    (v) => v !== null && v !== undefined
+  ).length;
+
+  const isSearching = debouncedQuery.length > 0;
 
   return (
     <SafeAreaView
@@ -90,8 +126,18 @@ export default function SearchScreen() {
           onChangeText={handleSearch}
           placeholderTextColor={colors.textSecondary}
         />
-        <TouchableOpacity style={styles.filterButton}>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilters(true)}
+        >
           <Filter size={20} color={colors.success} />
+          {activeFiltersCount > 0 && (
+            <View
+              style={[styles.filterBadge, { backgroundColor: colors.error }]}
+            >
+              <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -155,22 +201,51 @@ export default function SearchScreen() {
               </View>
             </View>
           </>
+        ) : loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Searching...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              {error}
+            </Text>
+          </View>
+        ) : results.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Search size={48} color={colors.textTetiary} />
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No products found
+            </Text>
+            <Text
+              style={[styles.emptySubtext, { color: colors.textSecondary }]}
+            >
+              Try searching with different keywords
+            </Text>
+          </View>
         ) : (
-          // Search Results
+          // Search Results from Database
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Results for &quot;{searchQuery}&quot; ({searchResults.length})
+              {results.length} Result{results.length !== 1 ? 's' : ''} for
+              &quot;{debouncedQuery}&quot;
             </Text>
-            {searchResults.map((product) => (
+            {results.map((product) => (
               <TouchableOpacity
                 key={product.id}
                 style={[
                   styles.resultCard,
                   { backgroundColor: colors.card, shadowColor: colors.text },
                 ]}
+                onPress={() => handleProductPress(product)}
               >
                 <Image
-                  source={{ uri: product.image }}
+                  source={{
+                    uri: product.image_url || 'https://via.placeholder.com/80',
+                  }}
                   style={styles.resultImage}
                 />
                 <View style={styles.resultInfo}>
@@ -183,17 +258,11 @@ export default function SearchScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {product.farmer}
+                    {product.vendor?.full_name || 'Unknown Vendor'}
                   </Text>
-                  <View style={styles.ratingRow}>
-                    <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                    <Text style={[styles.rating, { color: colors.text }]}>
-                      {product.rating}
-                    </Text>
-                  </View>
                   <View style={styles.priceRow}>
-                    <Text style={[styles.price, { color: colors.success }]}>
-                      ${product.price}
+                    <Text style={[styles.price, { color: colors.primary }]}>
+                      ₦{product.price.toLocaleString()}
                     </Text>
                     <Text
                       style={[styles.unit, { color: colors.textSecondary }]}
@@ -202,23 +271,215 @@ export default function SearchScreen() {
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={[
-                    styles.addButton,
-                    { backgroundColor: colors.success },
-                  ]}
-                >
-                  <Text
-                    style={[styles.addButtonText, { color: colors.buttonText }]}
+                <View style={styles.actionsColumn}>
+                  <TouchableOpacity
+                    onPress={(e) => handleWishlistToggle(product.id, e)}
+                    style={[
+                      styles.wishlistButton,
+                      { backgroundColor: colors.filter },
+                    ]}
                   >
-                    Add
-                  </Text>
-                </TouchableOpacity>
+                    <Heart
+                      size={18}
+                      color={
+                        isInWishlist(product.id)
+                          ? colors.error
+                          : colors.textSecondary
+                      }
+                      fill={
+                        isInWishlist(product.id) ? colors.error : 'transparent'
+                      }
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.addButton,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.addButtonText,
+                        { color: colors.buttonText },
+                      ]}
+                    >
+                      Add
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
         )}
       </ScrollView>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilters}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Filters
+              </Text>
+              <TouchableOpacity onPress={() => setShowFilters(false)}>
+                <X size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Category Filter */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterLabel, { color: colors.text }]}>
+                  Category
+                </Text>
+                <View style={styles.filterOptions}>
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[
+                        styles.filterChip,
+                        { borderColor: colors.border },
+                        (category === 'All'
+                          ? !filters.category
+                          : filters.category === category) && {
+                          backgroundColor: colors.secondary,
+                          borderColor: colors.secondary,
+                        },
+                      ]}
+                      onPress={() => handleCategoryFilter(category)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          { color: colors.text },
+                          (category === 'All'
+                            ? !filters.category
+                            : filters.category === category) && {
+                            color: colors.buttonText,
+                          },
+                        ]}
+                      >
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Sort By */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterLabel, { color: colors.text }]}>
+                  Sort By
+                </Text>
+                <View style={styles.filterOptions}>
+                  {sortOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.filterChip,
+                        { borderColor: colors.border },
+                        (filters.sortBy === option.value ||
+                          (!filters.sortBy && option.value === 'recent')) && {
+                          backgroundColor: colors.secondary,
+                          borderColor: colors.secondary,
+                        },
+                      ]}
+                      onPress={() => handleSortChange(option.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          { color: colors.text },
+                          (filters.sortBy === option.value ||
+                            (!filters.sortBy && option.value === 'recent')) && {
+                            color: colors.buttonText,
+                          },
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Price Range */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterLabel, { color: colors.text }]}>
+                  Price Range
+                </Text>
+                <View style={styles.priceInputs}>
+                  <TextInput
+                    style={[
+                      styles.priceInput,
+                      { backgroundColor: colors.filter, color: colors.text },
+                    ]}
+                    placeholder="Min"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    value={filters.minPrice?.toString() || ''}
+                    onChangeText={(text) =>
+                      setFilters({ minPrice: text ? parseFloat(text) : null })
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.priceSeparator,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    to
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.priceInput,
+                      { backgroundColor: colors.filter, color: colors.text },
+                    ]}
+                    placeholder="Max"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    value={filters.maxPrice?.toString() || ''}
+                    onChangeText={(text) =>
+                      setFilters({ maxPrice: text ? parseFloat(text) : null })
+                    }
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Footer Buttons */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.clearButton, { borderColor: colors.border }]}
+                onPress={handleClearFilters}
+              >
+                <Text style={[styles.clearButtonText, { color: colors.text }]}>
+                  Clear All
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.applyButton,
+                  { backgroundColor: colors.secondary },
+                ]}
+                onPress={() => setShowFilters(false)}
+              >
+                <Text
+                  style={[styles.applyButtonText, { color: colors.buttonText }]}
+                >
+                  Apply Filters
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -257,6 +518,22 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     padding: 4,
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   section: {
     marginBottom: 24,
@@ -351,5 +628,142 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontWeight: '600',
     fontSize: 14,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  errorContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  actionsColumn: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  wishlistButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  filterSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  priceInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  priceInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    fontSize: 16,
+  },
+  priceSeparator: {
+    fontSize: 14,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 12,
+  },
+  clearButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  applyButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

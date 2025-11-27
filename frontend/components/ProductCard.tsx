@@ -1,8 +1,10 @@
 // components/ProductCard.tsx
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { Heart } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
+import { useWishlist } from '@/hooks/useWishlist';
 
 interface ProductCardProps {
   id: string;
@@ -14,6 +16,8 @@ interface ProductCardProps {
   stock: number;
   unit: string;
   is_available: boolean;
+  vendor_id?: string;
+  vendor_name?: string;
   onPress?: () => void;
 }
 
@@ -27,15 +31,39 @@ export default function ProductCard({
   stock,
   unit,
   is_available,
+  vendor_id,
+  vendor_name,
   onPress,
 }: ProductCardProps) {
   const { colors } = useTheme();
   const router = useRouter();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+
+  const inWishlist = isInWishlist(id);
 
   const handlePress = () => {
-     if (onPress) {
+    if (onPress) {
       onPress(); // Use custom handler if provided
+      return;
     }
+
+    // Navigate to vendor page with product details
+    if (vendor_id) {
+      router.push({
+        pathname: '/vendor/[vendorId]' as any,
+        params: {
+          vendorId: vendor_id,
+          vendorName: vendor_name || 'Vendor',
+          vendorAddress: vendor_name || '',
+          productId: id,
+        },
+      });
+    }
+  };
+
+  const handleWishlistToggle = async (e: any) => {
+    e.stopPropagation();
+    await toggleWishlist(id);
   };
 
   return (
@@ -58,6 +86,18 @@ export default function ProductCard({
         resizeMode="cover"
       />
 
+      {/* Wishlist button - top right */}
+      <TouchableOpacity
+        onPress={handleWishlistToggle}
+        style={[styles.wishlistButton, { backgroundColor: colors.card }]}
+      >
+        <Heart
+          size={18}
+          color={inWishlist ? colors.error : colors.textSecondary}
+          fill={inWishlist ? colors.error : 'transparent'}
+        />
+      </TouchableOpacity>
+
       {/* Stock Badge */}
       {stock <= 10 && stock > 0 && (
         <View style={[styles.stockBadge, { backgroundColor: colors.warning }]}>
@@ -74,10 +114,7 @@ export default function ProductCard({
 
       {/* Product Info */}
       <View style={styles.info}>
-        <Text
-          style={[styles.name, { color: colors.text }]}
-          numberOfLines={2}
-        >
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
           {name}
         </Text>
 
@@ -98,7 +135,9 @@ export default function ProductCard({
             </Text>
           </View>
 
-          <View style={[styles.categoryBadge, { backgroundColor: colors.filter }]}>
+          <View
+            style={[styles.categoryBadge, { backgroundColor: colors.filter }]}
+          >
             <Text style={[styles.category, { color: colors.textSecondary }]}>
               {category}
             </Text>
@@ -174,5 +213,21 @@ const styles = StyleSheet.create({
   category: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  wishlistButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
   },
 });
