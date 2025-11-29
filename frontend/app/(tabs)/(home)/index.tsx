@@ -3,6 +3,7 @@ import DestinationCard, {
 } from '@/components/DestinationCard';
 import FilterSquare from '@/components/FilterSquare';
 import { ProductSkeleton } from '@/components/ProductSkeleton';
+import { FlourIcon, FruitIcon, GrainsIcon, LegumesIcon, MeatIcon, MilkIcon, SpiceIcon, VegetableIcon } from '@/components/vectors';
 import { useHomeProducts } from '@/hooks/useHomeProducts';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
@@ -23,18 +24,23 @@ import {
 import Carousel from 'react-native-reanimated-carousel';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const categories = [
-  { id: 1, name: 'Fruits', icon: '🍎', color: '#EF4444' },
-  { id: 2, name: 'Vegetable', icon: '🥕', color: '#059669' },
-  { id: 3, name: 'Dairy', icon: '🥛', color: '#3B82F6' },
-  { id: 4, name: 'Grains', icon: '🌾', color: '#D97706' },
-  { id: 5, name: 'Herbs', icon: '🌿', color: '#10B981' },
-];
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { colors } = useTheme();
+  
   const router = useRouter();
+  const { colors } = useTheme();
+
+const categories = [
+  { id: 1, name: 'Fruits', icon: <FruitIcon stroke={colors.primary} strokeWidth={2}/>, color: '#EF4444' },
+  { id: 2, name: 'Vegetable', icon: <VegetableIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#059669' },
+  { id: 3, name: 'Dairy', icon: <MilkIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#3B82F6' },
+  { id: 4, name: 'Grains', icon: <GrainsIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#D97706' },
+  { id: 5, name: 'Spices', icon: <SpiceIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#10B981' },
+  { id: 6, name: 'Meat', icon: <MeatIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#EF4444' },
+  { id: 7, name: 'Legumes', icon: <LegumesIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#F59E0B' },
+  { id: 8, name: 'Flour', icon: <FlourIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#A16207' },
+];
   // const [mode, setMode] = useState<string>('private');
   // const fadeAnim = useRef(new Animated.Value(1)).current;
   const width = Dimensions.get('window').width;
@@ -254,7 +260,7 @@ export default function HomeScreen() {
               {categories.map((category) => (
                 <FilterSquare
                   key={category.id}
-                  icon={<Car color={colors.primary} fill={colors.primary} />}
+                  icon={category.icon}
                   text={category.name}
                 />
               ))}
