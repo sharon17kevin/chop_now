@@ -12,9 +12,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import 'react-native-url-polyfill/auto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+// AsyncStorage.clear(); // For development purposes only
 
 function RootLayoutNav() {
   const { isAuthenticated, hasCompletedOnboarding } = useAuth();
