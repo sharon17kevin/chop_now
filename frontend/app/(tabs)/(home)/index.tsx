@@ -3,7 +3,17 @@ import DestinationCard, {
 } from '@/components/DestinationCard';
 import FilterSquare from '@/components/FilterSquare';
 import { ProductSkeleton } from '@/components/ProductSkeleton';
-import { FlourIcon, FruitIcon, GrainsIcon, LegumesIcon, MeatIcon, MilkIcon, SpiceIcon, VegetableIcon } from '@/components/vectors';
+import {
+  FlourIcon,
+  FruitIcon,
+  GrainsIcon,
+  LegumesIcon,
+  MeatIcon,
+  MilkIcon,
+  OilIcon,
+  SpiceIcon,
+  VegetableIcon,
+} from '@/components/vectors';
 import { useHomeProducts } from '@/hooks/useHomeProducts';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
@@ -19,28 +29,64 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const router = useRouter();
   const { colors } = useTheme();
 
-const categories = [
-  { id: 1, name: 'Fruits', icon: <FruitIcon stroke={colors.primary} strokeWidth={2}/>, color: '#EF4444' },
-  { id: 2, name: 'Vegetable', icon: <VegetableIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#059669' },
-  { id: 3, name: 'Dairy', icon: <MilkIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#3B82F6' },
-  { id: 4, name: 'Grains', icon: <GrainsIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#D97706' },
-  { id: 5, name: 'Spices', icon: <SpiceIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#10B981' },
-  { id: 6, name: 'Meat', icon: <MeatIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#EF4444' },
-  { id: 7, name: 'Legumes', icon: <LegumesIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#F59E0B' },
-  { id: 8, name: 'Flour', icon: <FlourIcon stroke={colors.primary}  strokeWidth={2}/>, color: '#A16207' },
-];
+  const categories = [
+    {
+      id: 1,
+      name: 'Fruits',
+      icon: <FruitIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 6,
+      name: 'Meat',
+      icon: <MeatIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 2,
+      name: 'Vegetable',
+      icon: <VegetableIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 3,
+      name: 'Dairy',
+      icon: <MilkIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 4,
+      name: 'Grains',
+      icon: <GrainsIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 5,
+      name: 'Spices',
+      icon: <SpiceIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 5,
+      name: 'Sauces',
+        icon: <OilIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 7,
+      name: 'Legumes',
+      icon: <LegumesIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 8,
+      name: 'Flour',
+      icon: <FlourIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+  ];
   // const [mode, setMode] = useState<string>('private');
   // const fadeAnim = useRef(new Animated.Value(1)).current;
   const width = Dimensions.get('window').width;

@@ -9,5 +9,6 @@ export default function Layout() {
     <Stack.Screen name="wishlist" options={{ headerShown: false }} />
     <Stack.Screen name="support" options={{ headerShown: false }} />
     <Stack.Screen name="profile" options={{ headerShown: false }} />
+    <Stack.Screen name="vendorReg" options={{ headerShown: false }} />
   </Stack>
 }

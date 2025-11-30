@@ -24,6 +24,8 @@ import {
   ChevronRight,
   Star,
   Package,
+  Store,
+  AlertCircle,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
@@ -269,6 +271,41 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Profile Verification Banner - Show for all unverified users */}
+        {profile && !profile.verified && (
+          <TouchableOpacity
+            style={[
+              styles.vendorBanner,
+              {
+                backgroundColor: colors.warning + '15',
+                borderColor: colors.warning + '40',
+              },
+            ]}
+            onPress={() => router.push('/(tabs)/(profile)/vendorReg' as any)}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.vendorIconContainer,
+                { backgroundColor: colors.warning },
+              ]}
+            >
+              <AlertCircle size={24} color="#FFF" />
+            </View>
+            <View style={styles.vendorTextContainer}>
+              <Text style={[styles.vendorTitle, { color: colors.text }]}>
+                Verify Your Profile
+              </Text>
+              <Text
+                style={[styles.vendorSubtitle, { color: colors.textSecondary }]}
+              >
+                Complete your profile verification to unlock all features
+              </Text>
+            </View>
+            <ChevronRight size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         {/* Recent Orders */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <View style={styles.sectionHeader}>
@@ -496,6 +533,37 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     marginLeft: 2,
+  },
+  vendorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  vendorIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  vendorTextContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  vendorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  vendorSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   section: {
     marginBottom: 20,
