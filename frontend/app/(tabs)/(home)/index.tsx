@@ -1,6 +1,7 @@
 import { DestinationMiniCard } from '@/components/DestinationCard';
 import FilterSquare from '@/components/FilterSquare';
 import { ProductSkeleton } from '@/components/ProductSkeleton';
+import GridProductCard from '@/components/GridProductCard';
 import {
   FlourIcon,
   FruitIcon,
@@ -12,12 +13,17 @@ import {
   SpiceIcon,
   VegetableIcon,
 } from '@/components/vectors';
-import { useProductStore, CategoryFilter } from '@/stores/useProductStore';
+import {
+  useProductStore,
+  getHotDeals,
+  getFreshPicks,
+  CategoryFilter,
+} from '@/stores/useProductStore';
+import { useProducts } from '@/hooks/useProducts';
 import { useTheme } from '@/hooks/useTheme';
-import { useWishlist } from '@/hooks/useWishlist';
 import { useRouter } from 'expo-router';
-import { Bell, MapPin, Search, Star, Heart } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import { Bell, MapPin, Search, Star } from 'lucide-react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dimensions,
   Image,
@@ -37,7 +43,6 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const { colors } = useTheme();
-  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const categories = [
     {
@@ -95,28 +100,31 @@ export default function HomeScreen() {
   // const fadeAnim = useRef(new Animated.Value(1)).current;
   const width = Dimensions.get('window').width;
 
-  // Use Zustand store for product management
+  // Use React Query for data fetching with Zustand for UI state
+  const { selectedCategory, setCategory, loadMoreFreshPicks } =
+    useProductStore();
   const {
-    loading,
-    refreshing,
+    products,
+    totalCount,
+    freshPicksLimit,
+    isLoading,
+    isRefetching,
     error,
-    selectedCategory,
-    fetchProducts,
-    refreshProducts,
-    setCategory,
-    getHotDeals,
-    getFreshPicks,
-  } = useProductStore();
+    refetch,
+  } = useProducts();
 
-  // Fetch products on mount
-  useEffect(() => {
-    console.log('🏠 HomeScreen: Fetching products on mount...');
-    fetchProducts();
-  }, [fetchProducts]);
+  // Get smart product selections from the fetched products
+  const hotDealsProducts = useMemo(() => getHotDeals(products), [products]);
+  const freshPicksProducts = useMemo(
+    () => getFreshPicks(products, freshPicksLimit),
+    [products, freshPicksLimit]
+  );
+  const hasMoreProducts = totalCount > freshPicksLimit;
 
-  // Get smart product selections
-  const hotDealsProducts = getHotDeals();
-  const freshPicksProducts = getFreshPicks();
+  // Memoized handler for load more
+  const handleLoadMore = useCallback(() => {
+    loadMoreFreshPicks();
+  }, [loadMoreFreshPicks]);
 
   // Debug logging
   useEffect(() => {
@@ -124,10 +132,16 @@ export default function HomeScreen() {
       selectedCategory,
       hotDeals: hotDealsProducts.length,
       freshPicks: freshPicksProducts.length,
-      loading,
+      isLoading,
       error,
     });
-  }, [hotDealsProducts, freshPicksProducts, selectedCategory, loading, error]);
+  }, [
+    hotDealsProducts,
+    freshPicksProducts,
+    selectedCategory,
+    isLoading,
+    error,
+  ]);
 
   // Handle category filter click
   const handleCategoryPress = (categoryName: string) => {
@@ -227,7 +241,8 @@ export default function HomeScreen() {
           }}
         >
           <Text style={{ color: colors.buttonText, fontSize: 14 }}>
-            Error: {error}
+            Error:{' '}
+            {error instanceof Error ? error.message : 'Failed to load products'}
           </Text>
         </View>
       )}
@@ -260,8 +275,8 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={refreshProducts}
+              refreshing={isRefetching}
+              onRefresh={() => refetch()}
               tintColor={colors.primary}
               colors={[colors.primary]}
             />
@@ -362,7 +377,7 @@ export default function HomeScreen() {
                 🔥 Hot Deals Near You
               </Text>
             </View>
-            {loading ? (
+            {isLoading ? (
               <View style={{ width: '100%', paddingHorizontal: 20 }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <ProductSkeleton variant="carousel" />
@@ -420,7 +435,7 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            {loading ? (
+            {isLoading ? (
               <View style={styles.part}>
                 <View
                   style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}
@@ -452,110 +467,44 @@ export default function HomeScreen() {
                   }}
                 >
                   {freshPicksProducts.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      activeOpacity={0.9}
-                      onPress={() => router.push(`/product/${item.id}` as any)}
-                      style={[
-                        {
-                          ...styles.gridProductCard,
-                          backgroundColor: colors.card,
-                          shadowColor: colors.text,
-                        },
-                      ]}
-                    >
-                      <View style={{ position: 'relative' }}>
-                        <Image
-                          source={{
-                            uri:
-                              item.image_url ||
-                              'https://via.placeholder.com/200',
-                          }}
-                          style={styles.gridProductImage}
-                        />
-                        {/* Wishlist button */}
-                        <TouchableOpacity
-                          onPress={async (e) => {
-                            e.stopPropagation();
-                            await toggleWishlist(item.id);
-                          }}
-                          style={[
-                            styles.gridWishlistButton,
-                            { backgroundColor: colors.card },
-                          ]}
-                        >
-                          <Heart
-                            size={16}
-                            color={
-                              isInWishlist(item.id)
-                                ? colors.error
-                                : colors.textSecondary
-                            }
-                            fill={
-                              isInWishlist(item.id)
-                                ? colors.error
-                                : 'transparent'
-                            }
-                          />
-                        </TouchableOpacity>
-                      </View>
-                      <View style={styles.gridProductInfo}>
-                        <Text
-                          style={{
-                            ...styles.productName,
-                            color: colors.text,
-                            fontSize: 14,
-                          }}
-                          numberOfLines={2}
-                        >
-                          {item.name}
-                        </Text>
-                        <Text
-                          style={{
-                            ...styles.farmerName,
-                            color: colors.textSecondary,
-                            fontSize: 12,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {item.profiles?.full_name || 'Vendor'}
-                        </Text>
-                        <View style={styles.ratingRow}>
-                          <Star size={10} color="#FCD34D" fill="#FCD34D" />
-                          <Text
-                            style={{
-                              ...styles.rating,
-                              color: colors.text,
-                              fontSize: 11,
-                            }}
-                          >
-                            {item.rating || 4.5}
-                          </Text>
-                        </View>
-                        <View style={styles.priceRow}>
-                          <Text
-                            style={{
-                              ...styles.price,
-                              color: colors.primary,
-                              fontSize: 16,
-                            }}
-                          >
-                            ₦{item.price.toLocaleString()}
-                          </Text>
-                          <Text
-                            style={{
-                              ...styles.unit,
-                              color: colors.textSecondary,
-                              fontSize: 11,
-                            }}
-                          >
-                            /{item.unit}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
+                    <GridProductCard key={item.id} product={item} />
                   ))}
                 </View>
+                {/* Load More Button */}
+                <TouchableOpacity
+                  onPress={hasMoreProducts ? handleLoadMore : undefined}
+                  disabled={!hasMoreProducts}
+                  style={{
+                    marginTop: 16,
+                    paddingVertical: 12,
+                    paddingHorizontal: 24,
+                    backgroundColor: hasMoreProducts
+                      ? colors.card
+                      : colors.background,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: hasMoreProducts
+                      ? colors.primary
+                      : colors.border,
+                    alignSelf: 'center',
+                    opacity: hasMoreProducts ? 1 : 0.5,
+                  }}
+                  activeOpacity={hasMoreProducts ? 0.7 : 1}
+                >
+                  <Text
+                    style={{
+                      color: hasMoreProducts
+                        ? colors.primary
+                        : colors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {hasMoreProducts
+                      ? `Load More (${totalCount - freshPicksLimit} remaining)`
+                      : 'All products loaded'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <View style={{ padding: 40, alignItems: 'center' }}>
@@ -852,20 +801,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     width: '48%', // 2 columns with gap
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
     marginBottom: 12,
   },
   gridProductImage: {
     width: '100%',
-    height: 140,
+    height: 160,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
   gridProductInfo: {
-    padding: 12,
+    padding: 14,
   },
   gridWishlistButton: {
     position: 'absolute',

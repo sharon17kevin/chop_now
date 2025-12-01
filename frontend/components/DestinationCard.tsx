@@ -138,7 +138,7 @@ const DestinationCard = ({
           <View
             style={[styles.categoryCard, { backgroundColor: colors.secondary }]}
           >
-            <Text>{category}</Text>
+            <Text style={{ color: colors.text }}>{category || 'General'}</Text>
           </View>
         </View>
         <View style={styles.statsContainer}>
@@ -307,9 +307,9 @@ export const DestinationMiniCard = ({
             {name}
           </Text>
           <Text numberOfLines={2} style={[{ color: colors.text }]}>
-            {address} |
+            {address}
             <Text style={{ color: isOpen ? colors.success : colors.error }}>
-              {isOpen ? ' Open' : ' Closed'}
+              {isOpen ? ' | Open' : ' | Closed'}
             </Text>
           </Text>
           <View style={{ flexDirection: 'row', gap: 5 }}>

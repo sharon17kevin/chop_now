@@ -40,262 +40,76 @@ export type CategoryFilter =
 export type SortOption = 'recent' | 'price_asc' | 'price_desc' | 'name' | 'popular';
 
 interface ProductState {
-  // All products from database
-  allProducts: Product[];
-  
-  // Filtered products
-  filteredProducts: Product[];
-  
   // Current selected category
   selectedCategory: CategoryFilter;
   
   // Current sort option
   sortBy: SortOption;
   
-  // Cache management
-  lastFetchTime: number | null;
-  cacheExpiryTime: number; // 5 minutes in milliseconds
-  
-  // Loading states
-  loading: boolean;
-  refreshing: boolean;
-  error: string | null;
+  // Fresh picks pagination
+  freshPicksLimit: number;
   
   // Actions
-  fetchProducts: () => Promise<void>;
   setCategory: (category: CategoryFilter) => void;
   setSortBy: (sort: SortOption) => void;
-  refreshProducts: () => Promise<void>;
-  
-  // Smart Selectors
-  getHotDeals: () => Product[];
-  getTrendingProducts: () => Product[];
-  getFreshPicks: () => Product[];
+  loadMoreFreshPicks: () => void;
+  resetFreshPicksLimit: () => void;
 }
 
-export const useProductStore = create<ProductState>((set, get) => ({
-  allProducts: [],
-  filteredProducts: [],
+export const useProductStore = create<ProductState>((set) => ({
   selectedCategory: 'All',
   sortBy: 'recent',
-  lastFetchTime: null,
-  cacheExpiryTime: 5 * 60 * 1000, // 5 minutes
-  loading: false,
-  refreshing: false,
-  error: null,
-
-  fetchProducts: async () => {
-    try {
-      const { lastFetchTime, cacheExpiryTime, allProducts } = get();
-      const now = Date.now();
-
-      // Check if cache is still valid
-      if (
-        lastFetchTime && 
-        allProducts.length > 0 && 
-        now - lastFetchTime < cacheExpiryTime
-      ) {
-        console.log('📦 ProductStore: Using cached products');
-        return;
-      }
-
-      set({ loading: true, error: null });
-
-      console.log('📦 ProductStore: Fetching products from database...');
-
-      const { data: products, error: queryError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          profiles:vendor_id (full_name)
-        `)
-        .eq('is_available', true)
-        .order('created_at', { ascending: false });
-
-      if (queryError) {
-        console.error('❌ ProductStore: Query error:', queryError);
-        throw queryError;
-      }
-
-      console.log('✅ ProductStore: Fetched', products?.length || 0, 'products');
-      if (products && products.length > 0) {
-        console.log('📊 ProductStore: Sample product:', products[0]);
-        console.log('📊 ProductStore: All unique categories:', 
-          [...new Set(products.map(p => p.category).filter(Boolean))].join(', ')
-        );
-      }
-
-      // Apply initial filtering based on selected category
-      const { selectedCategory } = get();
-      const filtered = selectedCategory === 'All'
-        ? products || []
-        : (products || []).filter(product => {
-            const productCategory = product.category?.toLowerCase() || '';
-            const selected = selectedCategory.toLowerCase();
-            return productCategory === selected;
-          });
-
-      set({ 
-        allProducts: products || [],
-        filteredProducts: filtered,
-        lastFetchTime: now,
-        loading: false 
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
-      console.error('❌ ProductStore: Error fetching products:', errorMessage);
-      set({ error: errorMessage, loading: false });
-    }
-  },
-
-  refreshProducts: async () => {
-    try {
-      set({ refreshing: true, error: null });
-
-      const { data: products, error: queryError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          profiles:vendor_id (full_name)
-        `)
-        .eq('is_available', true)
-        .order('created_at', { ascending: false });
-
-      if (queryError) throw queryError;
-
-      const { selectedCategory } = get();
-      const filtered = selectedCategory === 'All' 
-        ? products || []
-        : (products || []).filter(p => {
-            const productCategory = p.category?.toLowerCase() || '';
-            const selected = selectedCategory.toLowerCase();
-            return productCategory === selected;
-          });
-
-      set({ 
-        allProducts: products || [],
-        filteredProducts: filtered,
-        lastFetchTime: Date.now(),
-        refreshing: false 
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh products';
-      console.error('❌ ProductStore: Error refreshing:', errorMessage);
-      set({ error: errorMessage, refreshing: false });
-    }
-  },
+  freshPicksLimit: 10,
 
   setCategory: (category: CategoryFilter) => {
-    const { allProducts, sortBy } = get();
-    
-    // Filter by category
-    let filtered = category === 'All'
-      ? allProducts
-      : allProducts.filter(product => {
-          const productCategory = product.category?.toLowerCase() || '';
-          const selectedCategory = category.toLowerCase();
-          return productCategory === selectedCategory;
-        });
-
-    // Apply current sort
-    filtered = sortProducts(filtered, sortBy);
-
-    console.log('🔍 ProductStore: Category changed to', category, '- Filtered:', filtered.length, 'products');
-    if (filtered.length === 0 && category !== 'All') {
-      console.log('⚠️ ProductStore: No products found. Available categories:', 
-        [...new Set(allProducts.map(p => p.category).filter(Boolean))].join(', ')
-      );
-    }
-
-    set({ 
-      selectedCategory: category,
-      filteredProducts: filtered 
-    });
+    console.log('🔍 ProductStore: Category changed to', category);
+    set({ selectedCategory: category, freshPicksLimit: 10 }); // Reset limit on category change
   },
 
   setSortBy: (sort: SortOption) => {
-    const { filteredProducts } = get();
-    const sorted = sortProducts([...filteredProducts], sort);
-    
     console.log('🔄 ProductStore: Sort changed to', sort);
-    
-    set({ 
-      sortBy: sort,
-      filteredProducts: sorted 
-    });
+    set({ sortBy: sort });
   },
 
-  // Smart Selectors
-  getHotDeals: () => {
-    const { filteredProducts } = get();
-    const now = new Date();
-    
-    // Get products on sale that haven't expired
-    let activeDeals = filteredProducts.filter(p => {
-      if (!p.is_on_sale) return false;
-      if (p.sale_ends_at && new Date(p.sale_ends_at) < now) return false;
-      return true;
-    });
-    
-    // If we have active deals, sort by discount percentage (highest first)
-    if (activeDeals.length > 0) {
-      return activeDeals
-        .sort((a, b) => (b.discount_percentage || 0) - (a.discount_percentage || 0))
-        .slice(0, 10);
-    }
-    
-    // Fallback: If no deals exist, return first 10 filtered products
-    console.log('⚠️ ProductStore: No active deals found, showing regular products');
-    return filteredProducts.slice(0, 10);
+  loadMoreFreshPicks: () => {
+    set((state) => ({ freshPicksLimit: state.freshPicksLimit + 10 }));
   },
 
-  getTrendingProducts: () => {
-    const { allProducts } = get();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const recentProducts = allProducts
-      .filter(p => new Date(p.created_at) >= sevenDaysAgo)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 10);
-    
-    // If no recent products, return most recent 10
-    if (recentProducts.length === 0) {
-      return allProducts
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 10);
-    }
-    
-    return recentProducts;
-  },
-
-  getFreshPicks: () => {
-    const { filteredProducts } = get();
-    
-    // Group products by category
-    const byCategory: { [key: string]: Product[] } = {};
-    filteredProducts.forEach(product => {
-      const cat = product.category || 'Other';
-      if (!byCategory[cat]) byCategory[cat] = [];
-      byCategory[cat].push(product);
-    });
-
-    // Take 1-2 products from each category for diversity
-    const picks: Product[] = [];
-    Object.values(byCategory).forEach(categoryProducts => {
-      const count = Math.min(2, categoryProducts.length);
-      picks.push(...categoryProducts.slice(0, count));
-    });
-
-    // Shuffle and return up to 20 products
-    return picks
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 20);
+  resetFreshPicksLimit: () => {
+    set({ freshPicksLimit: 10 });
   },
 }));
 
+// Fetch products from Supabase
+export async function fetchProductsByCategory(category: CategoryFilter): Promise<Product[]> {
+  console.log('📦 Fetching products for category:', category);
+
+  const query = supabase
+    .from('products')
+    .select(`
+      *,
+      profiles:vendor_id (full_name)
+    `)
+    .eq('is_available', true);
+
+  // Apply category filter
+  if (category !== 'All') {
+    query.eq('category', category);
+  }
+
+  const { data: products, error } = await query.order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ Error fetching products:', error);
+    throw error;
+  }
+
+  console.log('✅ Fetched', products?.length || 0, 'products');
+  return products || [];
+}
+
 // Helper function to sort products
-function sortProducts(products: Product[], sortBy: SortOption): Product[] {
+export function sortProducts(products: Product[], sortBy: SortOption): Product[] {
   const sorted = [...products];
   
   switch (sortBy) {
@@ -313,4 +127,54 @@ function sortProducts(products: Product[], sortBy: SortOption): Product[] {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
   }
+}
+
+// Smart Selectors
+export function getHotDeals(products: Product[]): Product[] {
+  const now = new Date();
+  
+  // Get products on sale that haven't expired
+  let activeDeals = products.filter(p => {
+    if (!p.is_on_sale) return false;
+    if (p.sale_ends_at && new Date(p.sale_ends_at) < now) return false;
+    return true;
+  });
+  
+  // If we have active deals, sort by discount percentage (highest first)
+  if (activeDeals.length > 0) {
+    return activeDeals
+      .sort((a, b) => (b.discount_percentage || 0) - (a.discount_percentage || 0))
+      .slice(0, 10);
+  }
+  
+  // Fallback: If no deals exist, return first 10 products
+  console.log('⚠️ No active deals found, showing regular products');
+  return products.slice(0, 10);
+}
+
+export function getTrendingProducts(products: Product[]): Product[] {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  
+  const recentProducts = products
+    .filter(p => new Date(p.created_at) >= sevenDaysAgo)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 10);
+  
+  // If no recent products, return most recent 10
+  if (recentProducts.length === 0) {
+    return products
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 10);
+  }
+  
+  return recentProducts;
+}
+
+export function getFreshPicks(products: Product[], limit: number = 10): Product[] {
+  // Return first N products sorted by creation date (newest first)
+  // The products are already filtered by category from the React Query hook
+  return products
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, limit);
 }

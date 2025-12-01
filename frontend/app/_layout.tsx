@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { QueryProvider } from '@/providers/QueryProvider';
 
 import 'react-native-url-polyfill/auto';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -94,9 +95,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <RootLayoutNav />
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <RootLayoutNav />
+            </AuthProvider>
+          </QueryProvider>
           {/* <StatusBar style="auto" /> */}
         </ThemeProvider>
       </SafeAreaProvider>
