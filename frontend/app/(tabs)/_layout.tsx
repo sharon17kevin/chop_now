@@ -1,9 +1,16 @@
 import { useTheme } from '@/hooks/useTheme';
+import { useRole } from '@/hooks/useRole';
 import { Tabs } from 'expo-router';
 import { Home, Plus, Search, ShoppingBag, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const { profile } = useRole();
+
+  // Only show sell tab for verified vendors
+  const isVerifiedVendor =
+    profile?.role === 'vendor' && profile?.verified === true;
+
   return (
     <Tabs
       screenOptions={{
@@ -39,6 +46,7 @@ export default function TabLayout() {
         options={{
           title: 'Sell',
           tabBarIcon: ({ size, color }) => <Plus size={size} color={color} />,
+          href: isVerifiedVendor ? '/(tabs)/sell' : null,
         }}
       />
       <Tabs.Screen

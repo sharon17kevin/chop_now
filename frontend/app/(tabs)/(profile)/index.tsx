@@ -31,6 +31,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStore } from '@/stores/useUserStore';
+import { useRole } from '@/hooks/useRole';
 import { useOrders } from '@/hooks/useOrders';
 import { formatTimeAgo } from '@/utils/time';
 import * as SecureStore from 'expo-secure-store';
@@ -93,6 +94,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { logout } = useAuth();
   const { profile, fetchProfile } = useUserStore();
+  const { isVendor } = useRole();
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -294,12 +296,16 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.vendorTextContainer}>
               <Text style={[styles.vendorTitle, { color: colors.text }]}>
-                Verify Your Profile
+                {isVendor
+                  ? 'Vendor Verification Pending'
+                  : 'Verify Your Profile'}
               </Text>
               <Text
                 style={[styles.vendorSubtitle, { color: colors.textSecondary }]}
               >
-                Complete your profile verification to unlock all features
+                {isVendor
+                  ? 'Your vendor account is under review (2-3 business days)'
+                  : 'Complete verification to unlock vendor features'}
               </Text>
             </View>
             <ChevronRight size={20} color={colors.textSecondary} />

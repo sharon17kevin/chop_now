@@ -1,6 +1,4 @@
-import DestinationCard, {
-  DestinationMiniCard,
-} from '@/components/DestinationCard';
+import { DestinationMiniCard } from '@/components/DestinationCard';
 import FilterSquare from '@/components/FilterSquare';
 import { ProductSkeleton } from '@/components/ProductSkeleton';
 import {
@@ -14,14 +12,14 @@ import {
   SpiceIcon,
   VegetableIcon,
 } from '@/components/vectors';
-import { useHomeProducts } from '@/hooks/useHomeProducts';
+import { useProductStore, CategoryFilter } from '@/stores/useProductStore';
 import { useTheme } from '@/hooks/useTheme';
+import { useWishlist } from '@/hooks/useWishlist';
 import { useRouter } from 'expo-router';
-import { Bell, Car, MapPin, Search, Star } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { Bell, MapPin, Search, Star, Heart } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
 import {
   Dimensions,
-  FlatList,
   Image,
   RefreshControl,
   ScrollView,
@@ -39,6 +37,7 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const { colors } = useTheme();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const categories = [
     {
@@ -47,60 +46,93 @@ export default function HomeScreen() {
       icon: <FruitIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 6,
+      id: 2,
       name: 'Meat',
       icon: <MeatIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 2,
+      id: 3,
       name: 'Vegetable',
       icon: <VegetableIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 3,
+      id: 4,
       name: 'Dairy',
       icon: <MilkIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 4,
+      id: 5,
       name: 'Grains',
       icon: <GrainsIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 5,
+      id: 6,
       name: 'Spices',
       icon: <SpiceIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 5,
+      id: 7,
       name: 'Sauces',
-        icon: <OilIcon stroke={colors.primary} strokeWidth={2} />,
+      icon: <OilIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 7,
+      id: 8,
       name: 'Legumes',
       icon: <LegumesIcon stroke={colors.primary} strokeWidth={2} />,
     },
     {
-      id: 8,
+      id: 9,
       name: 'Flour',
       icon: <FlourIcon stroke={colors.primary} strokeWidth={2} />,
+    },
+    {
+      id: 10,
+      name: 'Essentials',
+      icon: <Star size={24} color={colors.primary} strokeWidth={2} />,
     },
   ];
   // const [mode, setMode] = useState<string>('private');
   // const fadeAnim = useRef(new Animated.Value(1)).current;
   const width = Dimensions.get('window').width;
 
-  // Use custom hook for product data management
+  // Use Zustand store for product management
   const {
-    topRatedProducts,
-    readyToEatProducts,
-    recommendedProducts,
     loading,
     refreshing,
     error,
-    handleRefresh,
-  } = useHomeProducts();
+    selectedCategory,
+    fetchProducts,
+    refreshProducts,
+    setCategory,
+    getHotDeals,
+    getFreshPicks,
+  } = useProductStore();
+
+  // Fetch products on mount
+  useEffect(() => {
+    console.log('🏠 HomeScreen: Fetching products on mount...');
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Get smart product selections
+  const hotDealsProducts = getHotDeals();
+  const freshPicksProducts = getFreshPicks();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🏠 Products updated:', {
+      selectedCategory,
+      hotDeals: hotDealsProducts.length,
+      freshPicks: freshPicksProducts.length,
+      loading,
+      error,
+    });
+  }, [hotDealsProducts, freshPicksProducts, selectedCategory, loading, error]);
+
+  // Handle category filter click
+  const handleCategoryPress = (categoryName: string) => {
+    setCategory(categoryName as CategoryFilter);
+  };
 
   // Handle search submission
   const handleSearchSubmit = () => {
@@ -229,7 +261,7 @@ export default function HomeScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={handleRefresh}
+              onRefresh={refreshProducts}
               tintColor={colors.primary}
               colors={[colors.primary]}
             />
@@ -303,21 +335,31 @@ export default function HomeScreen() {
                 paddingHorizontal: 16,
               }}
             >
+              {/* All Category */}
+              <FilterSquare
+                key="all"
+                icon={<Search size={24} color={colors.primary} />}
+                text="All"
+                onPress={() => handleCategoryPress('All')}
+                isSelected={selectedCategory === 'All'}
+              />
               {categories.map((category) => (
                 <FilterSquare
                   key={category.id}
                   icon={category.icon}
                   text={category.name}
+                  onPress={() => handleCategoryPress(category.name)}
+                  isSelected={selectedCategory === category.name}
                 />
               ))}
             </ScrollView>
           </View>
 
-          {/* Top Rated*/}
+          {/* Hot Deals Near You */}
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={styles.part}>
               <Text style={{ ...styles.sectionTitle, color: colors.text }}>
-                Top Rated Near You
+                🔥 Hot Deals Near You
               </Text>
             </View>
             {loading ? (
@@ -328,25 +370,29 @@ export default function HomeScreen() {
                   <ProductSkeleton variant="carousel" />
                 </ScrollView>
               </View>
-            ) : topRatedProducts.length > 0 ? (
+            ) : hotDealsProducts.length > 0 ? (
               <View style={{ width: '100%' }}>
                 <Carousel
                   loop
                   autoPlay
-                  autoPlayInterval={2000}
+                  autoPlayInterval={3000}
                   width={300}
                   height={250}
-                  data={topRatedProducts}
+                  data={hotDealsProducts}
                   renderItem={({ item }) => (
                     <DestinationMiniCard
-                      image={item.image_url}
+                      image={
+                        item.image_url || 'https://via.placeholder.com/200'
+                      }
                       name={item.name}
                       address={item.profiles?.full_name || 'Vendor'}
                       isOpen={true}
-                      category={item.category}
+                      category={item.category || 'Other'}
                       productId={item.id}
                       vendorId={item.vendor_id}
                       vendorName={item.profiles?.full_name}
+                      discount={item.discount_percentage}
+                      originalPrice={item.original_price}
                     />
                   )}
                   style={{
@@ -366,164 +412,151 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* Ready To Eat */}
-          <View style={{ width: '100%', marginBottom: 20 }}>
-            <View style={styles.part}>
-              <Text style={{ ...styles.sectionTitle, color: colors.text }}>
-                Ready To Eat
-              </Text>
-              {loading ? (
-                <View style={{ paddingVertical: 10, gap: 16 }}>
-                  <ProductSkeleton variant="list" />
-                  <ProductSkeleton variant="list" />
-                  <ProductSkeleton variant="list" />
-                </View>
-              ) : readyToEatProducts.length > 0 ? (
-                <View
-                  style={{
-                    paddingVertical: 10,
-                    gap: 16,
-                  }}
-                >
-                  {readyToEatProducts.map((item) => (
-                    <DestinationCard
-                      id={item.id}
-                      description={item.description}
-                      key={item.id}
-                      image={item.image_url}
-                      name={item.name}
-                      address={item.profiles?.full_name || 'Vendor'}
-                      category={item.category}
-                      isOpen={item.is_available}
-                      price={item.price}
-                      vendorId={item.vendor_id}
-                      vendorName={item.profiles?.full_name}
-                      productId={item.id}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={{ padding: 40, alignItems: 'center' }}>
-                  <Text style={{ color: colors.textSecondary }}>
-                    No products available
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Recommendations */}
+          {/* Fresh Picks */}
           <View style={{ width: '100%', paddingBottom: 10, marginBottom: 20 }}>
             <View style={styles.part}>
               <Text style={{ ...styles.sectionTitle, color: colors.text }}>
-                Recommendations
+                ✨ Fresh Picks For You
               </Text>
             </View>
 
             {loading ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                }}
-              >
-                <ProductSkeleton variant="card" />
-                <ProductSkeleton variant="card" />
-                <ProductSkeleton variant="card" />
-              </ScrollView>
-            ) : recommendedProducts.length > 0 ? (
-              <FlatList
-                data={recommendedProducts}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                }}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    style={[
-                      {
-                        ...styles.productCard,
-                        backgroundColor: colors.card,
-                        shadowColor: colors.text,
-                      },
-                      { marginRight: 16 },
-                    ]}
-                  >
-                    <Image
-                      source={{ uri: item.image_url }}
-                      style={styles.productImage}
-                    />
-                    <View style={styles.productInfo}>
-                      <Text
-                        style={{ ...styles.productName, color: colors.text }}
-                      >
-                        {item.name}
-                      </Text>
-                      <Text
-                        style={{
-                          ...styles.farmerName,
-                          color: colors.textSecondary,
-                        }}
-                      >
-                        {item.profiles?.full_name || 'Vendor'}
-                      </Text>
-                      <View style={styles.ratingRow}>
-                        <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                        <Text style={{ ...styles.rating, color: colors.text }}>
-                          {item.rating || 4.5}
+              <View style={styles.part}>
+                <View
+                  style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <ProductSkeleton variant="card" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ProductSkeleton variant="card" />
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <ProductSkeleton variant="card" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ProductSkeleton variant="card" />
+                  </View>
+                </View>
+              </View>
+            ) : freshPicksProducts.length > 0 ? (
+              <View style={styles.part}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: 12,
+                    paddingVertical: 10,
+                  }}
+                >
+                  {freshPicksProducts.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      activeOpacity={0.9}
+                      onPress={() => router.push(`/product/${item.id}` as any)}
+                      style={[
+                        {
+                          ...styles.gridProductCard,
+                          backgroundColor: colors.card,
+                          shadowColor: colors.text,
+                        },
+                      ]}
+                    >
+                      <View style={{ position: 'relative' }}>
+                        <Image
+                          source={{
+                            uri:
+                              item.image_url ||
+                              'https://via.placeholder.com/200',
+                          }}
+                          style={styles.gridProductImage}
+                        />
+                        {/* Wishlist button */}
+                        <TouchableOpacity
+                          onPress={async (e) => {
+                            e.stopPropagation();
+                            await toggleWishlist(item.id);
+                          }}
+                          style={[
+                            styles.gridWishlistButton,
+                            { backgroundColor: colors.card },
+                          ]}
+                        >
+                          <Heart
+                            size={16}
+                            color={
+                              isInWishlist(item.id)
+                                ? colors.error
+                                : colors.textSecondary
+                            }
+                            fill={
+                              isInWishlist(item.id)
+                                ? colors.error
+                                : 'transparent'
+                            }
+                          />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.gridProductInfo}>
+                        <Text
+                          style={{
+                            ...styles.productName,
+                            color: colors.text,
+                            fontSize: 14,
+                          }}
+                          numberOfLines={2}
+                        >
+                          {item.name}
                         </Text>
                         <Text
                           style={{
-                            ...styles.location,
+                            ...styles.farmerName,
                             color: colors.textSecondary,
+                            fontSize: 12,
                           }}
+                          numberOfLines={1}
                         >
-                          • {item.stock} in stock
+                          {item.profiles?.full_name || 'Vendor'}
                         </Text>
+                        <View style={styles.ratingRow}>
+                          <Star size={10} color="#FCD34D" fill="#FCD34D" />
+                          <Text
+                            style={{
+                              ...styles.rating,
+                              color: colors.text,
+                              fontSize: 11,
+                            }}
+                          >
+                            {item.rating || 4.5}
+                          </Text>
+                        </View>
+                        <View style={styles.priceRow}>
+                          <Text
+                            style={{
+                              ...styles.price,
+                              color: colors.primary,
+                              fontSize: 16,
+                            }}
+                          >
+                            ₦{item.price.toLocaleString()}
+                          </Text>
+                          <Text
+                            style={{
+                              ...styles.unit,
+                              color: colors.textSecondary,
+                              fontSize: 11,
+                            }}
+                          >
+                            /{item.unit}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={styles.priceRow}>
-                        <Text
-                          style={{ ...styles.price, color: colors.primary }}
-                        >
-                          ₦{item.price.toLocaleString()}
-                        </Text>
-                        <Text
-                          style={{
-                            ...styles.unit,
-                            color: colors.textSecondary,
-                          }}
-                        >
-                          {item.unit}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={{
-                          ...styles.addToCartButton,
-                          backgroundColor: colors.primary,
-                        }}
-                      >
-                        <Text style={styles.addToCartText}>Add to Cart</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                )}
-                snapToInterval={200 + 16}
-                decelerationRate="fast"
-                snapToAlignment="start"
-                nestedScrollEnabled
-                directionalLockEnabled
-                getItemLayout={(_, index) => ({
-                  length: 200 + 16,
-                  offset: (200 + 16) * index,
-                  index,
-                })}
-              />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             ) : (
               <View style={{ padding: 40, alignItems: 'center' }}>
                 <Text style={{ color: colors.textSecondary }}>
@@ -813,5 +846,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#78716C',
     marginBottom: 4,
+  },
+  gridProductCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    width: '48%', // 2 columns with gap
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    marginBottom: 12,
+  },
+  gridProductImage: {
+    width: '100%',
+    height: 140,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  gridProductInfo: {
+    padding: 12,
+  },
+  gridWishlistButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
   },
 });

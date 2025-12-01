@@ -180,6 +180,8 @@ export const DestinationMiniCard = ({
   productId,
   vendorId,
   vendorName,
+  discount,
+  originalPrice,
 }: Pick<
   Props,
   | 'image'
@@ -190,7 +192,10 @@ export const DestinationMiniCard = ({
   | 'productId'
   | 'vendorId'
   | 'vendorName'
->) => {
+> & {
+  discount?: number | null;
+  originalPrice?: number | null;
+}) => {
   const { colors } = useTheme();
   const router = useRouter();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -255,21 +260,29 @@ export const DestinationMiniCard = ({
       >
         <Image source={{ uri: image }} style={styles.image} />
 
-        <View
-          style={{
-            position: 'absolute',
-            top: 10,
-            left: 10,
-            backgroundColor: colors.secondary,
-            borderRadius: 10,
-            paddingVertical: 3,
-            paddingHorizontal: 8,
-          }}
-        >
-          <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
-            30% OFF
-          </Text>
-        </View>
+        {/* Deal badge - only show if discount exists */}
+        {discount && discount > 0 && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              backgroundColor: '#DC2626',
+              borderRadius: 10,
+              paddingVertical: 4,
+              paddingHorizontal: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+          >
+            <Text style={{ color: 'white', fontSize: 13, fontWeight: 'bold' }}>
+              {discount}% OFF
+            </Text>
+          </View>
+        )}
 
         {/* Wishlist button - top right */}
         {productId && (
