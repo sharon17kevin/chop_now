@@ -1,7 +1,14 @@
 import { useTheme } from '@/hooks/useTheme';
 import { useRole } from '@/hooks/useRole';
 import { Tabs } from 'expo-router';
-import { Home, Plus, Search, ShoppingBag, User } from 'lucide-react-native';
+import {
+  Home,
+  Plus,
+  Search,
+  Shield,
+  ShoppingBag,
+  User,
+} from 'lucide-react-native';
 
 export default function TabLayout() {
   const { colors } = useTheme();
@@ -10,6 +17,9 @@ export default function TabLayout() {
   // Only show sell tab for verified vendors
   const isVerifiedVendor =
     profile?.role === 'vendor' && profile?.verified === true;
+
+  // Only show admin tab for admins
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <Tabs
@@ -56,6 +66,14 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <ShoppingBag size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="(admin)"
+        options={{
+          title: 'Admin',
+          tabBarIcon: ({ size, color }) => <Shield size={size} color={color} />,
+          href: isAdmin ? undefined : null,
         }}
       />
       <Tabs.Screen

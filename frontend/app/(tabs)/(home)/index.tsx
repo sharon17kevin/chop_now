@@ -21,8 +21,9 @@ import {
 } from '@/stores/useProductStore';
 import { useProducts } from '@/hooks/useProducts';
 import { useTheme } from '@/hooks/useTheme';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Bell, MapPin, Search, Star } from 'lucide-react-native';
+import { supabase } from '@/lib/supabase';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dimensions,
@@ -40,6 +41,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const router = useRouter();
   const { colors } = useTheme();
@@ -126,6 +128,41 @@ export default function HomeScreen() {
     loadMoreFreshPicks();
   }, [loadMoreFreshPicks]);
 
+  // Fetch unread notifications count
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false);
+
+        setUnreadNotifications(count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  }, []);
+
+  // Refresh notification count when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+    }, [fetchUnreadCount])
+  );
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Refresh count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
   // Debug logging
   useEffect(() => {
     console.log('🏠 Products updated:', {
@@ -194,11 +231,19 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.cartButton}>
+        <TouchableOpacity
+          style={styles.cartButton}
+          onPress={() => router.push('/(tabs)/(profile)/notifications')}
+          activeOpacity={0.7}
+        >
           <Bell size={24} color="#FFFFFF" />
-          <View style={styles.cartBadge}>
-            <Text style={styles.cartBadgeText}>3</Text>
-          </View>
+          {unreadNotifications > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>
+                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 

@@ -84,44 +84,54 @@ export default function VendorReg() {
         return;
       }
 
+      // Check if user already has a pending application
+      const { data: existingApp, error: checkError } = await supabase
+        .from('vendor_applications')
+        .select('id, status')
+        .eq('user_id', profile.id)
+        .eq('status', 'pending')
+        .single();
+
+      if (existingApp) {
+        Alert.alert(
+          'Application Already Submitted',
+          'You already have a pending vendor application. Please wait for admin review.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       // Parse delivery zones from comma-separated string
       const deliveryZonesArray = formData.deliveryZones
         .split(',')
         .map((zone) => zone.trim())
         .filter((zone) => zone.length > 0);
 
-      // Update profile with vendor information
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          role: 'vendor',
-          farm_name: formData.farmName,
-          farm_location: formData.farmLocation,
-          farm_description: formData.farmDescription,
-          business_phone: formData.businessPhone,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          postal_code: formData.postalCode,
-          delivery_zones: deliveryZonesArray,
-          business_hours: formData.businessHours,
-          verified: false, // Will be verified by admin
-        })
-        .eq('id', profile.id);
+      // Insert vendor application for admin review
+      const { error } = await supabase.from('vendor_applications').insert({
+        user_id: profile.id,
+        farm_name: formData.farmName,
+        farm_location: formData.farmLocation,
+        farm_description: formData.farmDescription,
+        business_phone: formData.businessPhone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        postal_code: formData.postalCode,
+        delivery_zones: deliveryZonesArray,
+        business_hours: formData.businessHours,
+        status: 'pending',
+      });
 
       if (error) throw error;
 
       Alert.alert(
-        'Application Submitted!',
-        'Your vendor application has been submitted successfully. You will be notified once it has been reviewed and approved.',
+        'Application Submitted! ✅',
+        'Your vendor application has been submitted for review. Our admin team will review it within 2-3 business days. You will be notified via in-app notification once approved.',
         [
           {
             text: 'OK',
             onPress: () => {
-              // Refresh user profile
-              if (profile?.id) {
-                useUserStore.getState().fetchProfile(profile.id);
-              }
               router.back();
             },
           },
@@ -129,7 +139,16 @@ export default function VendorReg() {
       );
     } catch (error: any) {
       console.error('Error submitting vendor application:', error);
-      Alert.alert('Error', error.message || 'Failed to submit application');
+
+      if (error.code === '23505') {
+        // Unique constraint violation
+        Alert.alert(
+          'Duplicate Application',
+          'You already have a pending application. Please wait for admin review.'
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to submit application');
+      }
     } finally {
       setLoading(false);
     }
