@@ -30,6 +30,7 @@ interface DashboardStats {
   approvedVendors: number;
   rejectedApplications: number;
   totalProducts: number;
+  pendingProducts: number;
   totalOrders: number;
   totalUsers: number;
 }
@@ -44,6 +45,7 @@ export default function AdminDashboard() {
     approvedVendors: 0,
     rejectedApplications: 0,
     totalProducts: 0,
+    pendingProducts: 0,
     totalOrders: 0,
     totalUsers: 0,
   });
@@ -77,6 +79,15 @@ export default function AdminDashboard() {
 
       if (productsError) throw productsError;
 
+      // Fetch pending products
+      const { count: pendingProductsCount, error: pendingProductsError } =
+        await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+      if (pendingProductsError) throw pendingProductsError;
+
       // Fetch total orders
       const { count: ordersCount, error: ordersError } = await supabase
         .from('orders')
@@ -96,6 +107,7 @@ export default function AdminDashboard() {
         approvedVendors: approved,
         rejectedApplications: rejected,
         totalProducts: productsCount || 0,
+        pendingProducts: pendingProductsCount || 0,
         totalOrders: ordersCount || 0,
         totalUsers: usersCount || 0,
       });
@@ -353,10 +365,18 @@ export default function AdminDashboard() {
             }}
           />
           <ActionCard
+            icon={AlertCircle}
+            title="Review Products"
+            description="Review pending product submissions"
+            color="#ef4444"
+            badge={stats.pendingProducts}
+            onPress={() => router.push('/(tabs)/(admin)/productReview')}
+          />
+          <ActionCard
             icon={TrendingUp}
             title="Analytics"
-            description="View platform analytics & reports"
-            color="#3b82f6"
+            description="View platform analytics and insights"
+            color="#06b6d4"
             onPress={() => router.push('/(tabs)/(admin)/analysis')}
           />
         </View>

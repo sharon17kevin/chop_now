@@ -1,9 +1,17 @@
 import React, { memo } from 'react';
-import { TouchableOpacity, View, Image, Text, StyleSheet } from 'react-native';
+import {
+  TouchableOpacity,
+  View,
+  Image,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
 import { Star, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import { useWishlist } from '@/hooks/useWishlist';
+import { useAddToCart } from '@/hooks/useAddToCart';
 import { Product } from '@/stores/useProductStore';
 
 interface GridProductCardProps {
@@ -15,11 +23,34 @@ const GridProductCard = memo(
     const router = useRouter();
     const { colors } = useTheme();
     const { isInWishlist, toggleWishlist } = useWishlist();
+    const { addToCart, addingToCart } = useAddToCart();
+
+    const handlePress = () => {
+      router.push({
+        pathname: '/vendor/[vendorId]' as any,
+        params: {
+          vendorId: product.vendor_id,
+          vendorName: product.profiles?.full_name || 'Vendor',
+          productId: product.id,
+        },
+      });
+    };
+
+    const handleAddToCart = async (e: any) => {
+      e.stopPropagation();
+      await addToCart({
+        productId: product.id,
+        productName: product.name,
+        quantity: 1,
+        isAvailable: product.is_available,
+        stock: product.stock,
+      });
+    };
 
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => router.push(`/product/${product.id}` as any)}
+        onPress={handlePress}
         style={[
           styles.gridProductCard,
           {
@@ -31,7 +62,10 @@ const GridProductCard = memo(
         <View style={{ position: 'relative' }}>
           <Image
             source={{
-              uri: product.image_url || 'https://via.placeholder.com/200',
+              uri:
+                product.images?.[0] ||
+                product.image_url ||
+                'https://via.placeholder.com/200',
             }}
             style={styles.gridProductImage}
           />
@@ -89,8 +123,16 @@ const GridProductCard = memo(
               { backgroundColor: colors.primary },
             ]}
             activeOpacity={0.8}
+            onPress={handleAddToCart}
+            disabled={
+              addingToCart || !product.is_available || product.stock === 0
+            }
           >
-            <Text style={styles.addToCartText}>Add to Cart</Text>
+            {addingToCart ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.addToCartText}>Add to Cart</Text>
+            )}
           </TouchableOpacity>
         </View>
       </TouchableOpacity>

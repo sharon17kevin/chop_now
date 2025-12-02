@@ -442,7 +442,9 @@ export default function HomeScreen() {
                   renderItem={({ item }) => (
                     <DestinationMiniCard
                       image={
-                        item.image_url || 'https://via.placeholder.com/200'
+                        item.images?.[0] ||
+                        item.image_url ||
+                        'https://via.placeholder.com/200'
                       }
                       name={item.name}
                       address={item.profiles?.full_name || 'Vendor'}

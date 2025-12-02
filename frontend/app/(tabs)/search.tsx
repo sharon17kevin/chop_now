@@ -16,6 +16,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSearch } from '@/hooks/useSearch';
 import { useWishlist } from '@/hooks/useWishlist';
+import { useAddToCart } from '@/hooks/useAddToCart';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const popularSearches = [
@@ -67,6 +68,9 @@ export default function SearchScreen() {
   // Wishlist functionality
   const { isInWishlist, toggleWishlist } = useWishlist();
 
+  // Add to cart functionality
+  const { addToCart, addingToCart } = useAddToCart();
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
@@ -90,46 +94,13 @@ export default function SearchScreen() {
 
   const handleAddToCart = async (product: any, e: any) => {
     e.stopPropagation();
-
-    try {
-      const { supabase } = await import('@/lib/supabase');
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        alert('Please log in to add items to cart');
-        return;
-      }
-
-      // Check if already in cart
-      const { data: existing } = await supabase
-        .from('cart_items')
-        .select('id, quantity')
-        .eq('user_id', user.id)
-        .eq('product_id', product.id)
-        .single();
-
-      if (existing) {
-        // Update quantity
-        await supabase
-          .from('cart_items')
-          .update({ quantity: existing.quantity + 1 })
-          .eq('id', existing.id);
-      } else {
-        // Add new item
-        await supabase.from('cart_items').insert({
-          user_id: user.id,
-          product_id: product.id,
-          quantity: 1,
-        });
-      }
-
-      alert(`Added ${product.name} to cart!`);
-    } catch (err) {
-      console.error('Error adding to cart:', err);
-      alert('Failed to add to cart');
-    }
+    await addToCart({
+      productId: product.id,
+      productName: product.name,
+      quantity: 1,
+      isAvailable: product.is_available,
+      stock: product.stock,
+    });
   };
 
   const handleCategoryFilter = (category: string) => {

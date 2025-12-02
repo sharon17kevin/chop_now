@@ -12,6 +12,7 @@ interface ProductCardProps {
   description: string;
   price: number;
   image_url: string;
+  images?: string[] | null;
   category: string;
   stock: number;
   unit: string;
@@ -27,6 +28,7 @@ export default function ProductCard({
   description,
   price,
   image_url,
+  images,
   category,
   stock,
   unit,
@@ -81,7 +83,9 @@ export default function ProductCard({
     >
       {/* Product Image */}
       <Image
-        source={{ uri: image_url }}
+        source={{
+          uri: images?.[0] || image_url || 'https://via.placeholder.com/200',
+        }}
         style={styles.image}
         resizeMode="cover"
       />

@@ -27,6 +27,8 @@ export default function AdminLayout() {
     >
       <Stack.Screen name="index" options={{ title: 'Admin Dashboard' }} />
       <Stack.Screen name="vendorReview" options={{ title: 'Vendor Review' }} />
+      <Stack.Screen name="analysis" options={{ title: 'Analysis' }} />
+      <Stack.Screen name="productReview" options={{ title: 'Product Management' }} />
     </Stack>
   );
 }

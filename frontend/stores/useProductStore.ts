@@ -12,10 +12,18 @@ export interface Product {
   is_on_sale?: boolean;
   sale_ends_at?: string | null;
   image_url: string | null;
+  images?: string[] | null; // New: Array of image URLs
   category: string | null;
   stock: number;
   unit: string;
   is_available: boolean;
+  status?: 'pending' | 'approved' | 'rejected'; // New: Approval status
+  is_organic?: boolean; // New: Organic flag
+  location?: {
+    latitude: number;
+    longitude: number;
+  } | null; // New: GPS location
+  tags?: string[] | null; // New: Tags
   rating?: number;
   created_at: string;
   updated_at: string;
@@ -90,7 +98,8 @@ export async function fetchProductsByCategory(category: CategoryFilter): Promise
       *,
       profiles:vendor_id (full_name)
     `)
-    .eq('is_available', true);
+    .eq('is_available', true)
+    .eq('status', 'approved'); // Only show approved products
 
   // Apply category filter
   if (category !== 'All') {
