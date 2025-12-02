@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "chow-now",
+    "slug": "chow-now",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -28,7 +28,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a748a54b-a21e-4284-964b-b4773f150eeb"
+        "projectId": "d1adb3d8-8946-4705-9290-a97cea489ed7"
       }
     },
     "splash": {
@@ -41,9 +41,6 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/a748a54b-a21e-4284-964b-b4773f150eeb"
     }
   }
 }
