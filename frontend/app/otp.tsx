@@ -16,7 +16,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { usePendingSignup } from '@/stores/usePendingSignup';
-import * as authService from '@/services/auth';
+import * as authService from '@/services/auth/auth';
 import { ArrowLeft } from 'lucide-react-native';
 import { typography } from '@/styles/typography';
 

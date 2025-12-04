@@ -32,7 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { typography } from '@/styles/typography';
 import { usePendingSignup } from '@/stores/usePendingSignup';
-import * as authService from '@/services/auth';
+import * as authService from '@/services/auth/auth';
 
 export default function SignUpScreen() {
   const { signup } = useAuth();

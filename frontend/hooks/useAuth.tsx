@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { router } from 'expo-router';
 import { useUserStore } from '../stores/useUserStore';
-import * as authService from '../services/auth';
+import * as authService from '../services/auth/auth';
 
 // ✅ Using expo-secure-store for sensitive session tokens
 // AsyncStorage still used for non-sensitive data like onboarding state
