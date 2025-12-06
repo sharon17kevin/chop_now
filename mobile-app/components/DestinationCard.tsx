@@ -174,7 +174,7 @@ const DestinationCard = ({
 export const DestinationMiniCard = ({
   image,
   name,
-  address,
+  address, 
   isOpen,
   category,
   productId,
@@ -199,44 +199,21 @@ export const DestinationMiniCard = ({
   const { colors } = useTheme();
   const router = useRouter();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  discount = 10
 
   const inWishlist = productId ? isInWishlist(productId) : false;
 
   const handlePress = () => {
-    // Navigate to vendor page with product details if available
-    if (vendorId && productId) {
+    // Navigate to product page
+    if (productId && vendorId) {
       router.push({
-        pathname: '/vendor/[vendorId]' as any,
+        pathname: '/product/[productId]' as any,
         params: {
-          vendorId: vendorId,
-          vendorName: vendorName || name,
-          vendorAddress: address,
           productId: productId,
+          vendorId: vendorId,
         },
       });
-      return;
     }
-
-    // Fallback: Convert item name to URL-friendly format that matches the item page keys
-    let itemSlug = name.toLowerCase().replace(/\s+/g, '-');
-
-    // Handle special cases to match the item page keys exactly
-    if (name === "Domino's Pizza") {
-      itemSlug = 'dominos-pizza';
-    } else if (name === 'Cafe Neo') {
-      itemSlug = 'cafe-neo';
-    } else if (name === 'Spice Route') {
-      itemSlug = 'spice-route';
-    } else if (name === 'The Grill') {
-      itemSlug = 'the-grill';
-    } else if (name === 'Bukka Hut') {
-      itemSlug = 'bukka-hut';
-    }
-
-    router.push({
-      pathname: 'places/[item]' as any,
-      params: { item: itemSlug },
-    });
   };
 
   const handleWishlistToggle = async (e: any) => {
@@ -248,7 +225,7 @@ export const DestinationMiniCard = ({
 
   return (
     <TouchableOpacity
-      style={[styles.miniCard]}
+      style={[styles.miniCard, { backgroundColor: colors.card }]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
@@ -260,26 +237,35 @@ export const DestinationMiniCard = ({
       >
         <Image source={{ uri: image }} style={styles.image} />
 
-        {/* Deal badge - only show if discount exists */}
+        {/* Hot Deal Banner - diagonal ribbon */}
         {discount && discount > 0 && (
           <View
             style={{
               position: 'absolute',
-              top: 10,
-              left: 10,
+              top: 12,
+              left: -8,
               backgroundColor: '#DC2626',
-              borderRadius: 10,
-              paddingVertical: 4,
-              paddingHorizontal: 10,
+              paddingVertical: 6,
+              paddingHorizontal: 16,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              elevation: 5,
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 6,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
             }}
           >
-            <Text style={{ color: 'white', fontSize: 13, fontWeight: 'bold' }}>
-              {discount}% OFF
+            <Text
+              style={{
+                color: 'white',
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 0.5,
+              }}
+            >
+              🔥 {discount}% OFF
             </Text>
           </View>
         )}
@@ -294,7 +280,7 @@ export const DestinationMiniCard = ({
             ]}
           >
             <Heart
-              size={18}
+              size={16}
               color={inWishlist ? colors.error : colors.textSecondary}
               fill={inWishlist ? colors.error : 'transparent'}
             />
@@ -302,25 +288,89 @@ export const DestinationMiniCard = ({
         )}
       </View>
       <View style={styles.miniInfoContainer}>
-        <View style={{ flex: 1, paddingTop: 3 }}>
-          <Text style={[{ color: colors.text, fontWeight: '600' }]}>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[{ color: colors.text, fontWeight: '700', fontSize: 15 }]}
+            numberOfLines={1}
+          >
             {name}
           </Text>
-          <Text numberOfLines={2} style={[{ color: colors.text }]}>
-            {address}
-            <Text style={{ color: isOpen ? colors.success : colors.error }}>
-              {isOpen ? ' | Open' : ' | Closed'}
-            </Text>
+          <Text
+            numberOfLines={1}
+            style={[
+              { color: colors.textSecondary, fontSize: 12, marginTop: 1 },
+            ]}
+          >
+            <Text>by {address || 'Vendor'}</Text>
           </Text>
-          <View style={{ flexDirection: 'row', gap: 5 }}>
-            <Clock size={13} color={colors.secondary} />
-            <Text style={{ color: colors.text }}>20-30 mins</Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: 4,
+              gap: 6,
+            }}
+          >
+            <View
+              style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}
+            >
+              <Star
+                size={12}
+                fill={colors.secondary}
+                color={colors.secondary}
+              />
+              <Text
+                style={{ color: colors.text, fontSize: 12, fontWeight: '600' }}
+              >
+                4.5
+              </Text>
+            </View>
+            <Text style={{ color: colors.textSecondary, fontSize: 11 }}>•</Text>
+            <Text
+              style={{
+                color: isOpen ? colors.success : colors.error,
+                fontSize: 11,
+                fontWeight: '600',
+              }}
+            >
+              {isOpen ? 'Available' : 'Out of Stock'}
+            </Text>
           </View>
+          {/* Original price display */}
+          {discount && discount > 0 && originalPrice && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 4,
+                gap: 6,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: 11,
+                  textDecorationLine: 'line-through',
+                }}
+              >
+                ₦{originalPrice.toLocaleString()}
+              </Text>
+              <Text
+                style={{
+                  color: colors.success,
+                  fontSize: 11,
+                  fontWeight: '700',
+                }}
+              >
+                Save ₦
+                {(
+                  originalPrice -
+                  (originalPrice * (100 - discount)) / 100
+                ).toLocaleString()}
+              </Text>
+            </View>
+          )}
         </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Star size={13} fill={colors.secondary} color={colors.secondary} />
-        <Text style={{ color: colors.text }}>4.5</Text>
       </View>
     </TouchableOpacity>
   );
@@ -359,10 +409,9 @@ const styles = StyleSheet.create({
   },
   miniInfoContainer: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 5,
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    padding: 10,
   },
   statsContainer: {
     flex: 1,
@@ -385,12 +434,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   miniCard: {
-    width: 230,
-    height: 250,
+    width: 240,
+    height: 240,
     marginHorizontal: 8,
-    borderRadius: 15,
+    borderRadius: 16,
     overflow: 'hidden',
-    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   wishlistButton: {
     position: 'absolute',
@@ -411,9 +464,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

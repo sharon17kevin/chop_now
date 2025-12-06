@@ -39,8 +39,9 @@
     "android": {
       "package": "com.sharon14kevin.chopnow"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/d1adb3d8-8946-4705-9290-a97cea489ed7"
     }
   }
 }

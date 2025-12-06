@@ -15,10 +15,15 @@ import {
   Trash2,
   Check,
   AlertCircle,
+  Wallet,
+  Building2,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '@/components/AppHeader';
+import PaystackPaymentModal from '@/components/PaystackPaymentModal';
+import { verifyPayment, generateReference } from '@/lib/paystack';
+import { router } from 'expo-router';
 
 interface PaymentMethod {
   id: string;
@@ -36,6 +41,9 @@ export default function PaymentScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPaystackModal, setShowPaystackModal] = useState(false);
+  const [paymentReference, setPaymentReference] = useState('');
+  const [userEmail, setUserEmail] = useState('');
 
   const { colors } = useTheme();
 
@@ -56,6 +64,8 @@ export default function PaymentScreen() {
         setLoading(false);
         return;
       }
+
+      setUserEmail(user.email || '');
 
       const { data, error: fetchError } = await supabase
         .from('payment_methods')
@@ -85,22 +95,53 @@ export default function PaymentScreen() {
   async function handleAddPaymentMethod() {
     Alert.alert(
       'Add Payment Method',
-      'Payment gateway integration (Paystack/Flutterwave) will be implemented here. This will securely tokenize your card without storing sensitive data.',
+      'Choose how you want to add funds or payment methods',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Coming Soon',
-          style: 'default',
+          text: 'Add Card',
+          onPress: () => {
+            const reference = generateReference();
+            setPaymentReference(reference);
+            setShowPaystackModal(true);
+          },
+        },
+        {
+          text: 'Virtual Account',
+          onPress: () => router.push('/(tabs)/(profile)/virtualAccount'),
         },
       ]
     );
+  }
 
-    // TODO: Integrate Paystack/Flutterwave SDK
-    // 1. Initialize payment gateway
-    // 2. Show secure card input form
-    // 3. Tokenize card on provider's servers
-    // 4. Store only the token and display info (last 4 digits, brand, expiry)
-    // 5. Never store full card number, CVV, or PIN
+  async function handlePaymentSuccess(response: any) {
+    try {
+      setShowPaystackModal(false);
+
+      // Verify payment on backend
+      const result = await verifyPayment(paymentReference);
+
+      if (result.status) {
+        Alert.alert('Success', 'Payment method added successfully!', [
+          {
+            text: 'OK',
+            onPress: () => fetchPaymentMethods(),
+          },
+        ]);
+      } else {
+        Alert.alert('Error', 'Payment verification failed');
+      }
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to verify payment'
+      );
+    }
+  }
+
+  function handlePaymentCancel() {
+    setShowPaystackModal(false);
+    Alert.alert('Cancelled', 'Payment was cancelled');
   }
 
   async function deletePaymentMethod(id: string, cardInfo: string) {
@@ -297,14 +338,36 @@ export default function PaymentScreen() {
         </Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={handleAddPaymentMethod}
-        activeOpacity={0.8}
-      >
-        <Plus size={20} color="#FFFFFF" />
-        <Text style={styles.addButtonText}>Add Payment Method</Text>
-      </TouchableOpacity>
+      <View style={styles.bottomButtons}>
+        <TouchableOpacity
+          style={styles.virtualAccountButton}
+          onPress={() => router.push('/(tabs)/(profile)/virtualAccount')}
+          activeOpacity={0.8}
+        >
+          <Wallet size={20} color="#059669" />
+          <Text style={styles.virtualAccountButtonText}>Virtual Account</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleAddPaymentMethod}
+          activeOpacity={0.8}
+        >
+          <Plus size={20} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add Card</Text>
+        </TouchableOpacity>
+      </View>
+
+      <PaystackPaymentModal
+        visible={showPaystackModal}
+        email={userEmail}
+        amount={100} // ₦1.00 verification charge
+        reference={paymentReference}
+        channels={['card']}
+        onSuccess={handlePaymentSuccess}
+        onCancel={handlePaymentCancel}
+        onClose={() => setShowPaystackModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -418,11 +481,38 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 8,
   },
-  addButton: {
+  bottomButtons: {
     position: 'absolute',
     bottom: 16,
     left: 16,
     right: 16,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  virtualAccountButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#059669',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  virtualAccountButtonText: {
+    color: '#059669',
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  addButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
