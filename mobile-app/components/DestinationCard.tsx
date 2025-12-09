@@ -174,7 +174,7 @@ const DestinationCard = ({
 export const DestinationMiniCard = ({
   image,
   name,
-  address, 
+  address,
   isOpen,
   category,
   productId,
@@ -199,7 +199,10 @@ export const DestinationMiniCard = ({
   const { colors } = useTheme();
   const router = useRouter();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  discount = 10
+
+  // Default test values - remove these in production
+  discount = discount ?? 15; // Default 15% discount for testing
+  originalPrice = originalPrice ?? 5000; // Default ₦5000 original price for testing
 
   const inWishlist = productId ? isInWishlist(productId) : false;
 
@@ -225,7 +228,7 @@ export const DestinationMiniCard = ({
 
   return (
     <TouchableOpacity
-      style={[styles.miniCard, { backgroundColor: colors.card }]}
+      style={[styles.miniCard]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
@@ -238,7 +241,7 @@ export const DestinationMiniCard = ({
         <Image source={{ uri: image }} style={styles.image} />
 
         {/* Hot Deal Banner - diagonal ribbon */}
-        {discount && discount > 0 && (
+        {/* {discount && discount > 0 && ( */}
           <View
             style={{
               position: 'absolute',
@@ -268,7 +271,7 @@ export const DestinationMiniCard = ({
               🔥 {discount}% OFF
             </Text>
           </View>
-        )}
+        {/* )} */}
 
         {/* Wishlist button - top right */}
         {productId && (
@@ -294,14 +297,6 @@ export const DestinationMiniCard = ({
             numberOfLines={1}
           >
             {name}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={[
-              { color: colors.textSecondary, fontSize: 12, marginTop: 1 },
-            ]}
-          >
-            <Text>by {address || 'Vendor'}</Text>
           </Text>
           <View
             style={{
@@ -337,7 +332,7 @@ export const DestinationMiniCard = ({
             </Text>
           </View>
           {/* Original price display */}
-          {discount && discount > 0 && originalPrice && (
+          {/* {discount && discount > 0 && originalPrice && ( */}
             <View
               style={{
                 flexDirection: 'row',
@@ -369,7 +364,7 @@ export const DestinationMiniCard = ({
                 ).toLocaleString()}
               </Text>
             </View>
-          )}
+          {/* )} */}
         </View>
       </View>
     </TouchableOpacity>
@@ -435,7 +430,7 @@ const styles = StyleSheet.create({
   },
   miniCard: {
     width: 240,
-    height: 240,
+    height: 250,
     marginHorizontal: 8,
     borderRadius: 16,
     overflow: 'hidden',

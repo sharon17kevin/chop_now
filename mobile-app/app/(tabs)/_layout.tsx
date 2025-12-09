@@ -1,7 +1,8 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useRole } from '@/hooks/useRole';
+import { useTheme } from '@/hooks/useTheme';
 import { Tabs } from 'expo-router';
 import {
+  Bus,
   Home,
   Plus,
   Search,
@@ -73,7 +74,16 @@ export default function TabLayout() {
         options={{
           title: 'Admin',
           tabBarIcon: ({ size, color }) => <Shield size={size} color={color} />,
-          href: isAdmin ? '/(tabs)/(admin)' : null,
+          // href: isAdmin ? '/(tabs)/(admin)' : null,
+        }}
+      />
+      <Tabs.Screen
+        name="(driver)"
+        options={{
+          title: 'Driver',
+          tabBarIcon: ({ size, color }) => (
+            <Bus size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen

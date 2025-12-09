@@ -419,7 +419,7 @@ export default function HomeScreen() {
           <View style={{ width: '100%', marginBottom: 20 }}>
             <View style={styles.part}>
               <Text style={{ ...styles.sectionTitle, color: colors.text }}>
-                🔥 Hot Deals Near You
+                🔥 Promos
               </Text>
             </View>
             {isLoading ? (
@@ -437,7 +437,7 @@ export default function HomeScreen() {
                   autoPlay
                   autoPlayInterval={3000}
                   width={260}
-                  height={450}
+                  height={260}
                   data={hotDealsProducts}
                   renderItem={({ item }) => (
                     <DestinationMiniCard
