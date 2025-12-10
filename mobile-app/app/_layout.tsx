@@ -42,7 +42,7 @@ function RootLayoutNav() {
 
     if (isAuthenticated && !inAuthGroup) {
       // User is authenticated but not inside the protected group
-      router.replace('/(tabs)' as any);
+      router.replace('/(tabs)/(home)' as any);
       return;
     }
   }, [isAuthenticated, hasCompletedOnboarding, segments]);
