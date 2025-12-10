@@ -207,13 +207,14 @@ export const DestinationMiniCard = ({
   const inWishlist = productId ? isInWishlist(productId) : false;
 
   const handlePress = () => {
-    // Navigate to product page
+    // Navigate to vendor page with product details
     if (productId && vendorId) {
       router.push({
-        pathname: '/product/[productId]' as any,
+        pathname: '/vendor/[vendorId]' as any,
         params: {
-          productId: productId,
           vendorId: vendorId,
+          vendorName: vendorName || address || 'Vendor',
+          productId: productId,
         },
       });
     }

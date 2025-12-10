@@ -37,6 +37,7 @@ export default function TabLayout() {
           paddingTop: 10,
         },
       }}
+      initialRouteName="(home)"
     >
       <Tabs.Screen
         name="(home)"
@@ -81,9 +82,7 @@ export default function TabLayout() {
         name="(driver)"
         options={{
           title: 'Driver',
-          tabBarIcon: ({ size, color }) => (
-            <Bus size={size} color={color} />
-          ),
+          tabBarIcon: ({ size, color }) => <Bus size={size} color={color} />,
         }}
       />
       <Tabs.Screen
