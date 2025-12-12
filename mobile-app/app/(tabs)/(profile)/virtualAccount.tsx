@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { useVirtualAccountStore } from '@/stores/useVirtualAccountStore';
 import {
   Wallet,
   Copy,
@@ -22,69 +23,36 @@ import AppHeader from '@/components/AppHeader';
 import { createDedicatedAccount } from '@/lib/paystack';
 import * as Clipboard from 'expo-clipboard';
 
-interface VirtualAccount {
-  id: string;
-  account_number: string;
-  account_name: string;
-  bank_name: string;
-  bank_code: string;
-  is_active: boolean;
-  created_at: string;
-}
-
 export default function VirtualAccountScreen() {
-  const [virtualAccount, setVirtualAccount] = useState<VirtualAccount | null>(
-    null
-  );
-  const [loading, setLoading] = useState(true);
+  const {
+    account: virtualAccount,
+    isLoading: loading,
+    error,
+    fetchAccount,
+    setAccount,
+  } = useVirtualAccountStore();
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const { colors } = useTheme();
 
   useEffect(() => {
-    fetchVirtualAccount();
+    fetchVirtualAccountFromAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function fetchVirtualAccount() {
-    try {
-      setError(null);
+  async function fetchVirtualAccountFromAuth() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError('Please sign in to view virtual account');
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: fetchError } = await supabase
-        .from('virtual_accounts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-
-      setVirtualAccount(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to load virtual account'
-      );
-    } finally {
-      setLoading(false);
+    if (user) {
+      await fetchAccount(user.id);
     }
   }
 
   async function handleCreateAccount() {
     try {
       setCreating(true);
-      setError(null);
 
       const {
         data: { user },
@@ -97,15 +65,12 @@ export default function VirtualAccountScreen() {
       const result = await createDedicatedAccount(user.id, user.email);
 
       if (result.data) {
+        // Update the store directly
+        setAccount(result.data);
+
         Alert.alert(
           'Success!',
-          'Your dedicated virtual account has been created. You can now receive payments to this account.',
-          [
-            {
-              text: 'OK',
-              onPress: () => fetchVirtualAccount(),
-            },
-          ]
+          'Your dedicated virtual account has been created. You can now receive payments to this account.'
         );
       } else {
         throw new Error('Failed to create virtual account');
@@ -131,7 +96,7 @@ export default function VirtualAccountScreen() {
         edges={['top']}
         style={[styles.container, { backgroundColor: colors.background }]}
       >
-        <AppHeader title="Virtual Account" showBackButton />
+        <AppHeader title="Virtual Account" />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#059669" />
         </View>
@@ -144,7 +109,7 @@ export default function VirtualAccountScreen() {
       edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <AppHeader title="Virtual Account" showBackButton />
+      <AppHeader title="Virtual Account" />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {error && (

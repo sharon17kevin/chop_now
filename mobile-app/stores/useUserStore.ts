@@ -50,12 +50,23 @@ interface UserProfile {
   social_media?: Record<string, string>
 }
 
+interface VendorApplication {
+  id: string
+  user_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  created_at: string
+  rejection_reason?: string
+}
+
 interface UserStore {
   profile: UserProfile | null
   isLoadingProfile: boolean
+  vendorApplication: VendorApplication | null
+  isLoadingApplication: boolean
   
   // Actions
   fetchProfile: (userId: string) => Promise<void>
+  fetchVendorApplication: (userId: string) => Promise<void>
   updateProfile: (updates: Partial<UserProfile>) => void
   clearProfile: () => void
   
@@ -63,11 +74,15 @@ interface UserStore {
   hasRole: (role: 'customer' | 'vendor' | 'admin') => boolean
   isVendor: () => boolean
   isAdmin: () => boolean
+  hasPendingApplication: () => boolean
+  isApplicationRejected: () => boolean
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
   profile: null,
   isLoadingProfile: false,
+  vendorApplication: null,
+  isLoadingApplication: false,
 
   fetchProfile: async (userId: string) => {
     console.log('👤 [useUserStore] Starting fetchProfile for userId:', userId)
@@ -134,6 +149,11 @@ export const useUserStore = create<UserStore>((set, get) => ({
       })
 
       set({ profile: data, isLoadingProfile: false })
+      
+      // Auto-fetch vendor application if user is a vendor
+      if (data.role === 'vendor') {
+        get().fetchVendorApplication(userId)
+      }
     } catch (error: any) {
       console.error('💥 [useUserStore] fetchProfile exception:', error)
       
@@ -145,6 +165,29 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
   },
 
+  fetchVendorApplication: async (userId: string) => {
+    if (!userId) return
+
+    set({ isLoadingApplication: true })
+
+    try {
+      const { data, error } = await supabase
+        .from('vendor_applications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) throw error
+
+      set({ vendorApplication: data, isLoadingApplication: false })
+    } catch (error) {
+      console.error('Error fetching vendor application:', error)
+      set({ vendorApplication: null, isLoadingApplication: false })
+    }
+  },
+
   updateProfile: (updates: Partial<UserProfile>) => {
     const current = get().profile
     if (current) {
@@ -153,7 +196,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   },
 
   clearProfile: () => {
-    set({ profile: null, isLoadingProfile: false })
+    set({ profile: null, isLoadingProfile: false, vendorApplication: null, isLoadingApplication: false })
   },
 
   // Convenience helpers for role checks
@@ -168,5 +211,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
   isAdmin: () => {
     return get().hasRole('admin')
+  },
+
+  hasPendingApplication: () => {
+    return get().vendorApplication?.status === 'pending'
+  },
+
+  isApplicationRejected: () => {
+    return get().vendorApplication?.status === 'rejected'
   },
 }))

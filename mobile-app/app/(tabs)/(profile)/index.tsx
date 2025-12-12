@@ -1,41 +1,45 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/hooks/useAuth';
+import { useOrders } from '@/hooks/useOrders';
+import { useRole } from '@/hooks/useRole';
+import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/lib/supabase';
+import { useUserStore } from '@/stores/useUserStore';
+import { useVirtualAccountStore } from '@/stores/useVirtualAccountStore';
+import { formatTimeAgo } from '@/utils/time';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import * as Clipboard from 'expo-clipboard';
 import {
-  MapPin,
-  ShoppingBag,
-  Heart,
-  Settings,
+  AlertCircle,
   Bell,
+  ChevronRight,
+  Clock,
+  Copy,
   CreditCard,
+  Heart,
   CircleHelp as HelpCircle,
   LogOut,
-  ChevronRight,
-  Star,
+  MapPin,
   Package,
-  Store,
-  AlertCircle,
+  Settings,
+  ShoppingBag,
+  Star,
+  Wallet,
 } from 'lucide-react-native';
-import { useTheme } from '@/hooks/useTheme';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserStore } from '@/stores/useUserStore';
-import { useRole } from '@/hooks/useRole';
-import { useOrders } from '@/hooks/useOrders';
-import { formatTimeAgo } from '@/utils/time';
-import * as SecureStore from 'expo-secure-store';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useEffect } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const menuItems = [
   {
@@ -61,6 +65,13 @@ const menuItems = [
   },
   {
     id: 4,
+    title: 'Wallet',
+    icon: Wallet,
+    link: 'wallet',
+    subtitle: 'View balance and transactions',
+  },
+  {
+    id: 'payment',
     title: 'Payment Methods',
     icon: CreditCard,
     link: 'payment',
@@ -93,7 +104,15 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { logout } = useAuth();
-  const { profile, fetchProfile } = useUserStore();
+  const { 
+    profile, 
+    fetchProfile, 
+    vendorApplication,
+    fetchVendorApplication,
+    hasPendingApplication,
+    isApplicationRejected 
+  } = useUserStore();
+  const { account: virtualAccount, fetchAccount } = useVirtualAccountStore();
   const { isVendor } = useRole();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -105,6 +124,14 @@ export default function ProfileScreen() {
     loading,
     handleRefresh: refetchOrders,
   } = useOrders();
+
+  // Fetch virtual account when profile loads
+  useEffect(() => {
+    if (profile?.id) {
+      fetchAccount(profile.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 
   // Combine and sort to get last 2 orders
   const recentOrders = [...ongoingOrders, ...completedOrders]
@@ -123,7 +150,12 @@ export default function ProfileScreen() {
       } = await supabase.auth.getUser();
 
       if (user) {
-        await Promise.all([fetchProfile(user.id), refetchOrders()]);
+        await Promise.all([
+          fetchProfile(user.id),
+          fetchVendorApplication(user.id),
+          fetchAccount(user.id),
+          refetchOrders(),
+        ]);
       } else {
         await refetchOrders();
       }
@@ -131,6 +163,13 @@ export default function ProfileScreen() {
       console.error('Error during refresh:', err);
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function copyAccountNumber() {
+    if (virtualAccount?.account_number) {
+      await Clipboard.setStringAsync(virtualAccount.account_number);
+      Alert.alert('Copied!', 'Account number copied to clipboard');
     }
   }
 
@@ -230,16 +269,51 @@ export default function ProfileScreen() {
           <Text style={[styles.userName, { color: colors.text }]}>
             {profile?.full_name || profile?.email || 'Guest User'}
           </Text>
-          <View style={styles.locationRow}>
-            <MapPin size={16} color={colors.textSecondary} />
-            <Text
-              style={[styles.userLocation, { color: colors.textSecondary }]}
+
+          {/* Virtual Account Row - Replaces Location */}
+          {virtualAccount ? (
+            <TouchableOpacity
+              style={styles.accountRow}
+              onPress={() =>
+                router.push('/(tabs)/(profile)/virtualAccount' as any)
+              }
+              activeOpacity={0.7}
             >
-              {profile?.city && profile?.state
-                ? `${profile.city}, ${profile.state}`
-                : profile?.city || profile?.state || 'Location not set'}
-            </Text>
-          </View>
+              <Wallet size={16} color={colors.success} />
+              <Text style={[styles.accountNumber, { color: colors.success }]}>
+                {virtualAccount.bank_name} • {virtualAccount.account_number}
+              </Text>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  copyAccountNumber();
+                }}
+                style={styles.copyIcon}
+              >
+                <Copy size={14} color={colors.success} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.accountRow}
+              onPress={() =>
+                router.push('/(tabs)/(profile)/virtualAccount' as any)
+              }
+              activeOpacity={0.7}
+            >
+              <Wallet size={16} color={colors.textSecondary} />
+              <Text
+                style={[
+                  styles.createAccountText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Tap to create virtual account
+              </Text>
+              <ChevronRight size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>
@@ -249,19 +323,21 @@ export default function ProfileScreen() {
                 Orders
               </Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>
-                {profile?.rating ? profile.rating.toFixed(1) : '0.0'}
-              </Text>
-              <View style={styles.ratingRow}>
-                <Star size={12} color="#FCD34D" fill="#FCD34D" />
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
-                  Rating
+            {isVendor && (
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>
+                  {profile?.rating ? profile.rating.toFixed(1) : '0.0'}
                 </Text>
+                <View style={styles.ratingRow}>
+                  <Star size={12} color="#FCD34D" fill="#FCD34D" />
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Rating
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>
                 {profile?.favorite_count || 0}
@@ -274,43 +350,74 @@ export default function ProfileScreen() {
         </View>
 
         {/* Profile Verification Banner - Show for all unverified users */}
-        {profile && !profile.verified && (
-          <TouchableOpacity
-            style={[
-              styles.vendorBanner,
-              {
-                backgroundColor: colors.warning + '15',
-                borderColor: colors.warning + '40',
-              },
-            ]}
-            onPress={() => router.push('/(tabs)/(profile)/vendorReg' as any)}
-            activeOpacity={0.7}
-          >
-            <View
+        {profile && !profile.verified && (() => {
+          const isPending = hasPendingApplication();
+          const isRejected = isApplicationRejected();
+          
+          return (
+            <TouchableOpacity
               style={[
-                styles.vendorIconContainer,
-                { backgroundColor: colors.warning },
+                styles.vendorBanner,
+                {
+                  backgroundColor: isPending 
+                    ? colors.primary + '15'
+                    : isRejected
+                    ? colors.error + '15'
+                    : colors.warning + '15',
+                  borderColor: isPending 
+                    ? colors.primary + '40'
+                    : isRejected
+                    ? colors.error + '40'
+                    : colors.warning + '40',
+                },
               ]}
+              onPress={() => router.push('/(tabs)/(profile)/vendorReg' as any)}
+              activeOpacity={0.7}
             >
-              <AlertCircle size={24} color="#FFF" />
-            </View>
-            <View style={styles.vendorTextContainer}>
-              <Text style={[styles.vendorTitle, { color: colors.text }]}>
-                {isVendor
-                  ? 'Vendor Verification Pending'
-                  : 'Verify Your Profile'}
-              </Text>
-              <Text
-                style={[styles.vendorSubtitle, { color: colors.textSecondary }]}
+              <View
+                style={[
+                  styles.vendorIconContainer,
+                  { 
+                    backgroundColor: isPending 
+                      ? colors.primary
+                      : isRejected
+                      ? colors.error
+                      : colors.warning 
+                  },
+                ]}
               >
-                {isVendor
-                  ? 'Your vendor account is under review (2-3 business days)'
-                  : 'Complete verification to unlock vendor features'}
-              </Text>
-            </View>
-            <ChevronRight size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
+                {isPending ? (
+                  <Clock size={24} color="#FFF" />
+                ) : (
+                  <AlertCircle size={24} color="#FFF" />
+                )}
+              </View>
+              <View style={styles.vendorTextContainer}>
+                <Text style={[styles.vendorTitle, { color: colors.text }]}>
+                  {isPending
+                    ? 'Application Under Review'
+                    : isRejected
+                    ? 'Application Rejected'
+                    : isVendor
+                    ? 'Vendor Verification Pending'
+                    : 'Become a Vendor'}
+                </Text>
+                <Text
+                  style={[styles.vendorSubtitle, { color: colors.textSecondary }]}
+                >
+                  {isPending
+                    ? 'We\'re reviewing your vendor application. This usually takes 2-3 business days.'
+                    : isRejected
+                    ? vendorApplication?.rejection_reason || 'Your application was not approved. Tap to reapply.'
+                    : isVendor
+                    ? 'Your vendor account is under review (2-3 business days)'
+                    : 'Complete verification to unlock vendor features and start selling'}
+                </Text>
+              </View>
+              <ChevronRight size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          );
+        })()}
 
         {/* Recent Orders */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -518,6 +625,29 @@ const styles = StyleSheet.create({
   userLocation: {
     fontSize: 16,
     marginLeft: 4,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+  },
+  accountNumber: {
+    fontSize: 13,
+    marginLeft: 6,
+    fontWeight: '600',
+  },
+  copyIcon: {
+    padding: 4,
+    marginLeft: 6,
+  },
+  createAccountText: {
+    fontSize: 13,
+    marginLeft: 6,
   },
   statsRow: {
     flexDirection: 'row',
