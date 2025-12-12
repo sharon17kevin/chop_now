@@ -104,13 +104,13 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { logout } = useAuth();
-  const { 
-    profile, 
-    fetchProfile, 
+  const {
+    profile,
+    fetchProfile,
     vendorApplication,
     fetchVendorApplication,
     hasPendingApplication,
-    isApplicationRejected 
+    isApplicationRejected
   } = useUserStore();
   const { account: virtualAccount, fetchAccount } = useVirtualAccountStore();
   const { isVendor } = useRole();
@@ -350,74 +350,82 @@ export default function ProfileScreen() {
         </View>
 
         {/* Profile Verification Banner - Show for all unverified users */}
-        {profile && !profile.verified && (() => {
-          const isPending = hasPendingApplication();
-          const isRejected = isApplicationRejected();
-          
-          return (
-            <TouchableOpacity
-              style={[
-                styles.vendorBanner,
-                {
-                  backgroundColor: isPending 
-                    ? colors.primary + '15'
-                    : isRejected
-                    ? colors.error + '15'
-                    : colors.warning + '15',
-                  borderColor: isPending 
-                    ? colors.primary + '40'
-                    : isRejected
-                    ? colors.error + '40'
-                    : colors.warning + '40',
-                },
-              ]}
-              onPress={() => router.push('/(tabs)/(profile)/vendorReg' as any)}
-              activeOpacity={0.7}
-            >
-              <View
+        {profile &&
+          !profile.verified &&
+          (() => {
+            const isPending = hasPendingApplication();
+            const isRejected = isApplicationRejected();
+
+            return (
+              <TouchableOpacity
                 style={[
-                  styles.vendorIconContainer,
-                  { 
-                    backgroundColor: isPending 
-                      ? colors.primary
+                  styles.vendorBanner,
+                  {
+                    backgroundColor: isPending
+                      ? colors.primary + '15'
                       : isRejected
-                      ? colors.error
-                      : colors.warning 
+                      ? colors.error + '15'
+                      : colors.warning + '15',
+                    borderColor: isPending
+                      ? colors.primary + '40'
+                      : isRejected
+                      ? colors.error + '40'
+                      : colors.warning + '40',
                   },
                 ]}
+                onPress={() =>
+                  router.push('/(tabs)/(profile)/vendorReg' as any)
+                }
+                activeOpacity={0.7}
               >
-                {isPending ? (
-                  <Clock size={24} color="#FFF" />
-                ) : (
-                  <AlertCircle size={24} color="#FFF" />
-                )}
-              </View>
-              <View style={styles.vendorTextContainer}>
-                <Text style={[styles.vendorTitle, { color: colors.text }]}>
-                  {isPending
-                    ? 'Application Under Review'
-                    : isRejected
-                    ? 'Application Rejected'
-                    : isVendor
-                    ? 'Vendor Verification Pending'
-                    : 'Become a Vendor'}
-                </Text>
-                <Text
-                  style={[styles.vendorSubtitle, { color: colors.textSecondary }]}
+                <View
+                  style={[
+                    styles.vendorIconContainer,
+                    {
+                      backgroundColor: isPending
+                        ? colors.primary
+                        : isRejected
+                        ? colors.error
+                        : colors.warning,
+                    },
+                  ]}
                 >
-                  {isPending
-                    ? 'We\'re reviewing your vendor application. This usually takes 2-3 business days.'
-                    : isRejected
-                    ? vendorApplication?.rejection_reason || 'Your application was not approved. Tap to reapply.'
-                    : isVendor
-                    ? 'Your vendor account is under review (2-3 business days)'
-                    : 'Complete verification to unlock vendor features and start selling'}
-                </Text>
-              </View>
-              <ChevronRight size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          );
-        })()}
+                  {isPending ? (
+                    <Clock size={24} color="#FFF" />
+                  ) : (
+                    <AlertCircle size={24} color="#FFF" />
+                  )}
+                </View>
+                <View style={styles.vendorTextContainer}>
+                  <Text style={[styles.vendorTitle, { color: colors.text }]}>
+                    {isPending
+                      ? 'Application Under Review'
+                      : isRejected
+                      ? 'Application Rejected'
+                      : isVendor
+                      ? 'Vendor Verification Pending'
+                      : 'Become a Vendor'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.vendorSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {isPending
+                      ? "We're reviewing your vendor application. This usually takes 2-3 business days."
+                      : isRejected
+                      ? vendorApplication?.rejection_reason ||
+                        'Your application was not approved. Tap to reapply.'
+                      : isVendor
+                      ? 'Your vendor account is under review (2-3 business days)'
+                      : 'Complete verification to unlock vendor features and start selling'}
+                  </Text>
+                </View>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            );
+          })()}
 
         {/* Recent Orders */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
