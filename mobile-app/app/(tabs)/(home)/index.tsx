@@ -21,6 +21,8 @@ import {
 } from '@/stores/useProductStore';
 import { useProducts } from '@/hooks/useProducts';
 import { useTheme } from '@/hooks/useTheme';
+import { useAddressStore } from '@/stores/addressStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Bell, MapPin, Search, Star } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
@@ -45,6 +47,9 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const { colors } = useTheme();
+  const { getSelectedAddress, getDefaultAddress, fetchAddresses } =
+    useAddressStore();
+  const profile = useUserStore((state) => state.profile);
 
   const categories = [
     {
@@ -163,6 +168,13 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
+  // Fetch addresses when profile loads
+  useEffect(() => {
+    if (profile?.id) {
+      fetchAddresses(profile.id);
+    }
+  }, [profile?.id, fetchAddresses]);
+
   // Debug logging
   useEffect(() => {
     console.log('🏠 Products updated:', {
@@ -193,6 +205,26 @@ export default function HomeScreen() {
         params: { query: searchQuery.trim() },
       });
     }
+  };
+
+  // Get display address
+  const getDisplayAddress = () => {
+    const selectedAddress = getSelectedAddress();
+    const defaultAddress = getDefaultAddress();
+
+    if (selectedAddress) {
+      return `${selectedAddress.city}, ${selectedAddress.state}`;
+    }
+
+    if (defaultAddress) {
+      return `${defaultAddress.city}, ${defaultAddress.state}`;
+    }
+
+    if (profile?.city && profile?.state) {
+      return `${profile.city}, ${profile.state}`;
+    }
+
+    return 'Set delivery location';
   };
 
   // Handle fade animation
@@ -227,7 +259,7 @@ export default function HomeScreen() {
           >
             <MapPin size={16} color="#FFFFFF" />
             <Text style={{ ...styles.location, color: '#FFFFFF' }}>
-              San Francisco, CA
+              {getDisplayAddress()}
             </Text>
           </TouchableOpacity>
         </View>
