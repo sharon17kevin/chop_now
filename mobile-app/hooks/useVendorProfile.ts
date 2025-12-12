@@ -84,10 +84,21 @@ export const useVendorProfile = (vendorId: string) => {
         .from('profiles')
         .select('*')
         .eq('id', vendorId)
-        .eq('role', 'vendor')
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
+
+      if (!data) {
+        setError('Vendor profile not found');
+        setProfile(null);
+        return;
+      }
+
+      if (data.role !== 'vendor') {
+        setError('This user is not a vendor');
+        setProfile(null);
+        return;
+      }
 
       setProfile(data as VendorProfile);
     } catch (err: any) {

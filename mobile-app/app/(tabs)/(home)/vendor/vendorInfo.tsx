@@ -5,6 +5,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
+  Dimensions,
 } from 'react-native';
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,12 +19,18 @@ import {
   Package,
   CheckCircle,
   XCircle,
+  Award,
+  TrendingUp,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
-import { typography } from '@/styles/typography';
 import { useVendorRating } from '@/hooks/useVendorRating';
 import { useVendorProfile } from '@/hooks/useVendorProfile';
+import { typography } from '@/styles/typography';
+
+const { width } = Dimensions.get('window');
+const BANNER_HEIGHT = 200;
+const PROFILE_SIZE = 100;
 
 export default function VendorInfo() {
   const { colors } = useTheme();
@@ -76,6 +84,13 @@ export default function VendorInfo() {
     );
   }
 
+  // Dummy data for banner and profile images
+  const bannerImage =
+    'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&h=400&fit=crop';
+  const profileImage =
+    vendorProfile.profile_image ||
+    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop';
+
   return (
     <SafeAreaView
       edges={['top']}
@@ -88,11 +103,240 @@ export default function VendorInfo() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Vendor Header */}
+        {/* Banner Image */}
+        <View style={styles.bannerContainer}>
+          <Image
+            source={{ uri: bannerImage }}
+            style={styles.bannerImage}
+            resizeMode="cover"
+          />
+          {/* Overlay gradient */}
+          <View style={styles.bannerOverlay} />
+        </View>
+
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          {/* Profile Image */}
+          <View
+            style={[
+              styles.profileImageContainer,
+              { borderColor: colors.background },
+            ]}
+          >
+            <Image
+              source={{ uri: profileImage }}
+              style={styles.profileImage}
+              resizeMode="cover"
+            />
+            {vendorProfile.verified && (
+              <View
+                style={[
+                  styles.verifiedBadgeSmall,
+                  { backgroundColor: colors.success },
+                ]}
+              >
+                <CheckCircle size={20} color="white" />
+              </View>
+            )}
+          </View>
+
+          {/* Vendor Info */}
+          <View style={styles.vendorInfoSection}>
+            <Text style={[styles.vendorTitle, { color: colors.text }]}>
+              {vendorProfile.farm_name || vendorProfile.full_name || vendorName}
+            </Text>
+
+            {vendorProfile.verified && (
+              <View style={styles.verifiedBadge}>
+                <CheckCircle size={16} color={colors.success} />
+                <Text style={[styles.verifiedText, { color: colors.success }]}>
+                  Verified Vendor
+                </Text>
+              </View>
+            )}
+
+            {vendorProfile.farm_description && (
+              <Text
+                style={[styles.description, { color: colors.textSecondary }]}
+                numberOfLines={3}
+              >
+                {vendorProfile.farm_description}
+              </Text>
+            )}
+
+            {/* Quick Stats */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Award size={16} color={colors.secondary} />
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {vendorProfile.total_orders || 234}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Orders
+                </Text>
+              </View>
+
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
+
+              <View style={styles.statItem}>
+                <TrendingUp size={16} color={colors.secondary} />
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {vendorProfile.favorite_count || 89}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Favorites
+                </Text>
+              </View>
+
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
+
+              <View style={styles.statItem}>
+                <Star size={16} color={colors.secondary} />
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {ratingData?.average.toFixed(1) || '4.8'}
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Rating
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Rating Section */}
+        {ratingData && (
+          <View
+            style={[
+              styles.ratingCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Customer Reviews
+            </Text>
+
+            <View style={styles.ratingContent}>
+              {/* Left: Average */}
+              <View style={styles.ratingAverage}>
+                <Text style={[styles.ratingNumber, { color: colors.text }]}>
+                  {ratingData.average.toFixed(1)}
+                </Text>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      size={18}
+                      key={star}
+                      fill={
+                        star <= Math.round(ratingData.average)
+                          ? colors.secondary
+                          : 'transparent'
+                      }
+                      color={colors.secondary}
+                    />
+                  ))}
+                </View>
+                <Text
+                  style={[styles.ratingCount, { color: colors.textSecondary }]}
+                >
+                  Based on {ratingData.total} reviews
+                </Text>
+              </View>
+
+              {/* Right: Breakdown */}
+              <View style={styles.ratingBreakdown}>
+                {['5', '4', '3', '2', '1'].map((star) => {
+                  const sumCount = Object.values(ratingData.breakdown).reduce(
+                    (a, b) => a + b,
+                    0
+                  );
+                  const percentage =
+                    sumCount > 0
+                      ? (ratingData.breakdown[star] / sumCount) * 100
+                      : 0;
+                  const count = ratingData.breakdown[star] || 0;
+
+                  return (
+                    <View key={star} style={styles.ratingRow}>
+                      <Text
+                        style={[
+                          styles.ratingRowLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {star}
+                      </Text>
+                      <Star
+                        size={14}
+                        color={colors.secondary}
+                        fill={colors.secondary}
+                      />
+
+                      <View
+                        style={[
+                          styles.progressBarBackground,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            {
+                              width: `${percentage}%`,
+                              backgroundColor: colors.secondary,
+                            },
+                          ]}
+                        />
+                      </View>
+
+                      <Text
+                        style={[
+                          styles.ratingRowCount,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        {count}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.viewAllButton, { borderColor: colors.border }]}
+              onPress={() =>
+                router.push({
+                  pathname: '/reviews',
+                  params: { vendorId },
+                })
+              }
+            >
+              <Text style={[styles.viewAllText, { color: colors.secondary }]}>
+                View All Reviews
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Old Vendor Header - DELETE THIS */}
         <View
           style={[
             styles.headerCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              display: 'none',
+            },
           ]}
         >
           <View style={styles.headerTop}>
@@ -405,7 +649,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
     paddingBottom: 40,
   },
   loadingContainer: {
@@ -430,21 +673,57 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  headerCard: {
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 24,
+
+  // Banner styles
+  bannerContainer: {
+    width: width,
+    height: BANNER_HEIGHT,
+    position: 'relative',
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+
+  // Profile section
+  profileSection: {
+    paddingHorizontal: 16,
+    marginTop: -(PROFILE_SIZE / 2),
+  },
+  profileImageContainer: {
+    width: PROFILE_SIZE,
+    height: PROFILE_SIZE,
+    borderRadius: PROFILE_SIZE / 2,
+    borderWidth: 4,
+    position: 'relative',
+    marginBottom: 16,
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: PROFILE_SIZE / 2,
+  },
+  verifiedBadgeSmall: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  vendorInfoSection: {
+    gap: 8,
   },
   vendorTitle: {
     fontSize: 24,
     fontWeight: '800',
-    marginBottom: 8,
   },
   verifiedBadge: {
     flexDirection: 'row',
@@ -455,24 +734,117 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
   description: {
     fontSize: 14,
     lineHeight: 20,
+    marginTop: 4,
   },
+
+  // Stats row
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+  },
+
+  // Rating card
+  ratingCard: {
+    marginHorizontal: 16,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  ratingContent: {
+    flexDirection: 'row',
+    gap: 24,
+    marginTop: 16,
+  },
+  ratingAverage: {
+    alignItems: 'center',
+    minWidth: 90,
+  },
+  ratingNumber: {
+    fontSize: 48,
+    fontWeight: '800',
+    lineHeight: 52,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    marginTop: 8,
+  },
+  ratingCount: {
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  ratingBreakdown: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 8,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ratingRowLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    width: 12,
+  },
+  progressBarBackground: {
+    height: 8,
+    flex: 1,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+  ratingRowCount: {
+    fontSize: 12,
+    fontWeight: '500',
+    width: 32,
+    textAlign: 'right',
+  },
+  viewAllButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
   section: {
     marginBottom: 24,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -505,38 +877,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4,
   },
-  ratingSection: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 20,
-    gap: 24,
-  },
-  ratingAverage: {
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  ratingBreakdown: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 6,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  progressBarBackground: {
-    height: 8,
-    flex: 1,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    marginHorizontal: 8,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: 8,
-    borderRadius: 4,
-  },
   zonesList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -553,6 +893,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footerCard: {
+    marginHorizontal: 16,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -561,5 +902,36 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+
+  // Old styles - to be removed
+  headerCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  ratingText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  ratingSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 20,
+    gap: 24,
   },
 });
