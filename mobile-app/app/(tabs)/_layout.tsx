@@ -44,6 +44,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
+          href: '/(tabs)/(home)',
         }}
       />
       <Tabs.Screen
@@ -51,6 +52,7 @@ export default function TabLayout() {
         options={{
           title: 'Search',
           tabBarIcon: ({ size, color }) => <Search size={size} color={color} />,
+          href: '/(tabs)/search',
         }}
       />
       <Tabs.Screen
@@ -68,6 +70,7 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <ShoppingBag size={size} color={color} />
           ),
+          href: '/(tabs)/(orders)',
         }}
       />
       <Tabs.Screen
@@ -79,17 +82,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="(driver)"
-        options={{
-          title: 'Driver',
-          tabBarIcon: ({ size, color }) => <Bus size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="(profile)"
         options={{
           title: 'Profile',
           tabBarIcon: ({ size, color }) => <User size={size} color={color} />,
+          href: '/(tabs)/(profile)',
         }}
       />
     </Tabs>

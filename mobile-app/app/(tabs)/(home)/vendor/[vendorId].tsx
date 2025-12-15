@@ -23,6 +23,8 @@ import {
   Minus,
   ShoppingBag,
   Heart,
+  Tag,
+  Percent,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useVendorProducts } from '@/hooks/useVendorProducts';
@@ -352,16 +354,108 @@ export default function VendorPage() {
               {selectedProduct.description}
             </Text>
 
+            {/* Promo/Discount Banner */}
+            {selectedProduct.discount_percentage > 0 && (
+              <View
+                style={[
+                  styles.promoBanner,
+                  {
+                    backgroundColor: colors.success + '15',
+                    borderColor: colors.success,
+                  },
+                ]}
+              >
+                <View style={styles.promoIcon}>
+                  <Tag size={20} color={colors.success} />
+                </View>
+                <View style={styles.promoContent}>
+                  <View style={styles.promoHeader}>
+                    <Text
+                      style={[styles.promoTitle, { color: colors.success }]}
+                    >
+                      {selectedProduct.discount_percentage}% OFF
+                    </Text>
+                    {selectedProduct.discount_end_date && (
+                      <Text
+                        style={[
+                          styles.promoExpiry,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Ends{' '}
+                        {new Date(
+                          selectedProduct.discount_end_date
+                        ).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[styles.promoText, { color: colors.text }]}>
+                    Save ₦
+                    {(
+                      (selectedProduct.price *
+                        selectedProduct.discount_percentage) /
+                      100
+                    ).toLocaleString()}{' '}
+                    on this item!
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.priceRow}>
               <View>
-                <Text style={[styles.detailPrice, { color: colors.primary }]}>
-                  ₦{selectedProduct.price.toLocaleString()}
-                </Text>
-                <Text
-                  style={[styles.detailUnit, { color: colors.textTetiary }]}
-                >
-                  per {selectedProduct.unit}
-                </Text>
+                {selectedProduct.discount_percentage > 0 ? (
+                  <>
+                    <View style={styles.discountPriceRow}>
+                      <Text
+                        style={[styles.detailPrice, { color: colors.primary }]}
+                      >
+                        ₦
+                        {(
+                          selectedProduct.price *
+                          (1 - selectedProduct.discount_percentage / 100)
+                        ).toLocaleString()}
+                      </Text>
+                      <View
+                        style={[
+                          styles.percentBadge,
+                          { backgroundColor: colors.error },
+                        ]}
+                      >
+                        <Percent size={10} color="#fff" />
+                        <Text style={styles.percentText}>
+                          {selectedProduct.discount_percentage}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={[
+                        styles.originalPrice,
+                        { color: colors.textTetiary },
+                      ]}
+                    >
+                      ₦{selectedProduct.price.toLocaleString()}
+                    </Text>
+                    <Text
+                      style={[styles.detailUnit, { color: colors.textTetiary }]}
+                    >
+                      per {selectedProduct.unit}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text
+                      style={[styles.detailPrice, { color: colors.primary }]}
+                    >
+                      ₦{selectedProduct.price.toLocaleString()}
+                    </Text>
+                    <Text
+                      style={[styles.detailUnit, { color: colors.textTetiary }]}
+                    >
+                      per {selectedProduct.unit}
+                    </Text>
+                  </>
+                )}
               </View>
 
               <View
@@ -445,7 +539,13 @@ export default function VendorPage() {
                   <ShoppingBag size={20} color="#fff" />
                   <Text style={styles.addButtonText}>
                     Add to Cart - ₦
-                    {(selectedProduct.price * quantity).toLocaleString()}
+                    {selectedProduct.discount_percentage > 0
+                      ? (
+                          selectedProduct.price *
+                          (1 - selectedProduct.discount_percentage / 100) *
+                          quantity
+                        ).toLocaleString()
+                      : (selectedProduct.price * quantity).toLocaleString()}
                   </Text>
                 </>
               )}
@@ -678,15 +778,78 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
   },
+  promoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+    gap: 12,
+  },
+  promoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  promoContent: {
+    flex: 1,
+  },
+  promoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  promoTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  promoExpiry: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  promoText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
   },
+  discountPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   detailPrice: {
     fontSize: 28,
     fontWeight: '900',
+  },
+  percentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 2,
+  },
+  percentText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  originalPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    textDecorationLine: 'line-through',
+    marginBottom: 2,
   },
   detailUnit: {
     fontSize: 12,
