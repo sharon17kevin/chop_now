@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { Bell, Check, Package, Tag, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import AppHeader from '@/components/AppHeader';
 
 interface Notification {
@@ -27,6 +28,7 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { colors } = useTheme();
+  const router = useRouter();
 
   useEffect(() => {
     fetchNotifications();
@@ -173,7 +175,10 @@ export default function NotificationsScreen() {
         edges={['top']}
         style={[styles.container, { backgroundColor: colors.background }]}
       >
-        <AppHeader title="Notifications" />
+        <AppHeader
+          title="Notifications"
+          onBack={() => router.push('/(tabs)/(profile)')}
+        />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#059669" />
         </View>
@@ -188,7 +193,10 @@ export default function NotificationsScreen() {
       edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <AppHeader title="Notifications" />
+      <AppHeader
+        title="Notifications"
+        onBack={() => router.push('/(tabs)/(profile)')}
+      />
 
       {unreadCount > 0 && (
         <View

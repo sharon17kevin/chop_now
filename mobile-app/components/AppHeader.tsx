@@ -6,12 +6,22 @@ import { useRouter } from 'expo-router';
 import { typography } from '@/styles/typography';
 
 interface Props {
-    title?: string;
+  title?: string;
+  onBack?: () => void;
 }
 
-export default function AppHeader({ title = 'Title' }: Props) {
+export default function AppHeader({ title = 'Title', onBack }: Props) {
   const { colors } = useTheme();
   const router = useRouter();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <View
       style={{
@@ -19,7 +29,7 @@ export default function AppHeader({ title = 'Title' }: Props) {
       }}
     >
       <TouchableOpacity
-        onPress={() => router.back()}
+        onPress={handleBack}
         style={{
           backgroundColor: 'white',
           width: 40,
