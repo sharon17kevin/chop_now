@@ -3,6 +3,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useUserStore } from '@/stores/useUserStore';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import {
   CheckCircle,
   Minus,
@@ -48,10 +49,11 @@ export default function CheckoutScreen() {
 
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPayment, setSelectedPayment] = useState('Wallet');
+  const [selectedPayment, setSelectedPayment] = useState('Card');
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState('');
+  const [processing, setProcessing] = useState(false);
 
   // Fetch cart items from database
   useEffect(() => {
@@ -161,31 +163,190 @@ export default function CheckoutScreen() {
       Alert.alert('Error', 'Failed to remove item');
     }
   };
-
   const handleCheckout = async () => {
     if (items.length === 0) {
       Alert.alert('Empty Cart', 'Your cart is empty');
       return;
     }
 
-    // TODO: Implement payment processing
-    Alert.alert(
-      'Checkout',
-      `Process payment of ₦${total.toFixed(2)} via ${selectedPayment}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+    if (selectedPayment === 'Wallet') {
+      Alert.alert(
+        'Coming Soon',
+        'Wallet payment will be available soon. Please use Card or Transfer for now.'
+      );
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      const profile = useUserStore.getState().profile;
+      if (!profile?.id || !profile?.email) {
+        Alert.alert('Error', 'Please login to continue');
+        return;
+      }
+
+      // Generate unique reference
+      const reference = `order_${Date.now()}_${profile.id.slice(0, 8)}`;
+
+      // Prepare order metadata
+      const orderMetadata = {
+        user_id: profile.id,
+        order_type: 'product_purchase',
+        items: items.map((item) => ({
+          product_id: item.product_id,
+          product_name: item.products?.name,
+          quantity: item.quantity,
+          price: item.products?.price,
+          vendor_id: item.products?.vendor_id,
+          vendor_name: item.products?.profiles?.full_name,
+        })),
+        subtotal,
+        delivery_fee: deliveryFee,
+        service_fee: serviceFee,
+        discount,
+        total,
+        promo_code: promoApplied ? promoCode : null,
+      };
+
+      // Initialize Paystack payment
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
+        'paystack-initialize',
         {
-          text: 'Confirm',
-          onPress: async () => {
-            // After successful payment:
-            // 1. Create order(s) from cart items
-            // 2. Clear cart
-            // 3. Navigate to order confirmation
-            Alert.alert('Success', 'Payment processing not yet implemented');
+          body: {
+            email: profile.email,
+            amount: Math.round(total * 100), // Convert to kobo
+            reference,
+            channels: selectedPayment === 'Card' ? ['card'] : ['bank', 'bank_transfer'],
+            metadata: orderMetadata,
           },
-        },
-      ]
-    );
+        }
+      );
+
+      if (paymentError) throw paymentError;
+
+      if (!paymentData?.data?.authorization_url) {
+        throw new Error('Failed to initialize payment');
+      }
+
+      // Open Paystack payment page
+      const result = await WebBrowser.openAuthSessionAsync(
+        paymentData.data.authorization_url,
+        'your-app-scheme://'
+      );
+
+      // After payment window closes, verify payment
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        Alert.alert(
+          'Payment Cancelled',
+          'Would you like to verify if payment was completed?',
+          [
+            { text: 'No', style: 'cancel' },
+            {
+              text: 'Verify',
+              onPress: () => verifyAndCreateOrder(reference, orderMetadata),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Verify payment
+      await verifyAndCreateOrder(reference, orderMetadata);
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      Alert.alert('Payment Failed', error.message || 'Something went wrong');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const verifyAndCreateOrder = async (reference: string, orderMetadata: any) => {
+    try {
+      setProcessing(true);
+
+      // Verify payment
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+        'paystack-verify',
+        {
+          body: { reference },
+        }
+      );
+
+      if (verifyError) throw verifyError;
+
+      if (verifyData?.data?.status === 'success') {
+        // Create orders (group by vendor)
+        const vendorGroups = items.reduce((acc, item) => {
+          const vendorId = item.products?.vendor_id;
+          if (!vendorId) return acc;
+          
+          if (!acc[vendorId]) {
+            acc[vendorId] = [];
+          }
+          acc[vendorId].push(item);
+          return acc;
+        }, {} as Record<string, CartItem[]>);
+
+        const profile = useUserStore.getState().profile;
+
+        // Create order for each vendor
+        for (const [vendorId, vendorItems] of Object.entries(vendorGroups)) {
+          const orderTotal = vendorItems.reduce(
+            (sum, item) => sum + (item.products?.price || 0) * item.quantity,
+            0
+          );
+
+          await supabase.from('orders').insert({
+            user_id: profile?.id,
+            vendor_id: vendorId,
+            items: vendorItems.map((item) => ({
+              product_id: item.product_id,
+              product_name: item.products?.name,
+              quantity: item.quantity,
+              price: item.products?.price,
+              unit: item.products?.unit,
+            })),
+            total: orderTotal,
+            payment_reference: reference,
+            payment_method: selectedPayment.toLowerCase(),
+            payment_status: 'paid',
+            status: 'pending',
+            metadata: orderMetadata,
+          });
+        }
+
+        // Clear cart
+        const { error: clearError } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', profile?.id);
+
+        if (clearError) console.error('Failed to clear cart:', clearError);
+
+        // Show success and navigate
+        Alert.alert(
+          'Order Placed!',
+          'Your payment was successful. Vendors will start preparing your order.',
+          [
+            {
+              text: 'View Orders',
+              onPress: () => router.push('/(tabs)/(orders)'),
+            },
+          ]
+        );
+
+        // Refresh cart
+        setItems([]);
+      } else {
+        Alert.alert('Payment Failed', 'Payment verification failed. Please contact support.');
+      }
+    } catch (error: any) {
+      console.error('Order creation error:', error);
+      Alert.alert('Error', 'Payment succeeded but order creation failed. Please contact support.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const subtotal = items.reduce(
@@ -457,9 +618,9 @@ export default function CheckoutScreen() {
 
           <View style={styles.paymentOptions}>
             {[
-              { label: 'Wallet', icon: 'wallet' },
-              { label: 'Card', icon: 'credit-card' },
-              { label: 'Transfer', icon: 'bank' },
+              { label: 'Card', icon: 'card-outline', enabled: true },
+              { label: 'Transfer', icon: 'swap-horizontal-outline', enabled: true },
+              { label: 'Wallet', icon: 'wallet-outline', enabled: false },
             ].map((method) => (
               <TouchableOpacity
                 key={method.label}
@@ -473,18 +634,14 @@ export default function CheckoutScreen() {
                     borderColor: colors.primary,
                     backgroundColor: colors.card,
                   },
+                  !method.enabled && { opacity: 0.5 },
                 ]}
-                onPress={() => setSelectedPayment(method.label)}
+                onPress={() => method.enabled && setSelectedPayment(method.label)}
+                disabled={!method.enabled}
               >
                 <View style={styles.paymentLeft}>
                   <Ionicons
-                    name={
-                      method.label === 'Wallet'
-                        ? 'wallet-outline'
-                        : method.label === 'Card'
-                        ? 'card-outline'
-                        : 'swap-horizontal-outline'
-                    }
+                    name={method.icon as any}
                     size={20}
                     color={
                       selectedPayment === method.label
@@ -493,22 +650,29 @@ export default function CheckoutScreen() {
                     }
                     style={{ marginRight: 8 }}
                   />
-                  <Text
-                    style={[
-                      styles.paymentLabel,
-                      {
-                        color:
-                          selectedPayment === method.label
-                            ? colors.primary
-                            : colors.text,
-                      },
-                    ]}
-                  >
-                    {method.label}
-                  </Text>
+                  <View>
+                    <Text
+                      style={[
+                        styles.paymentLabel,
+                        {
+                          color:
+                            selectedPayment === method.label
+                              ? colors.primary
+                              : colors.text,
+                        },
+                      ]}
+                    >
+                      {method.label}
+                    </Text>
+                    {!method.enabled && (
+                      <Text style={[styles.comingSoonText, { color: colors.textSecondary }]}>
+                        Coming Soon
+                      </Text>
+                    )}
+                  </View>
                 </View>
 
-                {selectedPayment === method.label && (
+                {selectedPayment === method.label && method.enabled && (
                   <CheckCircle size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
@@ -521,14 +685,23 @@ export default function CheckoutScreen() {
           style={[styles.checkoutSection, { backgroundColor: colors.card }]}
         >
           <TouchableOpacity
-            style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.checkoutButton,
+              { backgroundColor: colors.primary },
+              processing && { opacity: 0.6 },
+            ]}
             onPress={handleCheckout}
+            disabled={processing}
           >
-            <Text
-              style={[styles.checkoutButtonText, { color: colors.buttonText }]}
-            >
-              Pay ₦{total.toFixed(2)}
-            </Text>
+            {processing ? (
+              <ActivityIndicator color={colors.buttonText} />
+            ) : (
+              <Text
+                style={[styles.checkoutButtonText, { color: colors.buttonText }]}
+              >
+                Pay ₦{total.toFixed(2)} via {selectedPayment}
+              </Text>
+            )}
           </TouchableOpacity>
           <Text style={[styles.checkoutNote, { color: colors.textSecondary }]}>
             Estimated delivery: Tomorrow, 10:00 AM - 2:00 PM
@@ -738,5 +911,10 @@ const styles = StyleSheet.create({
   promoSuccess: {
     marginTop: 8,
     fontSize: 14,
+  },
+  comingSoonText: {
+    fontSize: 11,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });
