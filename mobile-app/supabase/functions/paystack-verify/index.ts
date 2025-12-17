@@ -21,12 +21,14 @@ serve(async (req) => {
       )
 
       const authorization = data.data.authorization
+      const amountInNaira = data.data.amount / 100
+      const userId = data.data.metadata.user_id
       
       // Save payment record
       await supabase.from('payments').insert({
-        user_id: data.data.metadata.user_id,
+        user_id: userId,
         reference: data.data.reference,
-        amount: data.data.amount / 100,
+        amount: amountInNaira,
         currency: data.data.currency,
         status: 'success',
         payment_method: data.data.channel,
@@ -36,10 +38,18 @@ serve(async (req) => {
         verified_at: new Date().toISOString(),
       })
 
+      // Credit user's wallet
+      await supabase.rpc('credit_wallet', {
+        p_user_id: userId,
+        p_amount: amountInNaira,
+        p_description: `Deposit via ${data.data.channel}`,
+        p_reference: data.data.reference
+      })
+
       // If card payment, save card details
       if (authorization && authorization.authorization_code) {
         await supabase.from('payment_methods').upsert({
-          user_id: data.data.metadata.user_id,
+          user_id: userId,
           type: 'card',
           card_last_four: authorization.last4,
           card_brand: authorization.brand,
