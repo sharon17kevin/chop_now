@@ -24,6 +24,8 @@ export default function VendorReg() {
   const profile = useUserStore((state) => state.profile);
 
   const [loading, setLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  const [existingApplication, setExistingApplication] = useState<any>(null);
   const [formData, setFormData] = useState({
     farmName: '',
     farmLocation: '',
@@ -44,6 +46,36 @@ export default function VendorReg() {
       sunday: { open: '09:00', close: '18:00', closed: true },
     },
   });
+
+  // Check for existing application on mount
+  React.useEffect(() => {
+    checkExistingApplication();
+  }, []);
+
+  const checkExistingApplication = async () => {
+    try {
+      setCheckingStatus(true);
+      
+      if (!profile?.id) return;
+
+      const { data, error } = await supabase
+        .from('vendor_applications')
+        .select('*')
+        .eq('user_id', profile.id)
+        .in('status', ['pending', 'approved'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data && !error) {
+        setExistingApplication(data);
+      }
+    } catch (error) {
+      console.error('Error checking application status:', error);
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -84,23 +116,6 @@ export default function VendorReg() {
         return;
       }
 
-      // Check if user already has a pending application
-      const { data: existingApp, error: checkError } = await supabase
-        .from('vendor_applications')
-        .select('id, status')
-        .eq('user_id', profile.id)
-        .eq('status', 'pending')
-        .single();
-
-      if (existingApp) {
-        Alert.alert(
-          'Application Already Submitted',
-          'You already have a pending vendor application. Please wait for admin review.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
       // Parse delivery zones from comma-separated string
       const deliveryZonesArray = formData.deliveryZones
         .split(',')
@@ -132,7 +147,7 @@ export default function VendorReg() {
           {
             text: 'OK',
             onPress: () => {
-              router.back();
+              checkExistingApplication(); // Refresh status
             },
           },
         ]
@@ -178,7 +193,150 @@ export default function VendorReg() {
         <View style={{ width: 40 }} />
       </View>
 
-      <KeyboardAvoidingView
+      {checkingStatus ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Checking application status...
+          </Text>
+        </View>
+      ) : existingApplication ? (
+        // Show existing application status
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={[
+              styles.statusCard,
+              {
+                backgroundColor: colors.card,
+                borderColor:
+                  existingApplication.status === 'pending'
+                    ? colors.warning || '#F59E0B'
+                    : colors.success,
+              },
+            ]}
+          >
+            <View style={styles.statusHeader}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor:
+                      existingApplication.status === 'pending'
+                        ? (colors.warning || '#F59E0B') + '20'
+                        : colors.success + '20',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    {
+                      color:
+                        existingApplication.status === 'pending'
+                          ? colors.warning || '#F59E0B'
+                          : colors.success,
+                    },
+                  ]}
+                >
+                  {existingApplication.status === 'pending'
+                    ? '⏳ Under Review'
+                    : '✅ Approved'}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[styles.statusTitle, { color: colors.text }]}>
+              Your Vendor Application
+            </Text>
+
+            {existingApplication.status === 'pending' ? (
+              <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
+                Your application is currently under review. Our admin team will review it within
+                2-3 business days. You will be notified once a decision is made.
+              </Text>
+            ) : (
+              <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
+                Congratulations! Your vendor application has been approved. You can now start
+                listing products and managing your store.
+              </Text>
+            )}
+
+            <View style={styles.applicationDetails}>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  Business Name:
+                </Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>
+                  {existingApplication.farm_name}
+                </Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  Submitted:
+                </Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>
+                  {new Date(existingApplication.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+              </View>
+
+              {existingApplication.city && (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                    Location:
+                  </Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>
+                    {existingApplication.city}, {existingApplication.state}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {existingApplication.status === 'approved' && (
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: colors.secondary }]}
+                onPress={() => router.push('/(tabs)/sell')}
+              >
+                <Text style={styles.actionButtonText}>Go to My Store</Text>
+              </TouchableOpacity>
+            )}
+
+            {existingApplication.status === 'pending' && (
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: colors.border }]}
+                onPress={() => router.back()}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+                  Go Back
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View
+            style={[
+              styles.helpBox,
+              { backgroundColor: colors.filter, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.helpTitle, { color: colors.text }]}>Need Help?</Text>
+            <Text style={[styles.helpText, { color: colors.textSecondary }]}>
+              If you have questions about your application or need to update your information,
+              please contact our support team.
+            </Text>
+          </View>
+        </ScrollView>
+      ) : (
+        // Show registration form (existing code)
+        <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
@@ -459,6 +617,7 @@ export default function VendorReg() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
@@ -572,5 +731,98 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  statusCard: {
+    borderRadius: 16,
+    borderWidth: 2,
+    padding: 20,
+    marginBottom: 20,
+  },
+  statusHeader: {
+    marginBottom: 16,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  statusTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  statusDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  applicationDetails: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  detailValue: {
+    fontSize: 14,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 12,
+  },
+  actionButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  helpBox: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  helpTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  helpText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

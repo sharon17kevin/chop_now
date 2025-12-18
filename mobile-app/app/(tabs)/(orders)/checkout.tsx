@@ -210,18 +210,17 @@ export default function CheckoutScreen() {
       };
 
       // Initialize Paystack payment
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
-        'paystack-initialize',
-        {
+      const { data: paymentData, error: paymentError } =
+        await supabase.functions.invoke('paystack-initialize', {
           body: {
             email: profile.email,
             amount: Math.round(total * 100), // Convert to kobo
             reference,
-            channels: selectedPayment === 'Card' ? ['card'] : ['bank', 'bank_transfer'],
+            channels:
+              selectedPayment === 'Card' ? ['card'] : ['bank', 'bank_transfer'],
             metadata: orderMetadata,
           },
-        }
-      );
+        });
 
       if (paymentError) throw paymentError;
 
@@ -261,17 +260,18 @@ export default function CheckoutScreen() {
     }
   };
 
-  const verifyAndCreateOrder = async (reference: string, orderMetadata: any) => {
+  const verifyAndCreateOrder = async (
+    reference: string,
+    orderMetadata: any
+  ) => {
     try {
       setProcessing(true);
 
       // Verify payment
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
-        'paystack-verify',
-        {
+      const { data: verifyData, error: verifyError } =
+        await supabase.functions.invoke('paystack-verify', {
           body: { reference },
-        }
-      );
+        });
 
       if (verifyError) throw verifyError;
 
@@ -280,7 +280,7 @@ export default function CheckoutScreen() {
         const vendorGroups = items.reduce((acc, item) => {
           const vendorId = item.products?.vendor_id;
           if (!vendorId) return acc;
-          
+
           if (!acc[vendorId]) {
             acc[vendorId] = [];
           }
@@ -339,11 +339,17 @@ export default function CheckoutScreen() {
         // Refresh cart
         setItems([]);
       } else {
-        Alert.alert('Payment Failed', 'Payment verification failed. Please contact support.');
+        Alert.alert(
+          'Payment Failed',
+          'Payment verification failed. Please contact support.'
+        );
       }
     } catch (error: any) {
       console.error('Order creation error:', error);
-      Alert.alert('Error', 'Payment succeeded but order creation failed. Please contact support.');
+      Alert.alert(
+        'Error',
+        'Payment succeeded but order creation failed. Please contact support.'
+      );
     } finally {
       setProcessing(false);
     }
@@ -481,7 +487,7 @@ export default function CheckoutScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.itemsList}>
         {/* Cart Items */}
-        <View style={{ height: 10 }}/>
+        <View style={{ height: 10 }} />
         {items.map((item) => (
           <View
             key={item.id}
@@ -619,7 +625,11 @@ export default function CheckoutScreen() {
           <View style={styles.paymentOptions}>
             {[
               { label: 'Card', icon: 'card-outline', enabled: true },
-              { label: 'Transfer', icon: 'swap-horizontal-outline', enabled: true },
+              {
+                label: 'Transfer',
+                icon: 'swap-horizontal-outline',
+                enabled: true,
+              },
               { label: 'Wallet', icon: 'wallet-outline', enabled: false },
             ].map((method) => (
               <TouchableOpacity
@@ -636,7 +646,9 @@ export default function CheckoutScreen() {
                   },
                   !method.enabled && { opacity: 0.5 },
                 ]}
-                onPress={() => method.enabled && setSelectedPayment(method.label)}
+                onPress={() =>
+                  method.enabled && setSelectedPayment(method.label)
+                }
                 disabled={!method.enabled}
               >
                 <View style={styles.paymentLeft}>
@@ -665,7 +677,12 @@ export default function CheckoutScreen() {
                       {method.label}
                     </Text>
                     {!method.enabled && (
-                      <Text style={[styles.comingSoonText, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.comingSoonText,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         Coming Soon
                       </Text>
                     )}
@@ -697,7 +714,10 @@ export default function CheckoutScreen() {
               <ActivityIndicator color={colors.buttonText} />
             ) : (
               <Text
-                style={[styles.checkoutButtonText, { color: colors.buttonText }]}
+                style={[
+                  styles.checkoutButtonText,
+                  { color: colors.buttonText },
+                ]}
               >
                 Pay ₦{total.toFixed(2)} via {selectedPayment}
               </Text>
