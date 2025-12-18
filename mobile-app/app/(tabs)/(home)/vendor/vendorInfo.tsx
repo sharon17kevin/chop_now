@@ -84,12 +84,9 @@ export default function VendorInfo() {
     );
   }
 
-  // Dummy data for banner and profile images
-  const bannerImage =
-    'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&h=400&fit=crop';
-  const profileImage =
-    vendorProfile.profile_image ||
-    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop';
+  // Use vendor's actual images or show placeholders
+  const bannerImage = vendorProfile.banner_image || null;
+  const profileImage = vendorProfile.profile_image || null;
 
   return (
     <SafeAreaView
@@ -104,15 +101,25 @@ export default function VendorInfo() {
         showsVerticalScrollIndicator={false}
       >
         {/* Banner Image */}
-        <View style={styles.bannerContainer}>
-          <Image
-            source={{ uri: bannerImage }}
-            style={styles.bannerImage}
-            resizeMode="cover"
+        {bannerImage ? (
+          <View style={styles.bannerContainer}>
+            <Image
+              source={{ uri: bannerImage }}
+              style={styles.bannerImage}
+              resizeMode="cover"
+            />
+            {/* Overlay gradient */}
+            <View style={styles.bannerOverlay} />
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.bannerContainer,
+              styles.bannerPlaceholder,
+              { backgroundColor: colors.filter },
+            ]}
           />
-          {/* Overlay gradient */}
-          <View style={styles.bannerOverlay} />
-        </View>
+        )}
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
@@ -123,11 +130,32 @@ export default function VendorInfo() {
               { borderColor: colors.background },
             ]}
           >
-            <Image
-              source={{ uri: profileImage }}
-              style={styles.profileImage}
-              resizeMode="cover"
-            />
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.profileImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View
+                style={[
+                  styles.profileImage,
+                  styles.profilePlaceholder,
+                  { backgroundColor: colors.filter },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.profilePlaceholderText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {(vendorProfile.farm_name || vendorProfile.full_name || 'V')
+                    .charAt(0)
+                    .toUpperCase()}
+                </Text>
+              </View>
+            )}
             {vendorProfile.verified && (
               <View
                 style={[
@@ -169,7 +197,7 @@ export default function VendorInfo() {
               <View style={styles.statItem}>
                 <Award size={16} color={colors.secondary} />
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  {vendorProfile.total_orders || 234}
+                  {vendorProfile.total_orders || 0}
                 </Text>
                 <Text
                   style={[styles.statLabel, { color: colors.textSecondary }]}
@@ -185,7 +213,7 @@ export default function VendorInfo() {
               <View style={styles.statItem}>
                 <TrendingUp size={16} color={colors.secondary} />
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  {vendorProfile.favorite_count || 89}
+                  {vendorProfile.favorite_count || 0}
                 </Text>
                 <Text
                   style={[styles.statLabel, { color: colors.textSecondary }]}
@@ -201,7 +229,11 @@ export default function VendorInfo() {
               <View style={styles.statItem}>
                 <Star size={16} color={colors.secondary} />
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  {ratingData?.average.toFixed(1) || '4.8'}
+                  {ratingData?.average
+                    ? ratingData.average.toFixed(1)
+                    : vendorProfile.rating
+                    ? vendorProfile.rating.toFixed(1)
+                    : '0.0'}
                 </Text>
                 <Text
                   style={[styles.statLabel, { color: colors.textSecondary }]}
@@ -684,6 +716,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  bannerPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.2)',
@@ -706,6 +742,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: PROFILE_SIZE / 2,
+  },
+  profilePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profilePlaceholderText: {
+    fontSize: 40,
+    fontWeight: '700',
   },
   verifiedBadgeSmall: {
     position: 'absolute',
