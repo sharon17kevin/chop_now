@@ -1,6 +1,6 @@
-import { DestinationMiniCard } from '@/components/DestinationCard';
-import ExpandingTile from '@/components/ExpandingTile';
-import Indicator from '@/components/Indicator';
+import { DestinationMiniCard } from '@/components/cards/DestinationCard';
+import ExpandingTile from '@/components/common/ExpandingTile';
+import Indicator from '@/components/common/Indicator';
 import { miniCardsData } from '@/data/mockData';
 import { useTheme } from '@/hooks/useTheme';
 import { useUserStore } from '@/stores/useUserStore';
@@ -40,7 +40,7 @@ export default function ItemInfoScreen() {
 
   const images = [
     image?.toString() ||
-      'https://images.pexels.com/photos/1002703/pexels-photo-1002703.jpeg',
+    'https://images.pexels.com/photos/1002703/pexels-photo-1002703.jpeg',
     'https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg',
     'https://images.pexels.com/photos/34950/pexels-photo.jpg',
   ];
@@ -343,9 +343,8 @@ export default function ItemInfoScreen() {
           <ExpandingTile
             title="Description"
             address={address as string}
-            description={`${description} This location is currently ${
-              isOpenBool ? 'open' : 'closed'
-            }.`}
+            description={`${description} This location is currently ${isOpenBool ? 'open' : 'closed'
+              }.`}
           />
         </View>
 
@@ -408,9 +407,8 @@ export default function ItemInfoScreen() {
                     style={[
                       styles.progressBarFill,
                       {
-                        width: `${
-                          (ratingData.breakdown[star] / sumCount) * 100
-                        }%`,
+                        width: `${(ratingData.breakdown[star] / sumCount) * 100
+                          }%`,
                         backgroundColor: colors.secondary,
                       },
                     ]}

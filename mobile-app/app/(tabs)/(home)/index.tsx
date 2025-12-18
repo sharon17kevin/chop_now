@@ -1,7 +1,7 @@
-import { DestinationMiniCard } from '@/components/DestinationCard';
-import FilterSquare from '@/components/FilterSquare';
-import { ProductSkeleton } from '@/components/ProductSkeleton';
-import GridProductCard from '@/components/GridProductCard';
+import { DestinationMiniCard } from '@/components/cards/DestinationCard';
+import FilterSquare from '@/components/common/FilterSquare';
+import { ProductSkeleton } from '@/components/cards/ProductSkeleton';
+import GridProductCard from '@/components/cards/GridProductCard';
 import {
   FlourIcon,
   FruitIcon,
