@@ -1,4 +1,4 @@
-import OrderCard from '@/components/OrderCard';
+import OrderCard from '@/components/cards/OrderCard';
 import { useTheme } from '@/hooks/useTheme';
 import { useOrders } from '@/hooks/useOrders';
 import { useAuth } from '@/hooks/useAuth';
