@@ -3,6 +3,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useUserStore } from '@/stores/useUserStore';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
+import { OrderService } from '@/services/orders';
 import {
   CheckCircle,
   Minus,
@@ -168,20 +169,47 @@ export default function CheckoutScreen() {
       return;
     }
 
-    // TODO: Implement payment processing
+    // Determine delivery address (using profile default or placeholder)
+    const deliveryAddress = 'Default Address'; // TODO: Get from Address Store
+
     Alert.alert(
-      'Checkout',
+      'Confirm Order',
       `Process payment of ₦${total.toFixed(2)} via ${selectedPayment}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Confirm',
+          text: 'Place Order',
           onPress: async () => {
-            // After successful payment:
-            // 1. Create order(s) from cart items
-            // 2. Clear cart
-            // 3. Navigate to order confirmation
-            Alert.alert('Success', 'Payment processing not yet implemented');
+            try {
+              setLoading(true);
+              const profile = useUserStore.getState().profile;
+              if (!profile?.id) {
+                Alert.alert('Error', 'You must be logged in');
+                return;
+              }
+
+              const result = await OrderService.createOrder({
+                userId: profile.id,
+                items,
+                total,
+                paymentMethod: selectedPayment,
+                deliveryAddress,
+                deliveryFee,
+                serviceFee,
+                discount,
+              });
+
+              if (result.success) {
+                router.replace({
+                  pathname: '/(tabs)/(orders)/payment-success',
+                  params: { orderId: result.orderId }
+                } as any);
+              }
+            } catch (error: any) {
+              Alert.alert('Checkout Failed', error.message || 'Could not place order');
+            } finally {
+              setLoading(false);
+            }
           },
         },
       ]
@@ -320,7 +348,7 @@ export default function CheckoutScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.itemsList}>
         {/* Cart Items */}
-        <View style={{ height: 10 }}/>
+        <View style={{ height: 10 }} />
         {items.map((item) => (
           <View
             key={item.id}
@@ -482,8 +510,8 @@ export default function CheckoutScreen() {
                       method.label === 'Wallet'
                         ? 'wallet-outline'
                         : method.label === 'Card'
-                        ? 'card-outline'
-                        : 'swap-horizontal-outline'
+                          ? 'card-outline'
+                          : 'swap-horizontal-outline'
                     }
                     size={20}
                     color={
