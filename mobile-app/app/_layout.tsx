@@ -30,7 +30,9 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(tabs)';
 
     if (!hasCompletedOnboarding) {
-      router.replace('/index');
+      if (segments.length > 0) {
+        router.replace('/');
+      }
       return;
     }
 
