@@ -263,27 +263,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ✅ Sign-in using auth service
   const login = async (email: string, password: string) => {
-    const result = await authService.signIn(email, password);
+    try {
+      const result = await authService.signIn(email, password);
 
-    if (!result.success) {
-      return { success: false, error: result.error };
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      if (result.data) {
+        setUser(result.data.user);
+        setIsAuthenticated(true);
+        await SecureStore.setItemAsync(
+          'supabaseSession',
+          JSON.stringify(result.data)
+        );
+
+        // ✅ Fetch user profile and role
+        await useUserStore.getState().fetchProfile(result.data.user.id);
+
+        // ✅ Navigation handled by _layout.tsx
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.log('❌ Login error in useAuth:', error);
+      return {
+        success: false,
+        error: error.message || 'An unexpected error occurred during login'
+      };
     }
-
-    if (result.data) {
-      setUser(result.data.user);
-      setIsAuthenticated(true);
-      await SecureStore.setItemAsync(
-        'supabaseSession',
-        JSON.stringify(result.data)
-      );
-
-      // ✅ Fetch user profile and role
-      await useUserStore.getState().fetchProfile(result.data.user.id);
-
-      // ✅ Navigation handled by _layout.tsx
-    }
-
-    return { success: true };
   };
 
   // ✅ Sign-up using auth service

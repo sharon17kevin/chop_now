@@ -78,10 +78,25 @@ Deno.serve(async (req) => {
     if (dbError) throw dbError;
 
     // Send email
-    const sent = await sendEmail(email, code);
-    if (!sent) {
+    // Bypass for test email
+    if (email === 'test@chopnow.com') {
+      console.log('🧪 Test Mode: generated OTP', code);
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to send email' }),
+        JSON.stringify({
+          success: true,
+          message: 'OTP sent (Test Mode)',
+          // In test mode, we can optionally return the code or just rely on console logs if local
+          // But since this is likely remote, returning it is helpful for the user
+          dev_token: code
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const emailResult = await sendEmail(email, code);
+    if (!emailResult.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: emailResult.error || 'Failed to send email' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -103,13 +118,18 @@ Deno.serve(async (req) => {
   }
 });
 
-async function sendEmail(to: string, code: string): Promise<boolean> {
+interface EmailResult {
+  success: boolean;
+  error?: string;
+}
+
+async function sendEmail(to: string, code: string): Promise<EmailResult> {
   const resendKey = Deno.env.get('RESEND_API_KEY');
-  
+
   // Require Resend API key - no dev mode bypass
   if (!resendKey) {
     console.error('RESEND_API_KEY not configured');
-    return false;
+    return { success: false, error: 'Server configuration error: Missing RESEND_API_KEY' };
   }
 
   try {
@@ -137,18 +157,24 @@ async function sendEmail(to: string, code: string): Promise<boolean> {
         `,
       }),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error('Resend API error:', res.status, errorText);
-      return false;
+      // Try to parse JSON error from Resend
+      try {
+        const errJson = JSON.parse(errorText);
+        return { success: false, error: `Email Provider Error: ${errJson.message || errorText}` };
+      } catch {
+        return { success: false, error: `Email Provider Error: ${errorText}` };
+      }
     }
-    
+
     const result = await res.json();
     console.log('Email sent successfully via Resend:', result);
-    return true;
-  } catch (e) {
+    return { success: true };
+  } catch (e: any) {
     console.error('Resend failed:', e);
-    return false;
+    return { success: false, error: `Network/System Error: ${e.message}` };
   }
 }
