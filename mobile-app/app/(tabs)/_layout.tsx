@@ -10,10 +10,13 @@ import {
   ShoppingBag,
   User,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 
 export default function TabLayout() {
   const { colors } = useTheme();
   const { profile } = useRole();
+  const insets = useSafeAreaInsets();
 
   // Only show sell tab for verified vendors
   const isVerifiedVendor =
@@ -21,6 +24,13 @@ export default function TabLayout() {
 
   // Only show admin tab for admins
   const isAdmin = profile?.role === 'admin';
+
+  // Calculate tab bar height based on safe area insets
+  // iOS: Use original design (80px height, 20px bottom padding)
+  // Android: Adjust based on device's bottom inset to avoid overlap
+  const tabBarHeight = Platform.OS === 'ios' ? 80 : 60 + insets.bottom;
+  const tabBarPaddingBottom =
+    Platform.OS === 'ios' ? 20 : Math.max(insets.bottom, 10);
 
   return (
     <Tabs
@@ -32,8 +42,8 @@ export default function TabLayout() {
           backgroundColor: colors.card,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: 80,
-          paddingBottom: 20,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
           paddingTop: 10,
         },
       }}
