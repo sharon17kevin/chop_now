@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
 
     // Use service_role key (bypasses RLS)
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     // Rate limit: 3 OTPs per email in 10 mins
