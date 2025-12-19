@@ -1,15 +1,16 @@
 {
   "expo": {
-    "name": "chow-now",
+    "name": "Chop N Cart",
     "slug": "chow-now",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/chopnow_logo.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sharon14kevin.chopnow"
     },
     "web": {
       "bundler": "metro",
@@ -32,12 +33,16 @@
       }
     },
     "splash": {
-      "image": "./assets/images/icon.png",
+      "image": "./assets/images/chopnow_logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#059669"
+      "backgroundColor": "#ffffff"
     },
     "android": {
-      "package": "com.sharon14kevin.chopnow"
+      "package": "com.sharon14kevin.chopnow",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/chopnow_logo.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "runtimeVersion": "1.0.0",
     "updates": {

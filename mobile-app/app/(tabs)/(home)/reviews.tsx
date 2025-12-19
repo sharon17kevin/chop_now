@@ -1,81 +1,110 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Star } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
-import { typography } from '@/styles/typography';
-import React from 'react';
-import { ArrowLeft } from 'lucide-react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 import ReviewCard from '@/components/ReviewCard';
-
-const mockReviews = [
-  {
-    reviewer: 'Jane Doe',
-    rating: 5,
-    text: 'Amazing food and great service!',
-    date: '2024-06-01',
-  },
-  {
-    reviewer: 'John Smith',
-    rating: 4,
-    text: 'Good experience, but a bit pricey.',
-    date: '2024-05-28',
-  },
-  {
-    reviewer: 'Mary Johnson',
-    rating: 5,
-    text: 'Best item in town!',
-    date: '2024-05-20',
-  },
-  {
-    reviewer: 'Alex Lee',
-    rating: 3,
-    text: 'Average food, nice ambiance.',
-    date: '2024-05-15',
-  },
-  {
-    reviewer: 'Chris Kim',
-    rating: 2,
-    text: 'Waited too long for my order.',
-    date: '2024-05-10',
-  },
-  {
-    reviewer: 'Patricia Brown',
-    rating: 1,
-    text: 'Very disappointed.',
-    date: '2024-05-01',
-  },
-  {
-    reviewer: 'Samuel Green',
-    rating: 4,
-    text: 'Tasty meals and friendly staff.',
-    date: '2024-04-30',
-  },
-];
+import { useVendorReviews } from '@/hooks/useVendorReviews';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ReviewsScreen() {
   const { colors } = useTheme();
-  const { item } = useLocalSearchParams();
+  const { vendorId, vendorName } = useLocalSearchParams();
+  const { user } = useAuth();
   const router = useRouter();
-  const itemName = item
-    ? item
+
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+
+  const tabs = [
+    { label: 'All', value: null },
+    { label: '5★', value: 5 },
+    { label: '4★', value: 4 },
+    { label: '3★', value: 3 },
+    { label: '2★', value: 2 },
+    { label: '1★', value: 1 },
+  ];
+
+  // Fetch reviews with optional rating filter
+  const { reviews, loading, error, hasMore, totalCount, refetch } =
+    useVendorReviews(vendorId as string, {
+      rating: selectedRating || undefined,
+    });
+
+  const handleTabPress = (value: number | null) => {
+    setSelectedRating(value);
+  };
+
+  const handleHelpful = async (reviewId: string) => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to vote on reviews.');
+      return;
+    }
+
+    try {
+      // Check if user has already voted
+      const { data: existingVote } = await supabase
+        .from('review_votes')
+        .select('*')
+        .eq('review_id', reviewId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingVote) {
+        // Toggle vote
+        await supabase
+          .from('review_votes')
+          .update({ is_helpful: !existingVote.is_helpful })
+          .eq('id', existingVote.id);
+      } else {
+        // Create new vote
+        await supabase.from('review_votes').insert({
+          review_id: reviewId,
+          user_id: user.id,
+          is_helpful: true,
+        });
+      }
+
+      // Refresh reviews to show updated counts
+      refetch();
+    } catch (err: any) {
+      console.error('Error voting on review:', err);
+      Alert.alert('Error', 'Failed to submit vote. Please try again.');
+    }
+  };
+
+  const displayName = vendorName
+    ? vendorName
         .toString()
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (l) => l.toUpperCase())
-    : 'item';
-  const [selectedTab, setSelectedTab] = React.useState<number>(5);
-  const tabs = [5, 4, 3, 2, 1];
-  const filteredReviews = mockReviews.filter((r) => r.rating === selectedTab);
+    : 'Vendor';
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <View style={[styles.header]}>
+      {/* Header */}
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Reviews
+        </Text>
+        <View style={{ width: 24 }} />
       </View>
+
+      {/* Filter Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView
           horizontal
@@ -84,50 +113,126 @@ export default function ReviewsScreen() {
         >
           {tabs.map((tab) => (
             <TouchableOpacity
-              key={tab}
+              key={tab.label}
               style={[
                 styles.tab,
                 {
                   backgroundColor:
-                    selectedTab === tab ? colors.primary : colors.background,
-                  borderColor: colors.primary,
+                    selectedRating === tab.value ? colors.primary : colors.card,
+                  borderColor: colors.border,
                 },
               ]}
-              onPress={() => setSelectedTab(tab)}
+              onPress={() => handleTabPress(tab.value)}
               activeOpacity={0.7}
             >
               <Text
                 style={[
-                  typography.body2,
+                  styles.tabText,
                   {
-                    color: selectedTab === tab ? '#fff' : colors.text,
-                    fontWeight: selectedTab === tab ? 'bold' : 'normal',
+                    color:
+                      selectedRating === tab.value
+                        ? colors.buttonText
+                        : colors.text,
+                    fontWeight: selectedRating === tab.value ? '600' : '500',
                   },
                 ]}
               >
-                {tab} Star{tab > 1 ? 's' : ''}
+                {tab.label}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
+
+      {/* Reviews List */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={styles.scrollContent}
       >
-        <Text style={[typography.h2, { color: colors.text, marginBottom: 16 }]}>
-          Reviews for {itemName}
-        </Text>
-        {filteredReviews.length === 0 ? (
-          <View style={styles.placeholderBox}>
-            <Text style={[typography.body1, { color: colors.textSecondary }]}>
-              No {selectedTab}-star reviews yet.
+        {/* Title */}
+        <View style={styles.titleSection}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {selectedRating ? `${selectedRating}-Star Reviews` : `All Reviews`}
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            {totalCount} {totalCount === 1 ? 'review' : 'reviews'}
+          </Text>
+        </View>
+
+        {loading && reviews.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text
+              style={[
+                styles.centerText,
+                { color: colors.textSecondary, marginTop: 12 },
+              ]}
+            >
+              Loading reviews...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Text style={[styles.centerText, { color: colors.error }]}>
+              Error loading reviews
+            </Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: colors.primary }]}
+              onPress={refetch}
+            >
+              <Text
+                style={[styles.retryButtonText, { color: colors.buttonText }]}
+              >
+                Retry
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : reviews.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Star size={48} color={colors.textSecondary} />
+            <Text
+              style={[
+                styles.emptyText,
+                { color: colors.textSecondary, marginTop: 16 },
+              ]}
+            >
+              {selectedRating
+                ? `No ${selectedRating}-star reviews yet.`
+                : 'No reviews yet. Be the first to leave a review!'}
             </Text>
           </View>
         ) : (
-          filteredReviews.map((review, idx) => (
-            <ReviewCard key={idx} {...review} />
-          ))
+          <>
+            {reviews.map((review) => (
+              <ReviewCard
+                key={review.id}
+                review={review}
+                onHelpful={handleHelpful}
+              />
+            ))}
+
+            {hasMore && (
+              <TouchableOpacity
+                style={[styles.loadMoreButton, { borderColor: colors.border }]}
+                onPress={() => {
+                  // Load more functionality would need offset management
+                  // For now, just show a message
+                  Alert.alert('Load More', 'Pagination coming soon!');
+                }}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text
+                    style={[styles.loadMoreText, { color: colors.primary }]}
+                  >
+                    Load More Reviews
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -135,39 +240,90 @@ export default function ReviewsScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  container: {
-    flex: 1,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  tabsContainer: {
+    paddingBottom: 12,
+  },
+  tabsScroll: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tabText: {
+    fontSize: 14,
   },
   scrollView: {
     flex: 1,
   },
-  placeholderBox: {
-    marginTop: 40,
-    padding: 24,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+  scrollContent: {
+    padding: 20,
+  },
+  titleSection: {
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  centerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  centerText: {
+    fontSize: 15,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadMoreButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
   },
-  tabsContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-  },
-  tabsScroll: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

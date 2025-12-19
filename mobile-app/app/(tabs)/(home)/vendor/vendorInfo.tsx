@@ -415,7 +415,7 @@ export default function VendorInfo() {
                   <TouchableOpacity
                     onPress={() =>
                       router.push({
-                        pathname: '/reviews',
+                        pathname: '/vendor/reviews',
                         params: { vendorId },
                       })
                     }

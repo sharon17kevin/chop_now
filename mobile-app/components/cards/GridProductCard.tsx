@@ -1,13 +1,20 @@
+import { useAddToCart } from '@/hooks/useAddToCart';
 import { useTheme } from '@/hooks/useTheme';
-import { Database } from '@/types/database.types';
+import { Product } from '@/stores/useProductStore';
+import { useUserStore } from '@/stores/useUserStore';
+import { useWishlistStore } from '@/stores/useWishlistStore';
 import { useRouter } from 'expo-router';
 import { Heart, Plus, Star } from 'lucide-react-native';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-type Product = Database['public']['Tables']['products']['Row'] & {
-  profiles?: { full_name: string | null };
-};
+import React, { useState } from 'react';
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 
 interface GridProductCardProps {
   product: Product;
@@ -16,12 +23,62 @@ interface GridProductCardProps {
 export default function GridProductCard({ product }: GridProductCardProps) {
   const { colors } = useTheme();
   const router = useRouter();
+  const { addToCart, addingToCart } = useAddToCart();
+  const { toggleWishlist, isInWishlist } = useWishlistStore();
+  const { profile, updateProfile } = useUserStore();
+
+  const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
+  const inWishlist = isInWishlist(product.id);
 
   const handlePress = () => {
-    router.push({
-      pathname: '/(tabs)/(home)/items/[iteminfo]' as any,
-      params: { iteminfo: product.id },
+    // Navigate to vendor page with product details
+    if (product.id && product.vendor_id) {
+      router.push({
+        pathname: '/vendor/[vendorId]' as any,
+        params: {
+          vendorId: product.vendor_id,
+          vendorName: product.profiles?.full_name || 'Vendor',
+          productId: product.id,
+        },
+      });
+    }
+  };
+
+  const handleAddToCart = async (e: any) => {
+    e.stopPropagation();
+
+    if (addingToCart) return;
+
+    await addToCart({
+      productId: product.id,
+      productName: product.name,
+      quantity: 1,
+      isAvailable: product.is_available,
+      stock: product.stock,
     });
+  };
+
+  const handleToggleWishlist = async (e: any) => {
+    e.stopPropagation();
+
+    if (!profile?.id) {
+      Alert.alert('Login Required', 'Please log in to save favorites');
+      return;
+    }
+
+    if (isAddingToWishlist) return;
+
+    setIsAddingToWishlist(true);
+    try {
+      await toggleWishlist(
+        product.id,
+        profile.id,
+        profile.favorite_count || 0,
+        (count) => updateProfile({ favorite_count: count })
+      );
+    } finally {
+      setIsAddingToWishlist(false);
+    }
   };
 
   return (
@@ -40,21 +97,38 @@ export default function GridProductCard({ product }: GridProductCardProps) {
       <View style={styles.imageContainer}>
         <Image
           source={{
-            uri:
-              product.image_url ||
-              'https://via.placeholder.com/150',
+            uri: product.image_url || 'https://via.placeholder.com/150',
           }}
           style={styles.image}
         />
         {/* Like Button */}
-        <TouchableOpacity style={styles.heartButton}>
-          <Heart size={16} color={colors.primary} />
+        <TouchableOpacity
+          style={[
+            styles.heartButton,
+            {
+              backgroundColor: colors.card,
+              shadowColor: colors.text,
+            },
+          ]}
+          onPress={handleToggleWishlist}
+          disabled={isAddingToWishlist}
+          activeOpacity={0.7}
+        >
+          <Heart
+            size={16}
+            color={inWishlist ? colors.error : colors.textSecondary}
+            fill={inWishlist ? colors.error : 'none'}
+          />
         </TouchableOpacity>
 
         {/* Discount Badge */}
         {product.discount_percentage ? (
-          <View style={[styles.discountBadge, { backgroundColor: colors.error }]}>
-            <Text style={styles.discountText}>-{product.discount_percentage}%</Text>
+          <View
+            style={[styles.discountBadge, { backgroundColor: colors.error }]}
+          >
+            <Text style={styles.discountText}>
+              -{product.discount_percentage}%
+            </Text>
           </View>
         ) : null}
       </View>
@@ -66,8 +140,13 @@ export default function GridProductCard({ product }: GridProductCardProps) {
 
         <View style={styles.ratingRow}>
           <Star size={10} color="#F59E0B" fill="#F59E0B" />
-          <Text style={[styles.rating, { color: colors.textSecondary }]}>4.2</Text>
-          <Text style={[styles.vendor, { color: colors.textTetiary }]} numberOfLines={1}>
+          <Text style={[styles.rating, { color: colors.textSecondary }]}>
+            4.2
+          </Text>
+          <Text
+            style={[styles.vendor, { color: colors.textTetiary }]}
+            numberOfLines={1}
+          >
             • {product.profiles?.full_name || 'Vendor'}
           </Text>
         </View>
@@ -78,16 +157,35 @@ export default function GridProductCard({ product }: GridProductCardProps) {
               ₦{product.price.toLocaleString()}
             </Text>
             {product.original_price && (
-              <Text style={[styles.originalPrice, { color: colors.textTetiary }]}>
+              <Text
+                style={[styles.originalPrice, { color: colors.textTetiary }]}
+              >
                 ₦{product.original_price.toLocaleString()}
               </Text>
             )}
           </View>
           <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: colors.secondary }]}
+            style={[
+              styles.addButton,
+              {
+                backgroundColor: colors.secondary,
+                opacity:
+                  addingToCart || !product.is_available || product.stock === 0
+                    ? 0.5
+                    : 1,
+              },
+            ]}
+            onPress={handleAddToCart}
+            disabled={
+              addingToCart || !product.is_available || product.stock === 0
+            }
             activeOpacity={0.8}
           >
-            <Plus size={18} color="#FFF" />
+            {addingToCart ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Plus size={18} color="#FFF" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -167,9 +265,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     right: 6,
-    backgroundColor: 'rgba(255,255,255,0.9)',
     padding: 5,
     borderRadius: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   discountBadge: {
     position: 'absolute',

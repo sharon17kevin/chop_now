@@ -83,6 +83,7 @@ function RootLayoutNav() {
           <Stack.Screen name="otp" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
+          <Stack.Screen name="splash" />
         </Stack>
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </View>
