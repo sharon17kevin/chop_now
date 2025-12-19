@@ -300,17 +300,6 @@ export default function LoginScreen() {
                 style={[styles.dividerLine, { backgroundColor: colors.border }]}
               />
             </View>
-
-            <TouchableOpacity
-              style={[
-                styles.demoButton,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[typography.button1, { color: colors.text }]}>
-                Continue with Demo Account
-              </Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
