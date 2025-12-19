@@ -66,11 +66,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="sell"
+        name="(sell)"
         options={{
           title: 'Sell',
           tabBarIcon: ({ size, color }) => <Plus size={size} color={color} />,
-          href: isVerifiedVendor ? '/(tabs)/sell' : null,
+          href: isVerifiedVendor ? '/(tabs)/(sell)' : null,
         }}
       />
       <Tabs.Screen
