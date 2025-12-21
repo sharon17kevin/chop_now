@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import {
@@ -18,77 +19,69 @@ import {
   MapPin,
   Edit,
   ArrowLeft,
+  Camera,
+  ImageIcon,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImage } from '@/lib/uploadService';
+import { useUserStore } from '@/stores/useUserStore';
 
 interface Profile {
   full_name: string;
   email: string;
   phone: string;
   address: string;
+  profile_image?: string;
+  banner_image?: string;
+  role?: 'customer' | 'vendor' | 'admin' | null;
+  verified?: boolean;
+  farm_name?: string;
+  farm_location?: string;
+  farm_description?: string;
+  business_phone?: string;
 }
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
+  const {
+    profile: userProfile,
+    isLoadingProfile,
+    updateProfile: updateStoreProfile,
+  } = useUserStore();
   const [profile, setProfile] = useState<Profile>({
     full_name: '',
     email: '',
     phone: '',
     address: '',
   });
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
 
+  // Sync local state with store profile
   useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  async function fetchProfile() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError('Please sign in to view your profile');
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-
-      if (data) {
-        setProfile({
-          full_name: data.full_name || '',
-          email: data.email || user.email || '',
-          phone: data.phone || '',
-          address: data.address || '',
-        });
-      } else {
-        setProfile((prev) => ({
-          ...prev,
-          email: user.email || '',
-        }));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load profile');
-    } finally {
-      setLoading(false);
+    if (userProfile) {
+      setProfile({
+        full_name: userProfile.full_name || '',
+        email: userProfile.email || '',
+        phone: userProfile.phone || '',
+        address: userProfile.address || '',
+        profile_image: userProfile.profile_image || '',
+        banner_image: userProfile.banner_image || '',
+        role: userProfile.role,
+        verified: userProfile.verified,
+        farm_name: userProfile.farm_name || '',
+        farm_location: userProfile.farm_location || '',
+        farm_description: userProfile.farm_description || '',
+        business_phone: userProfile.business_phone || '',
+      });
     }
-  }
+  }, [userProfile]);
 
   async function saveProfile() {
     try {
@@ -118,6 +111,12 @@ export default function ProfileScreen() {
             email: profile.email,
             phone: profile.phone,
             address: profile.address,
+            profile_image: profile.profile_image,
+            banner_image: profile.banner_image,
+            farm_name: profile.farm_name,
+            farm_location: profile.farm_location,
+            farm_description: profile.farm_description,
+            business_phone: profile.business_phone,
             updated_at: new Date().toISOString(),
           })
           .eq('id', user.id);
@@ -130,10 +129,30 @@ export default function ProfileScreen() {
           email: profile.email,
           phone: profile.phone,
           address: profile.address,
+          profile_image: profile.profile_image,
+          banner_image: profile.banner_image,
+          farm_name: profile.farm_name,
+          farm_location: profile.farm_location,
+          farm_description: profile.farm_description,
+          business_phone: profile.business_phone,
         });
 
         if (insertError) throw insertError;
       }
+
+      // Update the store with new profile data
+      updateStoreProfile({
+        full_name: profile.full_name,
+        email: profile.email,
+        phone: profile.phone,
+        address: profile.address,
+        profile_image: profile.profile_image,
+        banner_image: profile.banner_image,
+        farm_name: profile.farm_name,
+        farm_location: profile.farm_location,
+        farm_description: profile.farm_description,
+        business_phone: profile.business_phone,
+      });
 
       Alert.alert('Success', 'Profile updated successfully');
       setIsEditing(false);
@@ -141,6 +160,84 @@ export default function ProfileScreen() {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function pickAvatar() {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please grant photo library access');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadingAvatar(true);
+        const uri = result.assets[0].uri;
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const imageUrl = await uploadImage(uri, `avatars/${user.id}`);
+        setProfile({ ...profile, profile_image: imageUrl });
+        Alert.alert('Success', 'Avatar uploaded successfully');
+      }
+    } catch (err) {
+      Alert.alert(
+        'Error',
+        err instanceof Error ? err.message : 'Failed to upload avatar'
+      );
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  async function pickBanner() {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please grant photo library access');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadingBanner(true);
+        const uri = result.assets[0].uri;
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const imageUrl = await uploadImage(uri, `banners/${user.id}`);
+        setProfile({ ...profile, banner_image: imageUrl });
+        Alert.alert('Success', 'Banner uploaded successfully');
+      }
+    } catch (err) {
+      Alert.alert(
+        'Error',
+        err instanceof Error ? err.message : 'Failed to upload banner'
+      );
+    } finally {
+      setUploadingBanner(false);
     }
   }
 
@@ -176,7 +273,7 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {loading ? (
+        {isLoadingProfile ? (
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
@@ -198,9 +295,72 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            <View style={styles.avatarContainer}>
+            {/* Banner Image - Vendors Only */}
+            {profile.role === 'vendor' && (
+              <View style={styles.bannerContainer}>
+                {profile.banner_image ? (
+                  <Image
+                    source={{ uri: profile.banner_image }}
+                    style={styles.bannerImage}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.bannerPlaceholder,
+                      { backgroundColor: colors.filter },
+                    ]}
+                  >
+                    <ImageIcon size={40} color={colors.textSecondary} />
+                    <Text
+                      style={[
+                        styles.bannerPlaceholderText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Add Banner Image
+                    </Text>
+                  </View>
+                )}
+                {isEditing && (
+                  <TouchableOpacity
+                    style={[
+                      styles.changeBannerButton,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={pickBanner}
+                    disabled={uploadingBanner}
+                  >
+                    {uploadingBanner ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Camera size={16} color="#FFFFFF" />
+                        <Text style={styles.changePhotoText}>
+                          {profile.banner_image ? 'Change' : 'Add'} Banner
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Avatar */}
+            <View
+              style={[
+                styles.avatarContainer,
+                profile.role === 'vendor' && styles.avatarWithBanner,
+              ]}
+            >
               <View style={[styles.avatar, { backgroundColor: colors.filter }]}>
-                <User size={48} color={colors.textSecondary} />
+                {profile.profile_image ? (
+                  <Image
+                    source={{ uri: profile.profile_image }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <User size={48} color={colors.textSecondary} />
+                )}
               </View>
               {isEditing && (
                 <TouchableOpacity
@@ -208,8 +368,19 @@ export default function ProfileScreen() {
                     styles.changePhotoButton,
                     { backgroundColor: colors.primary },
                   ]}
+                  onPress={pickAvatar}
+                  disabled={uploadingAvatar}
                 >
-                  <Text style={styles.changePhotoText}>Change Photo</Text>
+                  {uploadingAvatar ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Camera size={16} color="#FFFFFF" />
+                      <Text style={styles.changePhotoText}>
+                        {profile.profile_image ? 'Change' : 'Add'} Photo
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               )}
             </View>
@@ -314,6 +485,134 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            {/* Vendor Information - Only for verified vendors */}
+            {profile.role === 'vendor' && profile.verified && (
+              <>
+                <View
+                  style={[
+                    styles.sectionHeader,
+                    { borderBottomColor: colors.filter },
+                  ]}
+                >
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Vendor Information
+                  </Text>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    Farm/Business Name
+                  </Text>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      {
+                        backgroundColor: colors.card,
+                        shadowColor: colors.text,
+                      },
+                    ]}
+                  >
+                    <User size={20} color={colors.textSecondary} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={profile.farm_name}
+                      onChangeText={(text) =>
+                        setProfile({ ...profile, farm_name: text })
+                      }
+                      placeholder="Enter your farm or business name"
+                      placeholderTextColor={colors.textTetiary}
+                      editable={isEditing}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    Farm/Business Location
+                  </Text>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      {
+                        backgroundColor: colors.card,
+                        shadowColor: colors.text,
+                      },
+                    ]}
+                  >
+                    <MapPin size={20} color={colors.textSecondary} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={profile.farm_location}
+                      onChangeText={(text) =>
+                        setProfile({ ...profile, farm_location: text })
+                      }
+                      placeholder="Enter your farm or business location"
+                      placeholderTextColor={colors.textTetiary}
+                      editable={isEditing}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    Business Phone
+                  </Text>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      {
+                        backgroundColor: colors.card,
+                        shadowColor: colors.text,
+                      },
+                    ]}
+                  >
+                    <Phone size={20} color={colors.textSecondary} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={profile.business_phone}
+                      onChangeText={(text) =>
+                        setProfile({ ...profile, business_phone: text })
+                      }
+                      placeholder="Enter your business phone number"
+                      placeholderTextColor={colors.textTetiary}
+                      keyboardType="phone-pad"
+                      editable={isEditing}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    Farm/Business Description
+                  </Text>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      styles.textAreaContainer,
+                      {
+                        backgroundColor: colors.card,
+                        shadowColor: colors.text,
+                      },
+                    ]}
+                  >
+                    <TextInput
+                      style={[styles.textArea, { color: colors.text }]}
+                      value={profile.farm_description}
+                      onChangeText={(text) =>
+                        setProfile({ ...profile, farm_description: text })
+                      }
+                      placeholder="Describe your farm or business, what you sell, your farming practices, etc."
+                      placeholderTextColor={colors.textTetiary}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                      editable={isEditing}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
             {isEditing && (
               <TouchableOpacity
                 style={[
@@ -380,9 +679,43 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 32,
   },
+  bannerContainer: {
+    width: '100%',
+    height: 200,
+    position: 'relative',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  bannerPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerPlaceholderText: {
+    fontSize: 14,
+    marginTop: 8,
+  },
+  changeBannerButton: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
   avatarContainer: {
     alignItems: 'center',
     paddingVertical: 32,
+  },
+  avatarWithBanner: {
+    marginTop: -60,
   },
   avatar: {
     width: 120,
@@ -391,11 +724,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   changePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    gap: 6,
   },
   changePhotoText: {
     color: '#FFFFFF',
@@ -456,5 +805,26 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  sectionHeader: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  textAreaContainer: {
+    minHeight: 100,
+    alignItems: 'flex-start',
+  },
+  textArea: {
+    flex: 1,
+    fontSize: 16,
+    width: '100%',
+    paddingTop: 0,
   },
 });

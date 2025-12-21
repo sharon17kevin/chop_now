@@ -13,6 +13,7 @@ interface UserProfile {
   phone?: string
   address?: string
   profile_image?: string
+  banner_image?: string
   bio?: string
   date_of_birth?: string
   
