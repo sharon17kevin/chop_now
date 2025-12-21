@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
 
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -25,6 +26,38 @@ function RootLayoutNav() {
   const { colors, isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
+
+  // Handle deep linking for OAuth callbacks
+  useEffect(() => {
+    const handleDeepLink = (event: { url: string }) => {
+      const url = event.url;
+      console.log('🔗 Deep link received:', url);
+
+      // Parse the URL to check if it's an auth callback
+      const parsed = Linking.parse(url);
+
+      if (parsed.path === 'auth/callback') {
+        console.log(
+          '✅ OAuth callback detected, authentication will be handled automatically'
+        );
+        // The auth state change listener in useAuth will handle the session
+      }
+    };
+
+    // Listen for deep link events
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check if app was opened with a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const inAuthGroup = segments[0] === '(tabs)';
@@ -47,7 +80,7 @@ function RootLayoutNav() {
       router.replace('/(tabs)/(home)' as any);
       return;
     }
-  }, [isAuthenticated, hasCompletedOnboarding, segments]);
+  }, [isAuthenticated, hasCompletedOnboarding, segments, router]);
 
   // Hide splash screen once the app is ready
   useEffect(() => {

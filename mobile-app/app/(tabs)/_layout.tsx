@@ -2,7 +2,6 @@ import { useRole } from '@/hooks/useRole';
 import { useTheme } from '@/hooks/useTheme';
 import { Tabs } from 'expo-router';
 import {
-  Bus,
   Home,
   Plus,
   Search,

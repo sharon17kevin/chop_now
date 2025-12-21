@@ -19,6 +19,8 @@ interface AuthContextType {
     email: string,
     password: string
   ) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginWithApple: () => Promise<{ success: boolean; error?: string }>;
   signup: (
     name: string,
     email: string,
@@ -97,7 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('✅ Profile fetched');
               } catch (error) {
                 console.error(
-                  '⚠️ Profile fetch failed - user might not have profile, clearing session'
+                  '⚠️ Profile fetch failed - user might not have profile, clearing session',
+                  error
                 );
                 // If profile doesn't exist, clear session
                 await SecureStore.deleteItemAsync('supabaseSession');
@@ -289,7 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('❌ Login error in useAuth:', error);
       return {
         success: false,
-        error: error.message || 'An unexpected error occurred during login'
+        error: error.message || 'An unexpected error occurred during login',
       };
     }
   };
@@ -455,6 +458,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   };
 
+  // ✅ Sign in with Google OAuth
+  const loginWithGoogle = async () => {
+    try {
+      console.log('🔐 useAuth.loginWithGoogle - Starting OAuth...');
+      const result = await authService.signInWithGoogle();
+
+      if (!result.success) {
+        console.error('❌ Google login failed:', result.error);
+        return { success: false, error: result.error };
+      }
+
+      if (result.data) {
+        console.log('✅ Google login successful');
+        setUser(result.data.user);
+        setIsAuthenticated(true);
+        await SecureStore.setItemAsync(
+          'supabaseSession',
+          JSON.stringify(result.data)
+        );
+
+        // Fetch user profile
+        await useUserStore.getState().fetchProfile(result.data.user.id);
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Google login error:', error);
+      return {
+        success: false,
+        error: error.message || 'Google sign-in failed',
+      };
+    }
+  };
+
+  // ✅ Sign in with Apple OAuth
+  const loginWithApple = async () => {
+    try {
+      console.log('🔐 useAuth.loginWithApple - Starting OAuth...');
+      const result = await authService.signInWithApple();
+
+      if (!result.success) {
+        console.error('❌ Apple login failed:', result.error);
+        return { success: false, error: result.error };
+      }
+
+      if (result.data) {
+        console.log('✅ Apple login successful');
+        setUser(result.data.user);
+        setIsAuthenticated(true);
+        await SecureStore.setItemAsync(
+          'supabaseSession',
+          JSON.stringify(result.data)
+        );
+
+        // Fetch user profile
+        await useUserStore.getState().fetchProfile(result.data.user.id);
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Apple login error:', error);
+      return {
+        success: false,
+        error: error.message || 'Apple sign-in failed',
+      };
+    }
+  };
+
   // ✅ Sign-out using auth service
   const logout = async () => {
     const result = await authService.signOut();
@@ -498,6 +569,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         login,
+        loginWithGoogle,
+        loginWithApple,
         signup,
         verifyOtp,
         resendOtp,

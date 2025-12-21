@@ -24,12 +24,14 @@ import Animated, {
 } from 'react-native-reanimated';
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle, loginWithApple } = useAuth();
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
   );
@@ -93,17 +95,23 @@ export default function LoginScreen() {
     buttonScale.value = withSpring(1);
   };
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    buttonScale.value = withSpring(0.95);
-    try {
-      await login('demo@demo.com', 'demopassword');
-    } catch (error) {
-      console.error('Demo login failed:', error);
-      // Optionally show an error message
-    } finally {
-      setIsLoading(false);
-      buttonScale.value = withSpring(1);
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    const result = await loginWithGoogle();
+    setIsGoogleLoading(false);
+
+    if (!result.success) {
+      Alert.alert('Google Sign-In Failed', result.error || 'Please try again');
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setIsAppleLoading(true);
+    const result = await loginWithApple();
+    setIsAppleLoading(false);
+
+    if (!result.success) {
+      Alert.alert('Apple Sign-In Failed', result.error || 'Please try again');
     }
   };
 
@@ -294,11 +302,67 @@ export default function LoginScreen() {
               <Text
                 style={[typography.caption1, { color: colors.textSecondary }]}
               >
-                or
+                or continue with
               </Text>
               <View
                 style={[styles.dividerLine, { backgroundColor: colors.border }]}
               />
+            </View>
+
+            <View style={styles.socialButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.socialButton,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={handleGoogleLogin}
+                disabled={isGoogleLoading}
+              >
+                {isGoogleLoading ? (
+                  <Text style={[typography.button2, { color: colors.text }]}>
+                    Loading...
+                  </Text>
+                ) : (
+                  <>
+                    <View style={styles.googleIcon}>
+                      <Text style={styles.googleIconText}>G</Text>
+                    </View>
+                    <Text style={[typography.button2, { color: colors.text }]}>
+                      Google
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={[
+                    styles.socialButton,
+                    {
+                      backgroundColor: '#000000',
+                      borderColor: '#000000',
+                    },
+                  ]}
+                  onPress={handleAppleLogin}
+                  disabled={isAppleLoading}
+                >
+                  {isAppleLoading ? (
+                    <Text style={[typography.button2, { color: '#FFFFFF' }]}>
+                      Loading...
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={styles.appleIcon}></Text>
+                      <Text style={[typography.button2, { color: '#FFFFFF' }]}>
+                        Apple
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -306,7 +370,7 @@ export default function LoginScreen() {
             <Text
               style={[typography.caption1, { color: colors.textSecondary }]}
             >
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Text
                 style={[typography.button2, { color: colors.secondary }]}
                 onPress={() => router.push('/signupstart')}
@@ -405,6 +469,39 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
+  },
+  socialButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  socialButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#4285F4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  googleIconText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  appleIcon: {
+    fontSize: 18,
+    color: '#FFFFFF',
   },
   demoButton: {
     borderRadius: 12,

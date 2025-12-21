@@ -1,4 +1,11 @@
 import { supabase } from "@/lib/supabase"
+import * as AuthSession from 'expo-auth-session'
+import * as WebBrowser from 'expo-web-browser'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import { Platform } from 'react-native'
+
+// Warm up the browser for better OAuth experience
+WebBrowser.maybeCompleteAuthSession()
 
 // Types for structured responses
 export interface AuthResult<T = any> {
@@ -333,6 +340,177 @@ export async function updateProfile(
     }
   } catch (error) {
     console.error('Update profile exception:', error)
+    return {
+      success: false,
+      error: getErrorMessage(error)
+    }
+  }
+}
+
+// ✅ NEW: Google OAuth Sign-In
+export async function signInWithGoogle(): Promise<AuthResult> {
+  try {
+    console.log('🔐 Starting Google OAuth sign-in...')
+    
+    const redirectUrl = AuthSession.makeRedirectUri({
+      scheme: 'myapp',
+      path: 'auth/callback'
+    })
+    
+    console.log('📍 Redirect URL:', redirectUrl)
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        skipBrowserRedirect: false,
+      }
+    })
+    
+    if (error) {
+      console.error('❌ Google OAuth error:', error)
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      }
+    }
+    
+    if (!data.url) {
+      console.error('❌ No OAuth URL returned')
+      return {
+        success: false,
+        error: 'Failed to initialize Google sign-in'
+      }
+    }
+    
+    console.log('🌐 Opening browser for Google OAuth...')
+    const result = await WebBrowser.openAuthSessionAsync(
+      data.url,
+      redirectUrl
+    )
+    
+    if (result.type === 'success') {
+      console.log('✅ Google OAuth successful')
+      const { url } = result
+      
+      // Extract session from URL
+      const params = new URL(url).searchParams
+      const access_token = params.get('access_token')
+      const refresh_token = params.get('refresh_token')
+      
+      if (access_token && refresh_token) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        })
+        
+        if (sessionError) {
+          return {
+            success: false,
+            error: getErrorMessage(sessionError)
+          }
+        }
+        
+        return {
+          success: true,
+          data: sessionData.session
+        }
+      }
+    }
+    
+    console.log('❌ Google OAuth cancelled or failed:', result.type)
+    return {
+      success: false,
+      error: 'Sign in was cancelled'
+    }
+  } catch (error) {
+    console.error('💥 Google OAuth exception:', error)
+    return {
+      success: false,
+      error: getErrorMessage(error)
+    }
+  }
+}
+
+// ✅ NEW: Apple OAuth Sign-In
+export async function signInWithApple(): Promise<AuthResult> {
+  try {
+    console.log('🍎 Starting Apple OAuth sign-in...')
+    
+    // Check if Apple Authentication is available (iOS only)
+    if (Platform.OS !== 'ios') {
+      return {
+        success: false,
+        error: 'Apple Sign In is only available on iOS devices'
+      }
+    }
+    
+    const isAvailable = await AppleAuthentication.isAvailableAsync()
+    if (!isAvailable) {
+      return {
+        success: false,
+        error: 'Apple Sign In is not available on this device'
+      }
+    }
+    
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    })
+    
+    console.log('🍎 Apple credential received:', {
+      user: credential.user,
+      email: credential.email,
+      fullName: credential.fullName
+    })
+    
+    // Sign in to Supabase with Apple ID token
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: credential.identityToken!,
+    })
+    
+    if (error) {
+      console.error('❌ Apple OAuth error:', error)
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      }
+    }
+    
+    console.log('✅ Apple OAuth successful')
+    
+    // Update profile with full name if provided (Apple only provides this on first sign-in)
+    if (credential.fullName && data.user) {
+      const fullName = [
+        credential.fullName.givenName,
+        credential.fullName.familyName
+      ].filter(Boolean).join(' ')
+      
+      if (fullName) {
+        await supabase
+          .from('profiles')
+          .update({ full_name: fullName })
+          .eq('id', data.user.id)
+      }
+    }
+    
+    return {
+      success: true,
+      data: data.session
+    }
+  } catch (error: any) {
+    console.error('💥 Apple OAuth exception:', error)
+    
+    if (error.code === 'ERR_REQUEST_CANCELED') {
+      return {
+        success: false,
+        error: 'Sign in was cancelled'
+      }
+    }
+    
     return {
       success: false,
       error: getErrorMessage(error)
