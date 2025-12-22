@@ -37,7 +37,8 @@ export const useWishlist = (): UseWishlistReturn => {
     } else {
       clearWishlist();
     }
-  }, [profile?.id, fetchWishlist, clearWishlist, updateProfile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 
   const toggleWishlist = async (productId: string): Promise<boolean> => {
     if (!profile?.id) {
