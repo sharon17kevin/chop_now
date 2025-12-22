@@ -95,27 +95,16 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
 
     set({ isLoadingProfile: true })
-    
-    // Create a timeout promise
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Profile fetch timeout after 8 seconds')), 8000)
-    })
-
-    // Create the fetch promise
-    const fetchPromise = supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
 
     try {
       console.log('📡 [useUserStore] Querying profiles table...')
       
-      // Race between fetch and timeout
-      const { data, error } = await Promise.race([
-        fetchPromise,
-        timeoutPromise
-      ]) as any
+      // Remove timeout race - let the query complete naturally
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
       console.log('📊 [useUserStore] Query result:', { 
         hasData: !!data, 
@@ -157,11 +146,6 @@ export const useUserStore = create<UserStore>((set, get) => ({
       }
     } catch (error: any) {
       console.error('💥 [useUserStore] fetchProfile exception:', error)
-      
-      if (error.message?.includes('timeout')) {
-        console.error('⏱️ [useUserStore] Profile fetch timed out - likely RLS policy blocking access')
-      }
-      
       set({ profile: null, isLoadingProfile: false })
     }
   },
