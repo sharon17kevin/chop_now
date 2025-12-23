@@ -9,6 +9,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, Plus, MapPin, DollarSign, X } from 'lucide-react-native';
@@ -305,16 +307,21 @@ export default function SellScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          Sell Your Produce
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Share your fresh products with the community
-        </Text>
-      </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Sell Your Produce
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Share your fresh products with the community
+          </Text>
+        </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false}>
         {/* Product Images */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -680,6 +687,7 @@ export default function SellScreen() {
           </Text>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

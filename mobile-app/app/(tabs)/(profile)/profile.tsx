@@ -9,6 +9,8 @@ import {
   ScrollView,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import {
@@ -243,7 +245,12 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.headerContainer, { backgroundColor: colors.card }]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <View style={[styles.headerContainer, { backgroundColor: colors.card }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={{
@@ -638,6 +645,7 @@ export default function ProfileScreen() {
           </>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
