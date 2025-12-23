@@ -250,401 +250,415 @@ export default function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={[styles.headerContainer, { backgroundColor: colors.card }]}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{
-            backgroundColor: colors.filter,
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            padding: 8,
-            elevation: 3,
-            shadowColor: colors.text,
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-          }}
+        <View
+          style={[styles.headerContainer, { backgroundColor: colors.card }]}
         >
-          <ArrowLeft size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.header, { color: colors.text }]}>Profile</Text>
-        <TouchableOpacity
-          style={[styles.editButton, { backgroundColor: colors.filter }]}
-          onPress={() => setIsEditing(!isEditing)}
-        >
-          <Edit size={20} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              backgroundColor: colors.filter,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              padding: 8,
+              elevation: 3,
+              shadowColor: colors.text,
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+            }}
+          >
+            <ArrowLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.header, { color: colors.text }]}>Profile</Text>
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: colors.filter }]}
+            onPress={() => setIsEditing(!isEditing)}
+          >
+            <Edit size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {isLoadingProfile ? (
-          <View style={styles.centerContent}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading profile...
-            </Text>
-          </View>
-        ) : (
-          <>
-            {error && (
-              <View
-                style={[
-                  styles.errorBanner,
-                  { backgroundColor: colors.errorBackground },
-                ]}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {isLoadingProfile ? (
+            <View style={styles.centerContent}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text
+                style={[styles.loadingText, { color: colors.textSecondary }]}
               >
-                <Text style={[styles.errorText, { color: colors.error }]}>
-                  {error}
-                </Text>
-              </View>
-            )}
+                Loading profile...
+              </Text>
+            </View>
+          ) : (
+            <>
+              {error && (
+                <View
+                  style={[
+                    styles.errorBanner,
+                    { backgroundColor: colors.errorBackground },
+                  ]}
+                >
+                  <Text style={[styles.errorText, { color: colors.error }]}>
+                    {error}
+                  </Text>
+                </View>
+              )}
 
-            {/* Banner Image - Vendors Only */}
-            {profile.role === 'vendor' && (
-              <View style={styles.bannerContainer}>
-                {profile.banner_image ? (
-                  <Image
-                    source={{ uri: profile.banner_image }}
-                    style={styles.bannerImage}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.bannerPlaceholder,
-                      { backgroundColor: colors.filter },
-                    ]}
-                  >
-                    <ImageIcon size={40} color={colors.textSecondary} />
-                    <Text
+              {/* Banner Image - Vendors Only */}
+              {profile.role === 'vendor' && (
+                <View style={styles.bannerContainer}>
+                  {profile.banner_image ? (
+                    <Image
+                      source={{ uri: profile.banner_image }}
+                      style={styles.bannerImage}
+                    />
+                  ) : (
+                    <View
                       style={[
-                        styles.bannerPlaceholderText,
-                        { color: colors.textSecondary },
+                        styles.bannerPlaceholder,
+                        { backgroundColor: colors.filter },
                       ]}
                     >
-                      Add Banner Image
-                    </Text>
-                  </View>
-                )}
+                      <ImageIcon size={40} color={colors.textSecondary} />
+                      <Text
+                        style={[
+                          styles.bannerPlaceholderText,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Add Banner Image
+                      </Text>
+                    </View>
+                  )}
+                  {isEditing && (
+                    <TouchableOpacity
+                      style={[
+                        styles.changeBannerButton,
+                        { backgroundColor: colors.primary },
+                      ]}
+                      onPress={pickBanner}
+                      disabled={uploadingBanner}
+                    >
+                      {uploadingBanner ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Camera size={16} color="#FFFFFF" />
+                          <Text style={styles.changePhotoText}>
+                            {profile.banner_image ? 'Change' : 'Add'} Banner
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* Avatar */}
+              <View
+                style={[
+                  styles.avatarContainer,
+                  profile.role === 'vendor' && styles.avatarWithBanner,
+                ]}
+              >
+                <View
+                  style={[styles.avatar, { backgroundColor: colors.filter }]}
+                >
+                  {profile.profile_image ? (
+                    <Image
+                      source={{ uri: profile.profile_image }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <User size={48} color={colors.textSecondary} />
+                  )}
+                </View>
                 {isEditing && (
                   <TouchableOpacity
                     style={[
-                      styles.changeBannerButton,
+                      styles.changePhotoButton,
                       { backgroundColor: colors.primary },
                     ]}
-                    onPress={pickBanner}
-                    disabled={uploadingBanner}
+                    onPress={pickAvatar}
+                    disabled={uploadingAvatar}
                   >
-                    {uploadingBanner ? (
+                    {uploadingAvatar ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                       <>
                         <Camera size={16} color="#FFFFFF" />
                         <Text style={styles.changePhotoText}>
-                          {profile.banner_image ? 'Change' : 'Add'} Banner
+                          {profile.profile_image ? 'Change' : 'Add'} Photo
                         </Text>
                       </>
                     )}
                   </TouchableOpacity>
                 )}
               </View>
-            )}
 
-            {/* Avatar */}
-            <View
-              style={[
-                styles.avatarContainer,
-                profile.role === 'vendor' && styles.avatarWithBanner,
-              ]}
-            >
-              <View style={[styles.avatar, { backgroundColor: colors.filter }]}>
-                {profile.profile_image ? (
-                  <Image
-                    source={{ uri: profile.profile_image }}
-                    style={styles.avatarImage}
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Full Name
+                </Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    { backgroundColor: colors.card, shadowColor: colors.text },
+                  ]}
+                >
+                  <User size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    value={profile.full_name}
+                    onChangeText={(text) =>
+                      setProfile({ ...profile, full_name: text })
+                    }
+                    placeholder="Enter your full name"
+                    placeholderTextColor={colors.textTetiary}
+                    editable={isEditing}
                   />
-                ) : (
-                  <User size={48} color={colors.textSecondary} />
-                )}
+                </View>
               </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Email
+                </Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    { backgroundColor: colors.card, shadowColor: colors.text },
+                  ]}
+                >
+                  <Mail size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    value={profile.email}
+                    onChangeText={(text) =>
+                      setProfile({ ...profile, email: text })
+                    }
+                    placeholder="Enter your email"
+                    placeholderTextColor={colors.textTetiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={isEditing}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Phone
+                </Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    { backgroundColor: colors.card, shadowColor: colors.text },
+                  ]}
+                >
+                  <Phone size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    value={profile.phone}
+                    onChangeText={(text) =>
+                      setProfile({ ...profile, phone: text })
+                    }
+                    placeholder="Enter your phone number"
+                    placeholderTextColor={colors.textTetiary}
+                    keyboardType="phone-pad"
+                    editable={isEditing}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Address
+                </Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    { backgroundColor: colors.card, shadowColor: colors.text },
+                  ]}
+                >
+                  <MapPin size={20} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    value={profile.address}
+                    onChangeText={(text) =>
+                      setProfile({ ...profile, address: text })
+                    }
+                    placeholder="Enter your address"
+                    placeholderTextColor={colors.textTetiary}
+                    multiline
+                    editable={isEditing}
+                  />
+                </View>
+              </View>
+
+              {/* Vendor Information - Only for verified vendors */}
+              {profile.role === 'vendor' && profile.verified && (
+                <>
+                  <View
+                    style={[
+                      styles.sectionHeader,
+                      { borderBottomColor: colors.filter },
+                    ]}
+                  >
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      Vendor Information
+                    </Text>
+                  </View>
+
+                  <View style={styles.section}>
+                    <Text
+                      style={[styles.label, { color: colors.textSecondary }]}
+                    >
+                      Farm/Business Name
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          backgroundColor: colors.card,
+                          shadowColor: colors.text,
+                        },
+                      ]}
+                    >
+                      <User size={20} color={colors.textSecondary} />
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        value={profile.farm_name}
+                        onChangeText={(text) =>
+                          setProfile({ ...profile, farm_name: text })
+                        }
+                        placeholder="Enter your farm or business name"
+                        placeholderTextColor={colors.textTetiary}
+                        editable={isEditing}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.section}>
+                    <Text
+                      style={[styles.label, { color: colors.textSecondary }]}
+                    >
+                      Farm/Business Location
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          backgroundColor: colors.card,
+                          shadowColor: colors.text,
+                        },
+                      ]}
+                    >
+                      <MapPin size={20} color={colors.textSecondary} />
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        value={profile.farm_location}
+                        onChangeText={(text) =>
+                          setProfile({ ...profile, farm_location: text })
+                        }
+                        placeholder="Enter your farm or business location"
+                        placeholderTextColor={colors.textTetiary}
+                        editable={isEditing}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.section}>
+                    <Text
+                      style={[styles.label, { color: colors.textSecondary }]}
+                    >
+                      Business Phone
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          backgroundColor: colors.card,
+                          shadowColor: colors.text,
+                        },
+                      ]}
+                    >
+                      <Phone size={20} color={colors.textSecondary} />
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        value={profile.business_phone}
+                        onChangeText={(text) =>
+                          setProfile({ ...profile, business_phone: text })
+                        }
+                        placeholder="Enter your business phone number"
+                        placeholderTextColor={colors.textTetiary}
+                        keyboardType="phone-pad"
+                        editable={isEditing}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.section}>
+                    <Text
+                      style={[styles.label, { color: colors.textSecondary }]}
+                    >
+                      Farm/Business Description
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        styles.textAreaContainer,
+                        {
+                          backgroundColor: colors.card,
+                          shadowColor: colors.text,
+                        },
+                      ]}
+                    >
+                      <TextInput
+                        style={[styles.textArea, { color: colors.text }]}
+                        value={profile.farm_description}
+                        onChangeText={(text) =>
+                          setProfile({ ...profile, farm_description: text })
+                        }
+                        placeholder="Describe your farm or business, what you sell, your farming practices, etc."
+                        placeholderTextColor={colors.textTetiary}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                        editable={isEditing}
+                      />
+                    </View>
+                  </View>
+                </>
+              )}
+
               {isEditing && (
                 <TouchableOpacity
                   style={[
-                    styles.changePhotoButton,
-                    { backgroundColor: colors.primary },
+                    styles.saveButton,
+                    {
+                      backgroundColor: colors.secondary,
+                      shadowColor: colors.primary,
+                    },
                   ]}
-                  onPress={pickAvatar}
-                  disabled={uploadingAvatar}
+                  onPress={saveProfile}
+                  disabled={saving}
                 >
-                  {uploadingAvatar ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  {saving ? (
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
                     <>
-                      <Camera size={16} color="#FFFFFF" />
-                      <Text style={styles.changePhotoText}>
-                        {profile.profile_image ? 'Change' : 'Add'} Photo
-                      </Text>
+                      <Save size={20} color="#FFFFFF" />
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
                     </>
                   )}
                 </TouchableOpacity>
               )}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Full Name
-              </Text>
-              <View
-                style={[
-                  styles.inputContainer,
-                  { backgroundColor: colors.card, shadowColor: colors.text },
-                ]}
-              >
-                <User size={20} color={colors.textSecondary} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={profile.full_name}
-                  onChangeText={(text) =>
-                    setProfile({ ...profile, full_name: text })
-                  }
-                  placeholder="Enter your full name"
-                  placeholderTextColor={colors.textTetiary}
-                  editable={isEditing}
-                />
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Email
-              </Text>
-              <View
-                style={[
-                  styles.inputContainer,
-                  { backgroundColor: colors.card, shadowColor: colors.text },
-                ]}
-              >
-                <Mail size={20} color={colors.textSecondary} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={profile.email}
-                  onChangeText={(text) =>
-                    setProfile({ ...profile, email: text })
-                  }
-                  placeholder="Enter your email"
-                  placeholderTextColor={colors.textTetiary}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable={isEditing}
-                />
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Phone
-              </Text>
-              <View
-                style={[
-                  styles.inputContainer,
-                  { backgroundColor: colors.card, shadowColor: colors.text },
-                ]}
-              >
-                <Phone size={20} color={colors.textSecondary} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={profile.phone}
-                  onChangeText={(text) =>
-                    setProfile({ ...profile, phone: text })
-                  }
-                  placeholder="Enter your phone number"
-                  placeholderTextColor={colors.textTetiary}
-                  keyboardType="phone-pad"
-                  editable={isEditing}
-                />
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Address
-              </Text>
-              <View
-                style={[
-                  styles.inputContainer,
-                  { backgroundColor: colors.card, shadowColor: colors.text },
-                ]}
-              >
-                <MapPin size={20} color={colors.textSecondary} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={profile.address}
-                  onChangeText={(text) =>
-                    setProfile({ ...profile, address: text })
-                  }
-                  placeholder="Enter your address"
-                  placeholderTextColor={colors.textTetiary}
-                  multiline
-                  editable={isEditing}
-                />
-              </View>
-            </View>
-
-            {/* Vendor Information - Only for verified vendors */}
-            {profile.role === 'vendor' && profile.verified && (
-              <>
-                <View
-                  style={[
-                    styles.sectionHeader,
-                    { borderBottomColor: colors.filter },
-                  ]}
-                >
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Vendor Information
-                  </Text>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    Farm/Business Name
-                  </Text>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      {
-                        backgroundColor: colors.card,
-                        shadowColor: colors.text,
-                      },
-                    ]}
-                  >
-                    <User size={20} color={colors.textSecondary} />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      value={profile.farm_name}
-                      onChangeText={(text) =>
-                        setProfile({ ...profile, farm_name: text })
-                      }
-                      placeholder="Enter your farm or business name"
-                      placeholderTextColor={colors.textTetiary}
-                      editable={isEditing}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    Farm/Business Location
-                  </Text>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      {
-                        backgroundColor: colors.card,
-                        shadowColor: colors.text,
-                      },
-                    ]}
-                  >
-                    <MapPin size={20} color={colors.textSecondary} />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      value={profile.farm_location}
-                      onChangeText={(text) =>
-                        setProfile({ ...profile, farm_location: text })
-                      }
-                      placeholder="Enter your farm or business location"
-                      placeholderTextColor={colors.textTetiary}
-                      editable={isEditing}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    Business Phone
-                  </Text>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      {
-                        backgroundColor: colors.card,
-                        shadowColor: colors.text,
-                      },
-                    ]}
-                  >
-                    <Phone size={20} color={colors.textSecondary} />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      value={profile.business_phone}
-                      onChangeText={(text) =>
-                        setProfile({ ...profile, business_phone: text })
-                      }
-                      placeholder="Enter your business phone number"
-                      placeholderTextColor={colors.textTetiary}
-                      keyboardType="phone-pad"
-                      editable={isEditing}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    Farm/Business Description
-                  </Text>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      styles.textAreaContainer,
-                      {
-                        backgroundColor: colors.card,
-                        shadowColor: colors.text,
-                      },
-                    ]}
-                  >
-                    <TextInput
-                      style={[styles.textArea, { color: colors.text }]}
-                      value={profile.farm_description}
-                      onChangeText={(text) =>
-                        setProfile({ ...profile, farm_description: text })
-                      }
-                      placeholder="Describe your farm or business, what you sell, your farming practices, etc."
-                      placeholderTextColor={colors.textTetiary}
-                      multiline
-                      numberOfLines={4}
-                      textAlignVertical="top"
-                      editable={isEditing}
-                    />
-                  </View>
-                </View>
-              </>
-            )}
-
-            {isEditing && (
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  {
-                    backgroundColor: colors.secondary,
-                    shadowColor: colors.primary,
-                  },
-                ]}
-                onPress={saveProfile}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Save size={20} color="#FFFFFF" />
-                    <Text style={styles.saveButtonText}>Save Changes</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-      </ScrollView>
+            </>
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );

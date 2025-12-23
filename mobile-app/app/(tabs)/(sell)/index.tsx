@@ -322,371 +322,394 @@ export default function SellScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Product Images */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Product Images ({images.length}/5)
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.imagesContainer}
-          >
-            {images.map((uri, index) => (
-              <View key={index} style={styles.imageWrapper}>
-                <Image source={{ uri }} style={styles.uploadedImage} />
+          {/* Product Images */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Product Images ({images.length}/5)
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.imagesContainer}
+            >
+              {images.map((uri, index) => (
+                <View key={index} style={styles.imageWrapper}>
+                  <Image source={{ uri }} style={styles.uploadedImage} />
+                  <TouchableOpacity
+                    style={[
+                      styles.removeImageButton,
+                      { backgroundColor: colors.error },
+                    ]}
+                    onPress={() => removeImage(index)}
+                  >
+                    <X size={16} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {images.length < 5 && (
                 <TouchableOpacity
                   style={[
-                    styles.removeImageButton,
-                    { backgroundColor: colors.error },
+                    styles.addImageButton,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
                   ]}
-                  onPress={() => removeImage(index)}
+                  onPress={showImageOptions}
                 >
-                  <X size={16} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ))}
-            {images.length < 5 && (
-              <TouchableOpacity
-                style={[
-                  styles.addImageButton,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-                onPress={showImageOptions}
-              >
-                <Camera size={24} color={colors.textSecondary} />
-                <Text
-                  style={[styles.addImageText, { color: colors.textSecondary }]}
-                >
-                  Add Photo
-                </Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-        </View>
-
-        {/* Product Details */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Product Details
-          </Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Product Name
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
-              placeholder="e.g., Organic Tomatoes"
-              value={productName}
-              onChangeText={setProductName}
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.categoriesRow}>
-                {categories.map((category) => (
-                  <TouchableOpacity
-                    key={category}
+                  <Camera size={24} color={colors.textSecondary} />
+                  <Text
                     style={[
-                      styles.categoryChip,
-                      {
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
-                      },
-                      selectedCategory === category && [
-                        styles.selectedCategoryChip,
-                        {
-                          backgroundColor: colors.success,
-                          borderColor: colors.success,
-                        },
-                      ],
+                      styles.addImageText,
+                      { color: colors.textSecondary },
                     ]}
-                    onPress={() => setSelectedCategory(category)}
                   >
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        { color: colors.text },
-                        selectedCategory === category && [
-                          styles.selectedCategoryChipText,
-                          { color: colors.buttonText },
-                        ],
-                      ]}
-                    >
-                      {category}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    Add Photo
+                  </Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Description
+          {/* Product Details */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Product Details
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                styles.textArea,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
-              placeholder="Tell customers about your product..."
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-        </View>
 
-        {/* Pricing & Quantity */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Pricing & Quantity
-          </Text>
-
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.halfWidth]}>
+            <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text }]}>
-                Price per Unit
+                Product Name
               </Text>
-              <View
+              <TextInput
                 style={[
-                  styles.priceInput,
-                  { backgroundColor: colors.card, borderColor: colors.border },
+                  styles.input,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
                 ]}
-              >
-                <DollarSign size={16} color={colors.textSecondary} />
-                <TextInput
-                  style={[styles.priceInputField, { color: colors.text }]}
-                  placeholder="0.00"
-                  value={price}
-                  onChangeText={setPrice}
-                  keyboardType="decimal-pad"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
-            </View>
-
-            <View style={[styles.inputGroup, styles.halfWidth]}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Quantity
-              </Text>
-              <View style={styles.quantityRow}>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.quantityInput,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    },
-                  ]}
-                  placeholder="50"
-                  value={quantity}
-                  onChangeText={setQuantity}
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
-                />
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.unitInput,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    },
-                  ]}
-                  placeholder="kg"
-                  value={unit}
-                  onChangeText={setUnit}
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* Organic Toggle */}
-          <TouchableOpacity
-            style={[
-              styles.organicToggle,
-              { backgroundColor: colors.card, borderColor: colors.border },
-              isOrganic && {
-                backgroundColor: colors.success + '20',
-                borderColor: colors.success,
-              },
-            ]}
-            onPress={() => setIsOrganic(!isOrganic)}
-          >
-            <View style={styles.organicToggleContent}>
-              <Text
-                style={[styles.label, { color: colors.text, marginBottom: 0 }]}
-              >
-                Organic Product
-              </Text>
-              <Text
-                style={[styles.organicSubtext, { color: colors.textSecondary }]}
-              >
-                Certified organic or pesticide-free
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.toggleSwitch,
-                { backgroundColor: colors.border },
-                isOrganic && { backgroundColor: colors.success },
-              ]}
-            >
-              <View
-                style={[
-                  styles.toggleCircle,
-                  { backgroundColor: colors.card },
-                  isOrganic && styles.toggleCircleActive,
-                ]}
+                placeholder="e.g., Organic Tomatoes"
+                value={productName}
+                onChangeText={setProductName}
+                placeholderTextColor={colors.textSecondary}
               />
             </View>
-          </TouchableOpacity>
-        </View>
 
-        {/* Location */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Location
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.locationButton,
-              { backgroundColor: colors.card, borderColor: colors.border },
-              location && {
-                backgroundColor: colors.success + '20',
-                borderColor: colors.success,
-              },
-            ]}
-            onPress={getCurrentLocation}
-          >
-            <MapPin
-              size={20}
-              color={location ? colors.success : colors.textSecondary}
-            />
-            <Text
-              style={[
-                styles.locationText,
-                { color: location ? colors.success : colors.textSecondary },
-              ]}
-            >
-              {location ? location.address : 'Use Current Location'}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Category
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.categoriesRow}>
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[
+                        styles.categoryChip,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                        selectedCategory === category && [
+                          styles.selectedCategoryChip,
+                          {
+                            backgroundColor: colors.success,
+                            borderColor: colors.success,
+                          },
+                        ],
+                      ]}
+                      onPress={() => setSelectedCategory(category)}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          { color: colors.text },
+                          selectedCategory === category && [
+                            styles.selectedCategoryChipText,
+                            { color: colors.buttonText },
+                          ],
+                        ]}
+                      >
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Description
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
+                placeholder="Tell customers about your product..."
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+          </View>
+
+          {/* Pricing & Quantity */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Pricing & Quantity
             </Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Preview */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Preview
-          </Text>
-          <View
-            style={[
-              styles.previewCard,
-              { backgroundColor: colors.card, shadowColor: colors.text },
-            ]}
-          >
-            {images.length > 0 ? (
-              <Image source={{ uri: images[0] }} style={styles.previewImage} />
-            ) : (
-              <View
-                style={[
-                  styles.previewImagePlaceholder,
-                  { backgroundColor: colors.filter },
-                ]}
-              >
-                <Camera size={32} color={colors.textSecondary} />
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={[styles.label, { color: colors.text }]}>
+                  Price per Unit
+                </Text>
+                <View
+                  style={[
+                    styles.priceInput,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <DollarSign size={16} color={colors.textSecondary} />
+                  <TextInput
+                    style={[styles.priceInputField, { color: colors.text }]}
+                    placeholder="0.00"
+                    value={price}
+                    onChangeText={setPrice}
+                    keyboardType="decimal-pad"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
               </View>
-            )}
-            <View style={styles.previewContent}>
-              <Text style={[styles.previewName, { color: colors.text }]}>
-                {productName || 'Product Name'}
-              </Text>
-              <Text
-                style={[
-                  styles.previewCategory,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                {selectedCategory || 'Category'} {isOrganic && '🌱'}
-              </Text>
-              <Text style={[styles.previewPrice, { color: colors.success }]}>
-                ${price || '0.00'}/{unit}
-              </Text>
-              {location && (
+
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={[styles.label, { color: colors.text }]}>
+                  Quantity
+                </Text>
+                <View style={styles.quantityRow}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.quantityInput,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                    placeholder="50"
+                    value={quantity}
+                    onChangeText={setQuantity}
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.unitInput,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                    placeholder="kg"
+                    value={unit}
+                    onChangeText={setUnit}
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Organic Toggle */}
+            <TouchableOpacity
+              style={[
+                styles.organicToggle,
+                { backgroundColor: colors.card, borderColor: colors.border },
+                isOrganic && {
+                  backgroundColor: colors.success + '20',
+                  borderColor: colors.success,
+                },
+              ]}
+              onPress={() => setIsOrganic(!isOrganic)}
+            >
+              <View style={styles.organicToggleContent}>
                 <Text
                   style={[
-                    styles.previewLocation,
+                    styles.label,
+                    { color: colors.text, marginBottom: 0 },
+                  ]}
+                >
+                  Organic Product
+                </Text>
+                <Text
+                  style={[
+                    styles.organicSubtext,
                     { color: colors.textSecondary },
                   ]}
                 >
-                  📍 {location.address}
+                  Certified organic or pesticide-free
                 </Text>
+              </View>
+              <View
+                style={[
+                  styles.toggleSwitch,
+                  { backgroundColor: colors.border },
+                  isOrganic && { backgroundColor: colors.success },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.toggleCircle,
+                    { backgroundColor: colors.card },
+                    isOrganic && styles.toggleCircleActive,
+                  ]}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Location */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Location
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.locationButton,
+                { backgroundColor: colors.card, borderColor: colors.border },
+                location && {
+                  backgroundColor: colors.success + '20',
+                  borderColor: colors.success,
+                },
+              ]}
+              onPress={getCurrentLocation}
+            >
+              <MapPin
+                size={20}
+                color={location ? colors.success : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.locationText,
+                  { color: location ? colors.success : colors.textSecondary },
+                ]}
+              >
+                {location ? location.address : 'Use Current Location'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Preview */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Preview
+            </Text>
+            <View
+              style={[
+                styles.previewCard,
+                { backgroundColor: colors.card, shadowColor: colors.text },
+              ]}
+            >
+              {images.length > 0 ? (
+                <Image
+                  source={{ uri: images[0] }}
+                  style={styles.previewImage}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.previewImagePlaceholder,
+                    { backgroundColor: colors.filter },
+                  ]}
+                >
+                  <Camera size={32} color={colors.textSecondary} />
+                </View>
               )}
+              <View style={styles.previewContent}>
+                <Text style={[styles.previewName, { color: colors.text }]}>
+                  {productName || 'Product Name'}
+                </Text>
+                <Text
+                  style={[
+                    styles.previewCategory,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {selectedCategory || 'Category'} {isOrganic && '🌱'}
+                </Text>
+                <Text style={[styles.previewPrice, { color: colors.success }]}>
+                  ${price || '0.00'}/{unit}
+                </Text>
+                {location && (
+                  <Text
+                    style={[
+                      styles.previewLocation,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    📍 {location.address}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Publish Button */}
-        <View style={styles.publishSection}>
-          <TouchableOpacity
-            style={[
-              styles.publishButton,
-              { backgroundColor: colors.success },
-              isUploading && { opacity: 0.7 },
-            ]}
-            onPress={handlePublishProduct}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <View style={styles.uploadingContainer}>
-                <ActivityIndicator color={colors.buttonText} size="small" />
+          {/* Publish Button */}
+          <View style={styles.publishSection}>
+            <TouchableOpacity
+              style={[
+                styles.publishButton,
+                { backgroundColor: colors.success },
+                isUploading && { opacity: 0.7 },
+              ]}
+              onPress={handlePublishProduct}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <View style={styles.uploadingContainer}>
+                  <ActivityIndicator color={colors.buttonText} size="small" />
+                  <Text
+                    style={[
+                      styles.publishButtonText,
+                      { color: colors.buttonText, marginLeft: 8 },
+                    ]}
+                  >
+                    Uploading... {Math.round(uploadProgress)}%
+                  </Text>
+                </View>
+              ) : (
                 <Text
                   style={[
                     styles.publishButtonText,
-                    { color: colors.buttonText, marginLeft: 8 },
+                    { color: colors.buttonText },
                   ]}
                 >
-                  Uploading... {Math.round(uploadProgress)}%
+                  Publish Product
                 </Text>
-              </View>
-            ) : (
-              <Text
-                style={[styles.publishButtonText, { color: colors.buttonText }]}
-              >
-                Publish Product
-              </Text>
-            )}
-          </TouchableOpacity>
-          <Text style={[styles.publishNote, { color: colors.textSecondary }]}>
-            Your product will be reviewed and published within 24 hours
-          </Text>
-        </View>
-      </ScrollView>
+              )}
+            </TouchableOpacity>
+            <Text style={[styles.publishNote, { color: colors.textSecondary }]}>
+              Your product will be reviewed and published within 24 hours
+            </Text>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
