@@ -2,6 +2,7 @@ import { DestinationMiniCard } from '@/components/cards/DestinationCard';
 import FilterSquare from '@/components/common/FilterSquare';
 import { ProductSkeleton } from '@/components/cards/ProductSkeleton';
 import GridProductCard from '@/components/cards/GridProductCard';
+import BannerCarousel from '@/components/BannerCarousel';
 import {
   FlourIcon,
   FruitIcon,
@@ -29,7 +30,6 @@ import { supabase } from '@/lib/supabase';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dimensions,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -359,61 +359,8 @@ export default function HomeScreen() {
             />
           }
         >
-          {/* Hero Banner */}
-          <View style={styles.part}>
-            <View
-              style={{
-                ...styles.heroBanner,
-                backgroundColor: colors.card,
-                shadowColor: colors.text,
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{
-                  flex: 4,
-                  paddingHorizontal: 8,
-                  borderTopLeftRadius: 16,
-                  borderBottomLeftRadius: 16,
-                  height: 200,
-                  backgroundColor: colors.card,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ ...styles.heroTitle, color: colors.text }}>
-                  Green Valley Farm
-                </Text>
-                <Text
-                  style={{
-                    ...styles.heroSubtitle,
-                    color: colors.textSecondary,
-                  }}
-                >
-                  Organic vegetables and fruits
-                </Text>
-              </View>
-              <View
-                style={{
-                  flex: 7,
-                  height: 200,
-                  overflow: 'hidden',
-                  borderTopRightRadius: 16,
-                  borderBottomRightRadius: 16,
-                }}
-              >
-                <Image
-                  source={{
-                    uri: 'https://images.pexels.com/photos/1002703/pexels-photo-1002703.jpeg?auto=compress&cs=tinysrgb&w=800',
-                  }}
-                  style={styles.heroImage}
-                />
-              </View>
-            </View>
-          </View>
+          {/* Promotional Banner Carousel */}
+          <BannerCarousel onCategorySelect={handleCategoryPress} />
 
           {/* Categories */}
           <View style={styles.section}>
