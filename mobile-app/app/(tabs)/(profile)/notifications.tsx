@@ -143,7 +143,9 @@ export default function NotificationsScreen() {
   const renderItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity
       style={[styles.notifItem, !item.is_read && styles.unreadNotif]}
-      onPress={() => !item.is_read && markAsRead(item.id)}
+      onPress={() =>
+        router.push(`/(tabs)/(profile)/notificationDetail?id=${item.id}`)
+      }
       activeOpacity={0.7}
     >
       <View
