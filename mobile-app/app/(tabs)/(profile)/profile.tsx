@@ -190,7 +190,7 @@ export default function ProfileScreen() {
         } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        const uploadResult = await uploadImage(uri, `avatars/${user.id}`);
+        const uploadResult = await uploadImage(uri, user.id, 'profile');
         setProfile({ ...profile, profile_image: uploadResult.url });
         Alert.alert('Success', 'Avatar uploaded successfully');
       }
@@ -229,7 +229,7 @@ export default function ProfileScreen() {
         } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        const uploadResult = await uploadImage(uri, `banners/${user.id}`);
+        const uploadResult = await uploadImage(uri, user.id, 'banners');
         setProfile({ ...profile, banner_image: uploadResult.url });
         Alert.alert('Success', 'Banner uploaded successfully');
       }
