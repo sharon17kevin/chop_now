@@ -41,19 +41,13 @@ const FilterSquare: React.FC<FilterSquareProps> = ({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View
-        style={[
-          styles.iconContainer,
-          { backgroundColor: colors.filter },
-        ]}
-      >
+      <View style={[styles.iconContainer, { backgroundColor: colors.filter }]}>
         {icon}
       </View>
       <Text
-        style={[
-          styles.text,
-          { color: colors.text },
-        ]}
+        style={[styles.text, { color: colors.text }]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
       >
         {text}
       </Text>
@@ -63,7 +57,7 @@ const FilterSquare: React.FC<FilterSquareProps> = ({
 
 const styles = StyleSheet.create({
   square: {
-    width: 70,
+    width: 80,
     height: 90,
     margin: 4,
     borderRadius: 8,
@@ -85,11 +79,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   text: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
     paddingVertical: 6,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     fontWeight: '500',
+    width: '100%',
   },
 });
 
