@@ -229,28 +229,12 @@ export default function CheckoutScreen() {
       }
 
       // Open Paystack payment page
-      const result = await WebBrowser.openAuthSessionAsync(
-        paymentData.data.authorization_url,
-        'your-app-scheme://'
-      );
+      await WebBrowser.openBrowserAsync(paymentData.data.authorization_url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        controlsColor: colors.primary,
+      });
 
-      // After payment window closes, verify payment
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        Alert.alert(
-          'Payment Cancelled',
-          'Would you like to verify if payment was completed?',
-          [
-            { text: 'No', style: 'cancel' },
-            {
-              text: 'Verify',
-              onPress: () => verifyAndCreateOrder(reference, orderMetadata),
-            },
-          ]
-        );
-        return;
-      }
-
-      // Verify payment
+      // User has closed the browser - verify payment
       await verifyAndCreateOrder(reference, orderMetadata);
     } catch (error: any) {
       console.error('Checkout error:', error);
@@ -275,80 +259,135 @@ export default function CheckoutScreen() {
 
       if (verifyError) throw verifyError;
 
-      if (verifyData?.data?.status === 'success') {
-        // Create orders (group by vendor)
-        const vendorGroups = items.reduce((acc, item) => {
-          const vendorId = item.products?.vendor_id;
-          if (!vendorId) return acc;
+      if (verifyData?.data?.status !== 'success') {
+        // Payment was not successful
+        Alert.alert(
+          'Payment Not Completed',
+          'Your payment was not completed. Please try again.'
+        );
+        setProcessing(false);
+        return;
+      }
 
-          if (!acc[vendorId]) {
-            acc[vendorId] = [];
-          }
-          acc[vendorId].push(item);
-          return acc;
-        }, {} as Record<string, CartItem[]>);
+      // Payment successful - create orders
+      const vendorGroups = items.reduce((acc, item) => {
+        const vendorId = item.products?.vendor_id;
+        if (!vendorId) return acc;
 
-        const profile = useUserStore.getState().profile;
+        if (!acc[vendorId]) {
+          acc[vendorId] = [];
+        }
+        acc[vendorId].push(item);
+        return acc;
+      }, {} as Record<string, CartItem[]>);
 
-        // Create order for each vendor
-        for (const [vendorId, vendorItems] of Object.entries(vendorGroups)) {
-          const orderTotal = vendorItems.reduce(
-            (sum, item) => sum + (item.products?.price || 0) * item.quantity,
-            0
-          );
+      const profile = useUserStore.getState().profile;
 
-          await supabase.from('orders').insert({
+      // Create order for each vendor and send notifications
+      const createdOrders = [];
+      for (const [vendorId, vendorItems] of Object.entries(vendorGroups)) {
+        const orderTotal = vendorItems.reduce(
+          (sum, item) => sum + (item.products?.price || 0) * item.quantity,
+          0
+        );
+
+        // Create the order first
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .insert({
             user_id: profile?.id,
             vendor_id: vendorId,
-            items: vendorItems.map((item) => ({
-              product_id: item.product_id,
-              product_name: item.products?.name,
-              quantity: item.quantity,
-              price: item.products?.price,
-              unit: item.products?.unit,
-            })),
             total: orderTotal,
-            payment_reference: reference,
-            payment_method: selectedPayment.toLowerCase(),
-            payment_status: 'paid',
             status: 'pending',
-            metadata: orderMetadata,
-          });
+            delivery_address: 'Default address', // TODO: Add actual delivery address
+          })
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error('Error creating order:', orderError);
+          continue;
         }
 
-        // Clear cart
-        const { error: clearError } = await supabase
-          .from('cart_items')
-          .delete()
-          .eq('user_id', profile?.id);
+        // Create order items
+        const orderItemsToInsert = vendorItems.map((item) => ({
+          order_id: order.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price: item.products?.price || 0,
+        }));
 
-        if (clearError) console.error('Failed to clear cart:', clearError);
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItemsToInsert);
 
-        // Show success and navigate
-        Alert.alert(
-          'Order Placed!',
-          'Your payment was successful. Vendors will start preparing your order.',
-          [
-            {
-              text: 'View Orders',
-              onPress: () => router.push('/(tabs)/(orders)'),
-            },
-          ]
-        );
+        if (itemsError) {
+          console.error('Error creating order items:', itemsError);
+          // Continue even if items creation fails
+        }
 
-        // Refresh cart
-        setItems([]);
-      } else {
-        Alert.alert(
-          'Payment Failed',
-          'Payment verification failed. Please contact support.'
-        );
+        createdOrders.push({ order, vendorId, vendorItems, orderTotal });
       }
+
+      // Send notifications to vendors
+      for (const {
+        order,
+        vendorId,
+        vendorItems,
+        orderTotal,
+      } of createdOrders) {
+        try {
+          await supabase.functions.invoke('send-vendor-notification', {
+            body: {
+              vendor_id: vendorId,
+              order_id: order.id,
+              customer_name: profile?.full_name || 'Customer',
+              total_amount: orderTotal,
+              item_count: vendorItems.reduce(
+                (sum, item) => sum + item.quantity,
+                0
+              ),
+              order_items: vendorItems.map((item) => ({
+                product_name: item.products?.name,
+                quantity: item.quantity,
+                price: item.products?.price,
+              })),
+            },
+          });
+          console.log(`Notification sent to vendor ${vendorId}`);
+        } catch (notifError) {
+          console.error('Error sending vendor notification:', notifError);
+          // Don't fail the order if notification fails
+        }
+      }
+
+      // Clear cart
+      const { error: clearError } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('user_id', profile?.id);
+
+      if (clearError) console.error('Failed to clear cart:', clearError);
+
+      // Show success and navigate
+      Alert.alert(
+        'Order Placed! 🎉',
+        'Your payment was successful. Vendors will start preparing your order.',
+        [
+          {
+            text: 'View Orders',
+            onPress: () => router.replace('/(tabs)/(orders)'),
+          },
+        ]
+      );
+
+      // Refresh cart
+      setItems([]);
     } catch (error: any) {
       console.error('Order creation error:', error);
       Alert.alert(
         'Error',
-        'Payment succeeded but order creation failed. Please contact support.'
+        error.message || 'Something went wrong. Please contact support.'
       );
     } finally {
       setProcessing(false);
@@ -412,6 +451,7 @@ export default function CheckoutScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.shopButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/(tabs)/(home)')}
           >
             <Text style={[styles.shopButtonText, { color: colors.buttonText }]}>
               Start Shopping

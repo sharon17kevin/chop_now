@@ -13,8 +13,17 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, Plus, MapPin, DollarSign, X } from 'lucide-react-native';
+import {
+  Camera,
+  Plus,
+  MapPin,
+  DollarSign,
+  X,
+  Package,
+} from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
+import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
@@ -33,6 +42,7 @@ const categories = [
 export default function SellScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const router = useRouter();
   const [productName, setProductName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -44,6 +54,22 @@ export default function SellScreen() {
   const [isOrganic, setIsOrganic] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Fetch pending orders count for badge
+  const { data: pendingCount } = useQuery({
+    queryKey: ['pending-orders-count', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const { count, error } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('vendor_id', user.id)
+        .eq('status', 'pending');
+      return count || 0;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   const requestPermissions = async () => {
     const { status: cameraStatus } =
@@ -313,12 +339,28 @@ export default function SellScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            Sell Your Produce
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Share your fresh products with the community
-          </Text>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <Text style={[styles.title, { color: colors.text }]}>
+                Sell Your Produce
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                Share your fresh products with the community
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.ordersButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/(tabs)/(sell)/orders')}
+            >
+              <Package size={20} color="#fff" />
+              <Text style={styles.ordersButtonText}>Orders</Text>
+              {pendingCount && pendingCount > 0 ? (
+                <View style={styles.ordersBadge}>
+                  <Text style={styles.ordersBadgeText}>{pendingCount}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -723,12 +765,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLeft: {
+    flex: 1,
+    flexShrink: 1,
+  },
+  ordersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+    flexShrink: 0,
+  },
+  ordersButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  ordersBadge: {
+    backgroundColor: '#FF3B30',
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+    paddingHorizontal: 6,
+  },
+  ordersBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     marginTop: 4,
   },
   section: {

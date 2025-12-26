@@ -47,12 +47,7 @@ export default function CartScreen() {
             { backgroundColor: colors.card, borderBottomColor: colors.border },
           ]}
         >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.backButton, { backgroundColor: colors.filter }]}
-          >
-            <ArrowLeft size={24} color={colors.text} />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             My Orders
           </Text>
@@ -105,12 +100,7 @@ export default function CartScreen() {
           { backgroundColor: colors.card, borderBottomColor: colors.border },
         ]}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={[styles.backButton, { backgroundColor: colors.filter }]}
-        >
-          <ArrowLeft size={24} color={colors.text} />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {selectedTab === 'active' ? 'My Cart' : 'My Orders'}
         </Text>

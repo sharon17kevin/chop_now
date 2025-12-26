@@ -43,6 +43,8 @@ export default function NotificationsScreen() {
         data: { user },
       } = await supabase.auth.getUser();
 
+      console.log('Fetching notifications for user:', user?.id);
+
       if (!user) {
         setError('Please sign in to view notifications');
         setLoading(false);
@@ -55,10 +57,13 @@ export default function NotificationsScreen() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      console.log('Notifications query result:', { data, error: fetchError });
+
       if (fetchError) throw fetchError;
 
       setNotifications(data || []);
     } catch (err) {
+      console.error('Error fetching notifications:', err);
       setError(
         err instanceof Error ? err.message : 'Failed to load notifications'
       );
