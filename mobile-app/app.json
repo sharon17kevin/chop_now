@@ -10,7 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sharon14kevin.chopnow"
+      "bundleIdentifier": "com.sharon14kevin.chopnow",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
     },
     "web": {
       "bundler": "metro",
@@ -22,7 +27,8 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true
@@ -43,7 +49,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/chopnow_logo.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "NOTIFICATIONS",
+        "VIBRATE"
+      ]
     },
     "runtimeVersion": "1.0.0",
     "updates": {

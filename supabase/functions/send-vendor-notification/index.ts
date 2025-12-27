@@ -1,6 +1,6 @@
 // Supabase Edge Function to send push notifications to vendors
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
@@ -18,8 +18,23 @@ interface NotificationPayload {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      },
+    });
+  }
+
   try {
+    console.log('Received notification request');
+    
     const { vendor_id, order_id, customer_name, total_amount, item_count, order_items }: NotificationPayload = await req.json();
+    
+    console.log('Payload:', { vendor_id, order_id, customer_name, total_amount, item_count });
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -29,7 +44,7 @@ serve(async (req) => {
     // Get vendor's push token and preferences
     const { data: vendor, error: vendorError } = await supabase
       .from('profiles')
-      .select('expo_push_token, notification_preferences, full_name, farm_name')
+      .select('expo_push_token, push_notifications_enabled, full_name, farm_name')
       .eq('id', vendor_id)
       .single();
 
@@ -37,25 +52,64 @@ serve(async (req) => {
       console.error('Vendor not found:', vendorError);
       return new Response(
         JSON.stringify({ error: 'Vendor not found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { 
+          status: 404, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          } 
+        }
       );
     }
 
+    // Always create in-app notification first (works even without push notifications)
+    const { error: notifError } = await supabase.from('notifications').insert({
+      user_id: vendor_id,
+      title: 'New Order Received',
+      message: `${customer_name} placed an order for ₦${total_amount.toFixed(2)}`,
+      type: 'order',
+      is_read: false,
+    });
+
+    if (notifError) {
+      console.error('Error creating in-app notification:', notifError);
+    } else {
+      console.log('In-app notification created successfully');
+    }
+
     // Check if vendor has notifications enabled
-    const preferences = vendor.notification_preferences || {};
-    if (!preferences.new_orders) {
+    if (!vendor.push_notifications_enabled) {
+      console.log('Vendor has push notifications disabled - in-app notification created');
       return new Response(
-        JSON.stringify({ message: 'Vendor has new order notifications disabled' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          message: 'In-app notification created. Push notifications disabled by vendor.',
+          in_app_created: true,
+        }),
+        { 
+          status: 200, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          } 
+        }
       );
     }
 
     // Check if vendor has a push token
     if (!vendor.expo_push_token) {
-      console.warn('Vendor has no push token:', vendor_id);
+      console.warn('Vendor has no push token - in-app notification created');
       return new Response(
-        JSON.stringify({ message: 'Vendor has no push token registered' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          message: 'In-app notification created. No push token registered.',
+          in_app_created: true,
+        }),
+        { 
+          status: 200, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          } 
+        }
       );
     }
 
@@ -84,31 +138,44 @@ serve(async (req) => {
       channelId: 'orders',
     };
 
-    // Send push notification via Expo
-    const pushResponse = await fetch(EXPO_PUSH_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(message),
-    });
+    // Try to send push notification via Expo
+    try {
+      const pushResponse = await fetch(EXPO_PUSH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(message),
+      });
 
-    const pushResult = await pushResponse.json();
+      const pushResult = await pushResponse.json();
 
-    if (!pushResponse.ok || pushResult.data?.status === 'error') {
-      console.error('Expo push error:', pushResult);
-      throw new Error('Failed to send push notification');
+      if (!pushResponse.ok || pushResult.data?.status === 'error') {
+        console.error('Expo push error:', pushResult);
+        // Don't throw - in-app notification already created
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            message: 'In-app notification created. Push notification failed.',
+            in_app_created: true,
+            push_error: pushResult,
+          }),
+          { 
+            status: 200, 
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            } 
+          }
+        );
+      }
+
+      console.log('Push notification sent successfully');
+    } catch (pushError: any) {
+      console.error('Error sending push notification:', pushError);
+      // Continue - in-app notification already created
     }
-
-    // Create in-app notification record
-    await supabase.from('notifications').insert({
-      user_id: vendor_id,
-      title: 'New Order Received',
-      message: `${customer_name} placed an order for ₦${total_amount.toFixed(2)}`,
-      type: 'order',
-      is_read: false,
-    });
 
     // Update order notification status
     await supabase
@@ -122,17 +189,33 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Notification sent successfully',
-        push_result: pushResult,
+        message: 'In-app and push notifications sent successfully',
+        in_app_created: true,
+        push_sent: true,
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { 
+        status: 200, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        } 
+      }
     );
 
   } catch (error: any) {
     console.error('Error sending notification:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack,
+      }),
+      { 
+        status: 500, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        } 
+      }
     );
   }
 });

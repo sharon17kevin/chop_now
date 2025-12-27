@@ -1,5 +1,6 @@
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider, useTheme } from '@/hooks/useTheme';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -26,6 +27,9 @@ function RootLayoutNav() {
   const { colors, isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
+
+  // Initialize push notifications
+  usePushNotifications();
 
   // Handle deep linking for OAuth callbacks
   useEffect(() => {

@@ -337,24 +337,32 @@ export default function CheckoutScreen() {
         orderTotal,
       } of createdOrders) {
         try {
-          await supabase.functions.invoke('send-vendor-notification', {
-            body: {
-              vendor_id: vendorId,
-              order_id: order.id,
-              customer_name: profile?.full_name || 'Customer',
-              total_amount: orderTotal,
-              item_count: vendorItems.reduce(
-                (sum, item) => sum + item.quantity,
-                0
-              ),
-              order_items: vendorItems.map((item) => ({
-                product_name: item.products?.name,
-                quantity: item.quantity,
-                price: item.products?.price,
-              })),
-            },
-          });
-          console.log(`Notification sent to vendor ${vendorId}`);
+          const { data, error } = await supabase.functions.invoke(
+            'send-vendor-notification',
+            {
+              body: {
+                vendor_id: vendorId,
+                order_id: order.id,
+                customer_name: profile?.full_name || 'Customer',
+                total_amount: orderTotal,
+                item_count: vendorItems.reduce(
+                  (sum, item) => sum + item.quantity,
+                  0
+                ),
+                order_items: vendorItems.map((item) => ({
+                  product_name: item.products?.name,
+                  quantity: item.quantity,
+                  price: item.products?.price,
+                })),
+              },
+            }
+          );
+
+          if (error) {
+            console.error('Edge function error:', error);
+          } else {
+            console.log('Notification sent successfully:', data);
+          }
         } catch (notifError) {
           console.error('Error sending vendor notification:', notifError);
           // Don't fail the order if notification fails

@@ -6,17 +6,101 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Sun, Moon, Smartphone, HelpCircle } from 'lucide-react-native';
+import { Sun, Moon, Smartphone, HelpCircle, Bell } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
+import { supabase } from '@/lib/supabase';
 import AppHeader from '@/components/AppHeader';
 
 export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [pushNotificationsEnabled, setPushNotificationsEnabled] =
+    useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchNotificationPreferences();
+  }, []);
+
+  async function fetchNotificationPreferences() {
+    try {
+      setLoading(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.log('No user found');
+        setLoading(false);
+        return;
+      }
+
+      setUserId(user.id);
+      console.log('Fetching push notification setting for user:', user.id);
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('push_notifications_enabled')
+        .eq('id', user.id)
+        .single();
+
+      console.log('Profile data:', profile);
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        throw error;
+      }
+
+      if (profile?.push_notifications_enabled !== undefined) {
+        setPushNotificationsEnabled(profile.push_notifications_enabled);
+        console.log(
+          'Push notifications enabled:',
+          profile.push_notifications_enabled
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching notification preferences:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updatePushNotifications(value: boolean) {
+    if (!userId) {
+      console.error('No userId available');
+      return;
+    }
+
+    const oldValue = pushNotificationsEnabled;
+    console.log('Updating push notifications to:', value);
+
+    // Optimistic update
+    setPushNotificationsEnabled(value);
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ push_notifications_enabled: value })
+        .eq('id', userId)
+        .select();
+
+      console.log('Update result:', { data, error });
+
+      if (error) throw error;
+
+      console.log('Push notification setting updated successfully');
+    } catch (err) {
+      console.error('Error updating push notifications:', err);
+      // Revert on error
+      setPushNotificationsEnabled(oldValue);
+    }
+  }
 
   const ThemeOption = ({
     themeMode,
@@ -37,9 +121,7 @@ export default function SettingsScreen() {
         },
       ]}
       onPress={async () => {
-        setLoading(true);
         await setTheme(themeMode);
-        setLoading(false);
       }}
     >
       <Icon
@@ -87,6 +169,42 @@ export default function SettingsScreen() {
               ? 'Theme follows your device settings'
               : `Using ${theme} theme`}
           </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            Notifications
+          </Text>
+
+          <View
+            style={[
+              styles.settingItem,
+              { backgroundColor: colors.card, shadowColor: colors.text },
+            ]}
+          >
+            <View style={styles.settingRow}>
+              <Bell size={20} color={colors.textSecondary} />
+              <View style={styles.settingTextContainer}>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>
+                  Push Notifications
+                </Text>
+                <Text
+                  style={[
+                    styles.settingDescription,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Receive notifications for orders and updates
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={pushNotificationsEnabled}
+              onValueChange={updatePushNotifications}
+              trackColor={{ false: colors.disabled, true: colors.success }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -176,5 +294,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 12,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 16,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  settingItemSpaced: {
+    marginTop: 8,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  settingTextContainer: {
+    flex: 1,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  settingDescription: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
