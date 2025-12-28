@@ -12,6 +12,16 @@ export interface Order {
   delivery_notes?: string;
   created_at: string;
   updated_at: string;
+  payment_reference?: string;
+  payment_status?: string;
+  payment_amount?: number;
+  refund_status?: string;
+  refund_amount?: number;
+  refund_method?: string;
+  refunded_at?: string;
+  cancellation_reason?: string;
+  cancelled_by?: string;
+  cancelled_at?: string;
   profiles?: {
     full_name: string;
   };
@@ -158,7 +168,7 @@ export const useOrders = (): UseOrdersReturn => {
         setActiveCartGroups([]);
       }
 
-      // ===== FETCH ONGOING ORDERS (confirmed/processing) =====
+      // ===== FETCH ONGOING ORDERS (confirmed/processing/pending) =====
       try {
         const { data: ongoingData, error: ongoingError } = await supabase
           .from('orders')
@@ -169,7 +179,7 @@ export const useOrders = (): UseOrdersReturn => {
           `
           )
           .eq('user_id', userId)
-          .in('status', ['confirmed', 'processing'])
+          .in('status', ['pending', 'confirmed', 'processing'])
           .order('created_at', { ascending: false });
 
         if (ongoingError) {
@@ -184,7 +194,7 @@ export const useOrders = (): UseOrdersReturn => {
         setOngoingOrders([]);
       }
 
-      // ===== FETCH COMPLETED ORDERS (delivered) =====
+      // ===== FETCH COMPLETED ORDERS (delivered/cancelled) =====
       try {
         const { data: completedData, error: completedError } = await supabase
           .from('orders')
@@ -195,7 +205,7 @@ export const useOrders = (): UseOrdersReturn => {
           `
           )
           .eq('user_id', userId)
-          .eq('status', 'delivered')
+          .in('status', ['delivered', 'cancelled'])
           .order('created_at', { ascending: false });
 
         if (completedError) {

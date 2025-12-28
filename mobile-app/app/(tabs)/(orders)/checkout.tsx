@@ -291,13 +291,16 @@ export default function CheckoutScreen() {
           0
         );
 
-        // Create the order first
+        // Create the order first with payment tracking
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .insert({
             user_id: profile?.id,
             vendor_id: vendorId,
             total: orderTotal,
+            payment_reference: reference,
+            payment_status: 'paid',
+            payment_amount: orderTotal,
             status: 'pending',
             delivery_address: 'Default address', // TODO: Add actual delivery address
           })

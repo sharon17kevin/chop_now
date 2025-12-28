@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -22,6 +23,7 @@ import {
   XCircle,
   User,
   DollarSign,
+  AlertCircle,
 } from 'lucide-react-native';
 
 interface OrderItem {
@@ -54,6 +56,9 @@ export default function VendorOrdersScreen() {
   const router = useRouter();
   const profile = useUserStore((state) => state.profile);
   const [activeTab, setActiveTab] = useState<TabType>('pending');
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(
+    null
+  );
 
   // Fetch vendor orders
   const {
@@ -198,6 +203,68 @@ export default function VendorOrdersScreen() {
     return date.toLocaleDateString();
   };
 
+  const handleCancelOrder = async (orderId: string, orderStatus: string) => {
+    try {
+      setCancellingOrderId(orderId);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        Alert.alert('Error', 'Please login to cancel order');
+        return;
+      }
+
+      // Confirm cancellation
+      Alert.alert(
+        'Cancel Order',
+        `Are you sure you want to cancel this ${orderStatus} order? The customer will be refunded automatically.`,
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Yes, Cancel',
+            style: 'destructive',
+            onPress: async () => {
+              const { data, error } = await supabase.functions.invoke(
+                'cancel-order',
+                {
+                  body: {
+                    order_id: orderId,
+                    reason: 'Vendor cancelled order',
+                    refund_method: 'wallet',
+                  },
+                }
+              );
+
+              if (error) {
+                console.error('Cancel order error:', error);
+                Alert.alert(
+                  'Error',
+                  'Failed to cancel order. Please try again.'
+                );
+                return;
+              }
+
+              if (data?.error) {
+                Alert.alert('Error', data.error);
+                return;
+              }
+
+              Alert.alert('Success', 'Order cancelled and customer refunded');
+              refetch();
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error cancelling order:', error);
+      Alert.alert('Error', error.message || 'Failed to cancel order');
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
+
   const renderOrderCard = ({ item: order }: { item: VendorOrder }) => {
     const StatusIcon = getStatusIcon(order.status);
     const statusColor = getStatusColor(order.status);
@@ -283,6 +350,41 @@ export default function VendorOrdersScreen() {
               Needs Action
             </Text>
           </View>
+        )}
+
+        {/* Cancel Button for Vendor */}
+        {(order.status === 'pending' ||
+          order.status === 'confirmed' ||
+          order.status === 'processing') && (
+          <TouchableOpacity
+            style={[
+              styles.cancelButton,
+              {
+                backgroundColor: colors.errorBackground,
+                borderColor: colors.error,
+                opacity: cancellingOrderId === order.id ? 0.5 : 1,
+              },
+            ]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleCancelOrder(order.id, order.status);
+            }}
+            disabled={cancellingOrderId === order.id}
+            activeOpacity={0.7}
+          >
+            {cancellingOrderId === order.id ? (
+              <ActivityIndicator size="small" color={colors.error} />
+            ) : (
+              <>
+                <XCircle size={16} color={colors.error} />
+                <Text
+                  style={[styles.cancelButtonText, { color: colors.error }]}
+                >
+                  Cancel Order
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
         )}
       </TouchableOpacity>
     );
@@ -595,6 +697,21 @@ const styles = StyleSheet.create({
   },
   actionBadgeText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+  },
+  cancelButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   emptyState: {

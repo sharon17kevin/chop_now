@@ -1,14 +1,35 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+} from 'react-native';
 import { typography } from '@/styles/typography';
 import { useTheme } from '@/hooks/useTheme';
 import { TouchableWithoutFeedback } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import { Order } from '@/hooks/useOrders';
-import { Clock, CheckCircle, AlertCircle, MapPin } from 'lucide-react-native';
+import {
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  MapPin,
+  Wallet,
+  CreditCard,
+} from 'lucide-react-native';
+import { supabase } from '@/lib/supabase';
 
 interface OrderCardProps extends Partial<Order> {
   onDelete?: (id: string) => void;
+  payment_status?: string;
+  refund_status?: string;
+  refund_amount?: number;
+  refund_method?: string;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -19,10 +40,102 @@ const OrderCard: React.FC<OrderCardProps> = ({
   delivery_address,
   profiles,
   onDelete,
+  payment_status,
+  refund_status,
+  refund_amount,
+  refund_method,
 }) => {
   const { colors } = useTheme();
   const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [cancelling, setCancelling] = React.useState(false);
+  const [selectedReason, setSelectedReason] = React.useState('');
+  const [refundMethod, setRefundMethod] = React.useState<'wallet' | 'paystack'>(
+    'wallet'
+  );
   const router = useRouter();
+
+  const cancellationReasons = [
+    'Changed my mind',
+    'Found a better price',
+    'Ordered by mistake',
+    'Delivery takes too long',
+    'Need to modify order',
+    'Other',
+  ];
+
+  const handleCancelOrder = async () => {
+    if (!selectedReason) {
+      Alert.alert('Select Reason', 'Please select a reason for cancellation');
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      console.log('Cancelling order:', {
+        id,
+        reason: selectedReason,
+        refundMethod,
+      });
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        Alert.alert('Error', 'Please login to cancel order');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('cancel-order', {
+        body: {
+          order_id: id,
+          reason: selectedReason,
+          refund_method: refundMethod,
+        },
+      });
+
+      if (error) {
+        console.error('Cancel order error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      console.log('Order cancelled successfully:', data);
+
+      // Show success message
+      const refundMessage = data.refund_processed
+        ? refundMethod === 'wallet'
+          ? 'Refund has been credited to your wallet'
+          : 'Refund will be processed in 3-5 business days'
+        : '';
+
+      Alert.alert(
+        'Order Cancelled',
+        `Your order has been cancelled. ${refundMessage}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setConfirmOpen(false);
+              setSelectedReason('');
+              if (onDelete) onDelete(id || '');
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error cancelling order:', error);
+      Alert.alert(
+        'Cancellation Failed',
+        error.message || 'Failed to cancel order. Please try again.'
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   // Format the date from ISO string
   const formatDate = (dateString: string) => {
@@ -147,6 +260,75 @@ const OrderCard: React.FC<OrderCardProps> = ({
         {/* Divider */}
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
+        {/* Refund Status - Show for cancelled/refunded orders */}
+        {(status === 'cancelled' ||
+          payment_status === 'refunded' ||
+          payment_status === 'partially_refunded') &&
+          refund_status && (
+            <View style={styles.refundStatusContainer}>
+              <View
+                style={[
+                  styles.refundBadge,
+                  {
+                    backgroundColor:
+                      refund_status === 'completed'
+                        ? colors.successBackground
+                        : colors.warningBackground,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    typography.caption1,
+                    {
+                      color:
+                        refund_status === 'completed'
+                          ? colors.success
+                          : colors.warning,
+                      fontWeight: '700',
+                    },
+                  ]}
+                >
+                  {refund_status === 'completed' && '✓ '}
+                  {refund_status === 'completed'
+                    ? 'Refunded'
+                    : refund_status === 'processing'
+                    ? 'Refund Processing'
+                    : refund_status === 'pending'
+                    ? 'Refund Pending'
+                    : refund_status === 'failed'
+                    ? 'Refund Failed'
+                    : 'Refund Status Unknown'}
+                </Text>
+              </View>
+              {refund_amount && refund_amount > 0 && (
+                <Text
+                  style={[
+                    typography.body2,
+                    { color: colors.text, fontWeight: '600', marginTop: 4 },
+                  ]}
+                >
+                  ₦{refund_amount.toFixed(2)}{' '}
+                  {refund_method === 'wallet'
+                    ? 'to Wallet'
+                    : refund_method === 'paystack'
+                    ? 'to Bank'
+                    : ''}
+                </Text>
+              )}
+              {refund_status === 'processing' && (
+                <Text
+                  style={[
+                    typography.caption2,
+                    { color: colors.textSecondary, marginTop: 2 },
+                  ]}
+                >
+                  Refund will be completed in 3-5 business days
+                </Text>
+              )}
+            </View>
+          )}
+
         {/* Vendor Info */}
         {profiles?.full_name && (
           <View style={styles.infoRow}>
@@ -210,8 +392,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </Text>
         </View>
 
-        {/* Action Button - Only for Pending Orders */}
-        {status === 'pending' && (
+        {/* Action Button - For Pending, Confirmed, and Processing Orders */}
+        {(status === 'pending' ||
+          status === 'confirmed' ||
+          status === 'processing') && (
           <TouchableOpacity
             onPress={() => setConfirmOpen(true)}
             style={[
@@ -235,12 +419,12 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </TouchableOpacity>
         )}
 
-        {/* Confirmation Modal */}
+        {/* Cancellation Modal */}
         <Modal
           visible={confirmOpen}
           transparent
-          animationType="fade"
-          onRequestClose={() => setConfirmOpen(false)}
+          animationType="slide"
+          onRequestClose={() => !cancelling && setConfirmOpen(false)}
         >
           <View
             style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}
@@ -248,47 +432,251 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <View
               style={[
                 styles.modalContainer,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  maxHeight: '80%',
+                },
               ]}
             >
-              <View
-                style={[
-                  styles.modalIconContainer,
-                  { backgroundColor: colors.errorBackground },
-                ]}
-              >
-                <AlertCircle size={32} color={colors.error} />
-              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View
+                  style={[
+                    styles.modalIconContainer,
+                    { backgroundColor: colors.errorBackground },
+                  ]}
+                >
+                  <AlertCircle size={32} color={colors.error} />
+                </View>
 
-              <Text
-                style={[
-                  typography.h3,
-                  { color: colors.text, marginBottom: 8, marginTop: 12 },
-                ]}
-              >
-                Cancel Order?
-              </Text>
-              <Text
-                style={[
-                  typography.body2,
-                  {
-                    color: colors.textSecondary,
-                    marginBottom: 20,
-                    lineHeight: 20,
-                  },
-                ]}
-              >
-                This action cannot be undone. Your order will be cancelled.
-              </Text>
+                <Text
+                  style={[
+                    typography.h3,
+                    {
+                      color: colors.text,
+                      marginBottom: 8,
+                      marginTop: 12,
+                      textAlign: 'center',
+                    },
+                  ]}
+                >
+                  Cancel Order?
+                </Text>
+                <Text
+                  style={[
+                    typography.body2,
+                    {
+                      color: colors.textSecondary,
+                      marginBottom: 20,
+                      lineHeight: 20,
+                      textAlign: 'center',
+                    },
+                  ]}
+                >
+                  Please select a reason for cancellation
+                </Text>
 
+                {/* Cancellation Reasons */}
+                <View style={styles.reasonsContainer}>
+                  <Text
+                    style={[
+                      typography.caption1,
+                      { color: colors.textSecondary, marginBottom: 8 },
+                    ]}
+                  >
+                    Reason *
+                  </Text>
+                  {cancellationReasons.map((reason) => (
+                    <TouchableOpacity
+                      key={reason}
+                      style={[
+                        styles.reasonOption,
+                        {
+                          backgroundColor:
+                            selectedReason === reason
+                              ? colors.primaryBackground
+                              : colors.background,
+                          borderColor:
+                            selectedReason === reason
+                              ? colors.primary
+                              : colors.border,
+                        },
+                      ]}
+                      onPress={() => setSelectedReason(reason)}
+                      disabled={cancelling}
+                    >
+                      <View
+                        style={[
+                          styles.radioButton,
+                          {
+                            borderColor:
+                              selectedReason === reason
+                                ? colors.primary
+                                : colors.border,
+                            backgroundColor:
+                              selectedReason === reason
+                                ? colors.primary
+                                : 'transparent',
+                          },
+                        ]}
+                      >
+                        {selectedReason === reason && (
+                          <View
+                            style={[
+                              styles.radioButtonInner,
+                              { backgroundColor: colors.buttonText },
+                            ]}
+                          />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          typography.body2,
+                          {
+                            color:
+                              selectedReason === reason
+                                ? colors.primary
+                                : colors.text,
+                            fontWeight:
+                              selectedReason === reason ? '600' : '400',
+                          },
+                        ]}
+                      >
+                        {reason}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Refund Method */}
+                <View style={styles.refundMethodContainer}>
+                  <Text
+                    style={[
+                      typography.caption1,
+                      { color: colors.textSecondary, marginBottom: 8 },
+                    ]}
+                  >
+                    Refund Method
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.refundOption,
+                      {
+                        backgroundColor:
+                          refundMethod === 'wallet'
+                            ? colors.primaryBackground
+                            : colors.background,
+                        borderColor:
+                          refundMethod === 'wallet'
+                            ? colors.primary
+                            : colors.border,
+                      },
+                    ]}
+                    onPress={() => setRefundMethod('wallet')}
+                    disabled={cancelling}
+                  >
+                    <Wallet
+                      size={20}
+                      color={
+                        refundMethod === 'wallet'
+                          ? colors.primary
+                          : colors.textSecondary
+                      }
+                    />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text
+                        style={[
+                          typography.body2,
+                          {
+                            color:
+                              refundMethod === 'wallet'
+                                ? colors.primary
+                                : colors.text,
+                            fontWeight: '600',
+                          },
+                        ]}
+                      >
+                        Wallet Credit (Instant)
+                      </Text>
+                      <Text
+                        style={[
+                          typography.caption2,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Get instant refund to your wallet
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.refundOption,
+                      {
+                        backgroundColor:
+                          refundMethod === 'paystack'
+                            ? colors.primaryBackground
+                            : colors.background,
+                        borderColor:
+                          refundMethod === 'paystack'
+                            ? colors.primary
+                            : colors.border,
+                        marginTop: 8,
+                      },
+                    ]}
+                    onPress={() => setRefundMethod('paystack')}
+                    disabled={cancelling}
+                  >
+                    <CreditCard
+                      size={20}
+                      color={
+                        refundMethod === 'paystack'
+                          ? colors.primary
+                          : colors.textSecondary
+                      }
+                    />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text
+                        style={[
+                          typography.body2,
+                          {
+                            color:
+                              refundMethod === 'paystack'
+                                ? colors.primary
+                                : colors.text,
+                            fontWeight: '600',
+                          },
+                        ]}
+                      >
+                        Bank Refund
+                      </Text>
+                      <Text
+                        style={[
+                          typography.caption2,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Refund to original payment method (3-5 days)
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              {/* Actions */}
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={[
                     styles.modalButton,
                     { backgroundColor: colors.filter },
                   ]}
-                  onPress={() => setConfirmOpen(false)}
+                  onPress={() => {
+                    setConfirmOpen(false);
+                    setSelectedReason('');
+                  }}
                   activeOpacity={0.7}
+                  disabled={cancelling}
                 >
                   <Text
                     style={[
@@ -303,22 +691,27 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.modalButton,
-                    { backgroundColor: colors.error },
+                    {
+                      backgroundColor: colors.error,
+                      opacity: cancelling || !selectedReason ? 0.5 : 1,
+                    },
                   ]}
-                  onPress={() => {
-                    setConfirmOpen(false);
-                    if (onDelete) onDelete(id || '');
-                  }}
+                  onPress={handleCancelOrder}
                   activeOpacity={0.7}
+                  disabled={cancelling || !selectedReason}
                 >
-                  <Text
-                    style={[
-                      typography.body2,
-                      { color: colors.buttonText, fontWeight: '700' },
-                    ]}
-                  >
-                    Cancel Order
-                  </Text>
+                  {cancelling ? (
+                    <ActivityIndicator size="small" color={colors.buttonText} />
+                  ) : (
+                    <Text
+                      style={[
+                        typography.body2,
+                        { color: colors.buttonText, fontWeight: '700' },
+                      ]}
+                    >
+                      Confirm Cancellation
+                    </Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -413,6 +806,55 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  reasonsContainer: {
+    marginBottom: 20,
+  },
+  reasonOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    marginBottom: 8,
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  radioButtonInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  refundMethodContainer: {
+    marginBottom: 20,
+  },
+  refundOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+  },
+  refundStatusContainer: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+  },
+  refundBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
 });
 

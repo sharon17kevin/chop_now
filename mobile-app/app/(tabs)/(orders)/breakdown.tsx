@@ -1,4 +1,11 @@
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
@@ -13,7 +20,10 @@ import {
   Package,
   Truck,
   Home,
+  ShoppingBag,
 } from 'lucide-react-native';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 
 export default function Breakdown() {
   const { colors } = useTheme();
@@ -25,6 +35,41 @@ export default function Breakdown() {
   const createdAt = params.createdAt as string;
   const deliveryAddress = params.deliveryAddress as string;
   const vendorName = params.vendorName as string;
+
+  // Fetch order details with items
+  const { data: orderDetails, isLoading } = useQuery({
+    queryKey: ['order-details', orderId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(
+          `
+          *,
+          order_items (
+            id,
+            quantity,
+            price,
+            products (
+              id,
+              name,
+              image_url,
+              unit
+            )
+          ),
+          profiles:vendor_id (
+            full_name,
+            farm_name
+          )
+        `
+        )
+        .eq('id', orderId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orderId,
+  });
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -250,6 +295,174 @@ export default function Breakdown() {
           </View>
         )}
 
+        {/* Order Items */}
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16,
+            }}
+          >
+            <ShoppingBag size={20} color={colors.text} />
+            <Text
+              style={[
+                typography.body1,
+                { color: colors.text, fontWeight: '700', marginLeft: 8 },
+              ]}
+            >
+              Order Items
+            </Text>
+          </View>
+
+          {isLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : orderDetails?.order_items &&
+            orderDetails.order_items.length > 0 ? (
+            <View>
+              {orderDetails.order_items.map((item: any, index: number) => (
+                <View key={item.id}>
+                  <View style={styles.orderItem}>
+                    {/* Product Image */}
+                    {item.products?.image_url ? (
+                      <Image
+                        source={{ uri: item.products.image_url }}
+                        style={styles.itemImage}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.itemImage,
+                          {
+                            backgroundColor: colors.filter,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          },
+                        ]}
+                      >
+                        <Package size={24} color={colors.textTetiary} />
+                      </View>
+                    )}
+
+                    {/* Product Details */}
+                    <View style={styles.itemDetails}>
+                      <Text
+                        style={[
+                          typography.body2,
+                          {
+                            color: colors.text,
+                            fontWeight: '600',
+                            marginBottom: 4,
+                          },
+                        ]}
+                      >
+                        {item.products?.name || 'Unknown Product'}
+                      </Text>
+                      <Text
+                        style={[
+                          typography.caption1,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Quantity: {item.quantity}{' '}
+                        {item.products?.unit || 'unit'}
+                        {item.quantity > 1 ? 's' : ''}
+                      </Text>
+                      <Text
+                        style={[
+                          typography.caption2,
+                          { color: colors.textSecondary, marginTop: 2 },
+                        ]}
+                      >
+                        ₦{item.price.toFixed(2)} each
+                      </Text>
+                    </View>
+
+                    {/* Item Total */}
+                    <View style={styles.itemPrice}>
+                      <Text
+                        style={[
+                          typography.body2,
+                          { color: colors.primary, fontWeight: '700' },
+                        ]}
+                      >
+                        ₦{(item.price * item.quantity).toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Divider between items */}
+                  {index < orderDetails.order_items.length - 1 && (
+                    <View
+                      style={[
+                        styles.divider,
+                        { backgroundColor: colors.border, marginVertical: 12 },
+                      ]}
+                    />
+                  )}
+                </View>
+              ))}
+
+              {/* Subtotal */}
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: colors.border, marginVertical: 16 },
+                ]}
+              />
+              <View style={styles.totalRow}>
+                <Text
+                  style={[
+                    typography.body1,
+                    { color: colors.textSecondary, fontWeight: '600' },
+                  ]}
+                >
+                  Subtotal (
+                  {orderDetails.order_items.reduce(
+                    (sum: number, item: any) => sum + item.quantity,
+                    0
+                  )}{' '}
+                  items)
+                </Text>
+                <Text
+                  style={[
+                    typography.h3,
+                    { color: colors.text, fontWeight: '700' },
+                  ]}
+                >
+                  ₦
+                  {orderDetails.order_items
+                    .reduce(
+                      (sum: number, item: any) =>
+                        sum + item.price * item.quantity,
+                      0
+                    )
+                    .toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <Package size={32} color={colors.textTetiary} />
+              <Text
+                style={[
+                  typography.body2,
+                  { color: colors.textSecondary, marginTop: 8 },
+                ]}
+              >
+                No items found
+              </Text>
+            </View>
+          )}
+        </View>
+
         {/* Order Details */}
         <View
           style={[
@@ -404,5 +617,26 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
+  },
+  orderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  itemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+  itemDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  itemPrice: {
+    alignItems: 'flex-end',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
