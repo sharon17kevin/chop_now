@@ -38,3 +38,7 @@ yarn-error.*
 
 # local files
 .local*
+
+android/
+ios/
+

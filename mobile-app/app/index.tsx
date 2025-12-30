@@ -207,7 +207,7 @@ export default function OnboardingScreen() {
 
         <View style={styles.content}>
           <Text
-            style={[typography.h1, { textAlign: 'center', color: colors.text }]}
+            style={[typography.h1, { textAlign: 'center', color: colors.text, lineHeight: 60}]}
           >
             {item.title}
           </Text>
@@ -312,6 +312,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 60
   },
   imageContainer: {
     flex: 5,
@@ -322,7 +323,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 2,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
+    gap: 5,
     paddingBottom: 20,
   },
   subtitle: {
