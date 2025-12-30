@@ -416,7 +416,7 @@ export default function HomeScreen() {
                   autoPlay
                   autoPlayInterval={3000}
                   width={260}
-                  height={260}
+                  height={265}
                   data={hotDealsProducts}
                   renderItem={({ item }) => (
                     <DestinationMiniCard

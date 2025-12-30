@@ -229,7 +229,7 @@ export const DestinationMiniCard = ({
 
   return (
     <TouchableOpacity
-      style={[styles.miniCard]}
+      style={[styles.miniCard, { backgroundColor: colors.background }]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
@@ -243,35 +243,30 @@ export const DestinationMiniCard = ({
 
         {/* Hot Deal Banner - diagonal ribbon */}
         {/* {discount && discount > 0 && ( */}
-          <View
+        <View
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: -8,
+            backgroundColor: '#DC2626',
+            paddingVertical: 6,
+            paddingHorizontal: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          <Text
             style={{
-              position: 'absolute',
-              top: 12,
-              left: -8,
-              backgroundColor: '#DC2626',
-              paddingVertical: 6,
-              paddingHorizontal: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 6,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
+              color: 'white',
+              fontSize: 11,
+              fontWeight: '800',
+              letterSpacing: 0.5,
             }}
           >
-            <Text
-              style={{
-                color: 'white',
-                fontSize: 11,
-                fontWeight: '800',
-                letterSpacing: 0.5,
-              }}
-            >
-              🔥 {discount}% OFF
-            </Text>
-          </View>
+            🔥 {discount}% OFF
+          </Text>
+        </View>
         {/* )} */}
 
         {/* Wishlist button - top right */}
@@ -280,7 +275,11 @@ export const DestinationMiniCard = ({
             onPress={handleWishlistToggle}
             style={[
               styles.miniWishlistButton,
-              { backgroundColor: colors.card },
+              {
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+              },
             ]}
           >
             <Heart
@@ -334,37 +333,37 @@ export const DestinationMiniCard = ({
           </View>
           {/* Original price display */}
           {/* {discount && discount > 0 && originalPrice && ( */}
-            <View
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: 4,
+              gap: 6,
+            }}
+          >
+            <Text
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginTop: 4,
-                gap: 6,
+                color: colors.textSecondary,
+                fontSize: 11,
+                textDecorationLine: 'line-through',
               }}
             >
-              <Text
-                style={{
-                  color: colors.textSecondary,
-                  fontSize: 11,
-                  textDecorationLine: 'line-through',
-                }}
-              >
-                ₦{originalPrice.toLocaleString()}
-              </Text>
-              <Text
-                style={{
-                  color: colors.success,
-                  fontSize: 11,
-                  fontWeight: '700',
-                }}
-              >
-                Save ₦
-                {(
-                  originalPrice -
-                  (originalPrice * (100 - discount)) / 100
-                ).toLocaleString()}
-              </Text>
-            </View>
+              ₦{originalPrice.toLocaleString()}
+            </Text>
+            <Text
+              style={{
+                color: colors.success,
+                fontSize: 11,
+                fontWeight: '700',
+              }}
+            >
+              Save ₦
+              {(
+                originalPrice -
+                (originalPrice * (100 - discount)) / 100
+              ).toLocaleString()}
+            </Text>
+          </View>
           {/* )} */}
         </View>
       </View>
@@ -431,15 +430,10 @@ const styles = StyleSheet.create({
   },
   miniCard: {
     width: 240,
-    height: 250,
+    height: 260,
     marginHorizontal: 8,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
   },
   wishlistButton: {
     position: 'absolute',
@@ -450,11 +444,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   miniWishlistButton: {
     position: 'absolute',
@@ -465,10 +454,5 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
 });
