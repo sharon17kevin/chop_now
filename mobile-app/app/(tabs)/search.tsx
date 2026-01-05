@@ -1,4 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import {
   View,
   Text,
@@ -8,9 +14,12 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
 import { Search, Filter, Heart, X } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -42,7 +51,28 @@ export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+
+  // BottomSheet ref and snap points
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => ['50%', '80%'], []);
+
+  // Backdrop component
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.6}
+      />
+    ),
+    []
+  );
+
+  // Handle bottom sheet changes
+  const handleSheetChanges = useCallback((index: number) => {
+    // Sheet state is managed by the ref
+  }, []);
 
   // Get search history from store
   const {
@@ -76,7 +106,7 @@ export default function SearchScreen() {
   const { isInWishlist, toggleWishlist } = useWishlist();
 
   // Add to cart functionality
-  const { addToCart, addingToCart } = useAddToCart();
+  const { addToCart } = useAddToCart();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -120,7 +150,7 @@ export default function SearchScreen() {
 
   const handleClearFilters = () => {
     clearFilters();
-    setShowFilters(false);
+    bottomSheetRef.current?.close();
   };
 
   const activeFiltersCount = Object.values(filters).filter(
@@ -159,7 +189,7 @@ export default function SearchScreen() {
         />
         <TouchableOpacity
           style={styles.filterButton}
-          onPress={() => setShowFilters(true)}
+          onPress={() => bottomSheetRef.current?.snapToIndex(0)}
         >
           <Filter size={20} color={colors.success} />
           {activeFiltersCount > 0 && (
@@ -358,173 +388,172 @@ export default function SearchScreen() {
         )}
       </ScrollView>
 
-      {/* Filter Modal */}
-      <Modal
-        visible={showFilters}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowFilters(false)}
+      {/* Filter Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        onChange={handleSheetChanges}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: colors.card }}
+        handleIndicatorStyle={{ backgroundColor: colors.border }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Filters
-              </Text>
-              <TouchableOpacity onPress={() => setShowFilters(false)}>
-                <X size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.sheetContent}>
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Filters
+            </Text>
+          </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Category Filter */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterLabel, { color: colors.text }]}>
-                  Category
-                </Text>
-                <View style={styles.filterOptions}>
-                  {categories.map((category) => (
-                    <TouchableOpacity
-                      key={category}
+          <BottomSheetScrollView showsVerticalScrollIndicator={false}>
+            {/* Category Filter */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>
+                Category
+              </Text>
+              <View style={styles.filterOptions}>
+                {categories.map((category) => (
+                  <TouchableOpacity
+                    key={category}
+                    style={[
+                      styles.filterChip,
+                      { borderColor: colors.border },
+                      (category === 'All'
+                        ? !filters.category
+                        : filters.category === category) && {
+                        backgroundColor: colors.secondary,
+                        borderColor: colors.secondary,
+                      },
+                    ]}
+                    onPress={() => handleCategoryFilter(category)}
+                  >
+                    <Text
                       style={[
-                        styles.filterChip,
-                        { borderColor: colors.border },
+                        styles.filterChipText,
+                        { color: colors.text },
                         (category === 'All'
                           ? !filters.category
                           : filters.category === category) && {
-                          backgroundColor: colors.secondary,
-                          borderColor: colors.secondary,
+                          color: colors.buttonText,
                         },
                       ]}
-                      onPress={() => handleCategoryFilter(category)}
                     >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          { color: colors.text },
-                          (category === 'All'
-                            ? !filters.category
-                            : filters.category === category) && {
-                            color: colors.buttonText,
-                          },
-                        ]}
-                      >
-                        {category}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                      {category}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
+            </View>
 
-              {/* Sort By */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterLabel, { color: colors.text }]}>
-                  Sort By
-                </Text>
-                <View style={styles.filterOptions}>
-                  {sortOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
+            {/* Sort By */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>
+                Sort By
+              </Text>
+              <View style={styles.filterOptions}>
+                {sortOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.filterChip,
+                      { borderColor: colors.border },
+                      (filters.sortBy === option.value ||
+                        (!filters.sortBy && option.value === 'recent')) && {
+                        backgroundColor: colors.secondary,
+                        borderColor: colors.secondary,
+                      },
+                    ]}
+                    onPress={() => handleSortChange(option.value)}
+                  >
+                    <Text
                       style={[
-                        styles.filterChip,
-                        { borderColor: colors.border },
+                        styles.filterChipText,
+                        { color: colors.text },
                         (filters.sortBy === option.value ||
                           (!filters.sortBy && option.value === 'recent')) && {
-                          backgroundColor: colors.secondary,
-                          borderColor: colors.secondary,
+                          color: colors.buttonText,
                         },
                       ]}
-                      onPress={() => handleSortChange(option.value)}
                     >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          { color: colors.text },
-                          (filters.sortBy === option.value ||
-                            (!filters.sortBy && option.value === 'recent')) && {
-                            color: colors.buttonText,
-                          },
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-
-              {/* Price Range */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterLabel, { color: colors.text }]}>
-                  Price Range
-                </Text>
-                <View style={styles.priceInputs}>
-                  <TextInput
-                    style={[
-                      styles.priceInput,
-                      { backgroundColor: colors.filter, color: colors.text },
-                    ]}
-                    placeholder="Min"
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="numeric"
-                    value={filters.minPrice?.toString() || ''}
-                    onChangeText={(text) =>
-                      setFilters({ minPrice: text ? parseFloat(text) : null })
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.priceSeparator,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    to
-                  </Text>
-                  <TextInput
-                    style={[
-                      styles.priceInput,
-                      { backgroundColor: colors.filter, color: colors.text },
-                    ]}
-                    placeholder="Max"
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="numeric"
-                    value={filters.maxPrice?.toString() || ''}
-                    onChangeText={(text) =>
-                      setFilters({ maxPrice: text ? parseFloat(text) : null })
-                    }
-                  />
-                </View>
-              </View>
-            </ScrollView>
-
-            {/* Footer Buttons */}
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.clearButton, { borderColor: colors.border }]}
-                onPress={handleClearFilters}
-              >
-                <Text style={[styles.clearButtonText, { color: colors.text }]}>
-                  Clear All
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.applyButton,
-                  { backgroundColor: colors.secondary },
-                ]}
-                onPress={() => setShowFilters(false)}
-              >
-                <Text
-                  style={[styles.applyButtonText, { color: colors.buttonText }]}
-                >
-                  Apply Filters
-                </Text>
-              </TouchableOpacity>
             </View>
+
+            {/* Price Range */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>
+                Price Range
+              </Text>
+              <View style={styles.priceInputs}>
+                <TextInput
+                  style={[
+                    styles.priceInput,
+                    { backgroundColor: colors.filter, color: colors.text },
+                  ]}
+                  placeholder="Min"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="numeric"
+                  value={filters.minPrice?.toString() || ''}
+                  onChangeText={(text) =>
+                    setFilters({ minPrice: text ? parseFloat(text) : null })
+                  }
+                />
+                <Text
+                  style={[
+                    styles.priceSeparator,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  to
+                </Text>
+                <TextInput
+                  style={[
+                    styles.priceInput,
+                    { backgroundColor: colors.filter, color: colors.text },
+                  ]}
+                  placeholder="Max"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="numeric"
+                  value={filters.maxPrice?.toString() || ''}
+                  onChangeText={(text) =>
+                    setFilters({ maxPrice: text ? parseFloat(text) : null })
+                  }
+                />
+              </View>
+            </View>
+          </BottomSheetScrollView>
+
+          {/* Footer Buttons */}
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.clearButton, { borderColor: colors.border }]}
+              onPress={handleClearFilters}
+            >
+              <Text style={[styles.clearButtonText, { color: colors.text }]}>
+                Clear All
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.applyButton,
+                { backgroundColor: colors.secondary },
+              ]}
+              onPress={() => bottomSheetRef.current?.close()}
+            >
+              <Text
+                style={[styles.applyButtonText, { color: colors.buttonText }]}
+              >
+                Apply Filters
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -739,17 +768,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalOverlay: {
+  sheetContent: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-    maxHeight: '80%',
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
