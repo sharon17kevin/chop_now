@@ -99,12 +99,21 @@ export const useUserStore = create<UserStore>((set, get) => ({
     try {
       console.log('📡 [useUserStore] Querying profiles table...')
       
-      // Remove timeout race - let the query complete naturally
-      const { data, error } = await supabase
+      // Add timeout wrapper
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout after 10s')), 10000)
+      })
+      
+      const queryPromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
+
+      const { data, error } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]) as any
 
       console.log('📊 [useUserStore] Query result:', { 
         hasData: !!data, 
@@ -146,7 +155,16 @@ export const useUserStore = create<UserStore>((set, get) => ({
       }
     } catch (error: any) {
       console.error('💥 [useUserStore] fetchProfile exception:', error)
+      console.error('💥 Error message:', error.message)
+      console.error('💥 Error stack:', error.stack)
+      
+      // Set profile to null but mark loading as complete so app doesn't hang
       set({ profile: null, isLoadingProfile: false })
+      
+      // Log timeout specifically
+      if (error.message?.includes('timeout')) {
+        console.error('⏱️ Network timeout - please check your connection')
+      }
     }
   },
 

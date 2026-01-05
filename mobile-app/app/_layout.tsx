@@ -90,18 +90,30 @@ function RootLayoutNav() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Artificially delay for 2 seconds to show splash screen
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Wait max 5 seconds for initial setup
+        await Promise.race([
+          new Promise((resolve) => setTimeout(resolve, 5000)),
+          // Wait for auth to initialize
+          new Promise((resolve) => {
+            const checkAuth = setInterval(() => {
+              if (isAuthenticated !== null) {
+                clearInterval(checkAuth)
+                resolve(true)
+              }
+            }, 100)
+          })
+        ])
       } catch (e) {
-        console.warn(e);
+        console.warn('Splash screen preparation error:', e)
       } finally {
-        // Tell the application to render
-        await SplashScreen.hideAsync();
+        // Always hide splash screen
+        await SplashScreen.hideAsync()
+        console.log('✅ Splash screen hidden')
       }
     }
 
-    prepare();
-  }, []);
+    prepare()
+  }, [isAuthenticated])
 
   return (
     <BottomSheetModalProvider>
