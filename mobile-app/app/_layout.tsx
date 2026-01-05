@@ -97,23 +97,23 @@ function RootLayoutNav() {
           new Promise((resolve) => {
             const checkAuth = setInterval(() => {
               if (isAuthenticated !== null) {
-                clearInterval(checkAuth)
-                resolve(true)
+                clearInterval(checkAuth);
+                resolve(true);
               }
-            }, 100)
-          })
-        ])
+            }, 100);
+          }),
+        ]);
       } catch (e) {
-        console.warn('Splash screen preparation error:', e)
+        console.warn('Splash screen preparation error:', e);
       } finally {
         // Always hide splash screen
-        await SplashScreen.hideAsync()
-        console.log('✅ Splash screen hidden')
+        await SplashScreen.hideAsync();
+        console.log('✅ Splash screen hidden');
       }
     }
 
-    prepare()
-  }, [isAuthenticated])
+    prepare();
+  }, [isAuthenticated]);
 
   return (
     <BottomSheetModalProvider>
