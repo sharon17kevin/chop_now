@@ -18,14 +18,7 @@ import { useSearch } from '@/hooks/useSearch';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useAddToCart } from '@/hooks/useAddToCart';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-const popularSearches = [
-  'Organic tomatoes',
-  'Fresh berries',
-  'Local honey',
-  'Free-range eggs',
-  'Seasonal vegetables',
-];
+import { useSearchStore } from '@/stores/useSearchStore';
 
 const categories = [
   'All',
@@ -50,6 +43,20 @@ export default function SearchScreen() {
   const params = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Get search history from store
+  const {
+    recentSearches,
+    popularSearches,
+    fetchPopularSearches,
+    clearRecentSearches,
+    removeRecentSearch,
+  } = useSearchStore();
+
+  // Fetch popular searches on mount
+  useEffect(() => {
+    fetchPopularSearches();
+  }, [fetchPopularSearches]);
 
   // Set search query from navigation params
   useEffect(() => {
@@ -125,6 +132,7 @@ export default function SearchScreen() {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top']}
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Search</Text>
@@ -168,61 +176,74 @@ export default function SearchScreen() {
         {!isSearching ? (
           <>
             {/* Popular Searches */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Popular Searches
-              </Text>
-              <View style={styles.tagsContainer}>
-                {popularSearches.map((search, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.tagButton,
-                      {
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                    onPress={() => handleSearch(search)}
-                  >
-                    <Text style={[styles.tagText, { color: colors.text }]}>
-                      {search}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            {popularSearches.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Popular Searches
+                </Text>
+                <View style={styles.tagsContainer}>
+                  {popularSearches.map((search, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.tagButton,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                      onPress={() => handleSearch(search)}
+                    >
+                      <Text style={[styles.tagText, { color: colors.text }]}>
+                        {search}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Recent Searches */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Recent Searches
-              </Text>
-              <View style={styles.recentSearches}>
-                <TouchableOpacity style={styles.recentSearchItem}>
-                  <Search size={16} color={colors.textSecondary} />
-                  <Text
-                    style={[
-                      styles.recentSearchText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    organic carrots
+            {recentSearches.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.recentHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Recent Searches
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.recentSearchItem}>
-                  <Search size={16} color={colors.textSecondary} />
-                  <Text
-                    style={[
-                      styles.recentSearchText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    farm fresh milk
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity onPress={clearRecentSearches}>
+                    <Text style={[styles.clearText, { color: colors.error }]}>
+                      Clear All
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.recentSearches}>
+                  {recentSearches.map((search, index) => (
+                    <View key={index} style={styles.recentSearchRow}>
+                      <TouchableOpacity
+                        style={styles.recentSearchItem}
+                        onPress={() => handleSearch(search)}
+                      >
+                        <Search size={16} color={colors.textSecondary} />
+                        <Text
+                          style={[
+                            styles.recentSearchText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {search}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => removeRecentSearch(search)}
+                        style={styles.removeButton}
+                      >
+                        <X size={14} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
           </>
         ) : loading ? (
           <View style={styles.loadingContainer}>
@@ -582,16 +603,35 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 14,
   },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  clearText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   recentSearches: {
     gap: 12,
+  },
+  recentSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   recentSearchItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   recentSearchText: {
     fontSize: 16,
+  },
+  removeButton: {
+    padding: 4,
   },
   resultCard: {
     flexDirection: 'row',
