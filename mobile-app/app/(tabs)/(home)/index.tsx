@@ -47,8 +47,7 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const { colors } = useTheme();
-  const { getSelectedAddress, getDefaultAddress, fetchAddresses } =
-    useAddressStore();
+  const { getSelectedAddress, fetchAddresses } = useAddressStore();
   const profile = useUserStore((state) => state.profile);
 
   const categories = [
@@ -210,14 +209,9 @@ export default function HomeScreen() {
   // Get display address
   const getDisplayAddress = () => {
     const selectedAddress = getSelectedAddress();
-    const defaultAddress = getDefaultAddress();
 
     if (selectedAddress) {
       return `${selectedAddress.city}, ${selectedAddress.state}`;
-    }
-
-    if (defaultAddress) {
-      return `${defaultAddress.city}, ${defaultAddress.state}`;
     }
 
     if (profile?.city && profile?.state) {

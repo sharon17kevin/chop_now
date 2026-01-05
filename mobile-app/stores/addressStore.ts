@@ -11,7 +11,6 @@ export type Address = {
   state: string;
   country: string;
   postal_code: string | null;
-  is_default: boolean;
   created_at?: string;
   updated_at?: string;
 };
@@ -26,13 +25,11 @@ type AddressState = {
   fetchAddresses: (userId: string) => Promise<void>;
   addAddress: (address: Omit<Address, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   removeAddress: (id: string) => Promise<void>;
-  selectAddress: (id: string | null) => void;
-  setDefaultAddress: (id: string) => Promise<void>;
+  selectAddress: (id: string | null, userId: string) => Promise<void>;
   clearAll: () => void;
   
   // Getters
   getSelectedAddress: () => Address | null;
-  getDefaultAddress: () => Address | null;
 };
 
 export const useAddressStore = create<AddressState>((set, get) => ({
@@ -47,21 +44,37 @@ export const useAddressStore = create<AddressState>((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      const { data, error } = await supabase
+      // Fetch addresses
+      const { data: addresses, error: addressError } = await supabase
         .from('addresses')
         .select('*')
         .eq('user_id', userId)
-        .order('is_default', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (addressError) throw addressError;
 
-      const addresses = data || [];
-      const defaultAddress = addresses.find((a) => a.is_default);
+      // Fetch user's selected address ID from profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('selected_address_id, address, city, state')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Determine selectedId:
+      // - If selected_address_id is set in DB, use that
+      // - If selected_address_id is null but profile has address, set to 'profile-address' for UI
+      // - Otherwise null
+      let selectedId = profile?.selected_address_id || null;
       
+      if (!selectedId && profile?.address && profile?.city && profile?.state) {
+        selectedId = 'profile-address';
+      }
+
       set({
-        addresses,
-        selectedId: get().selectedId || defaultAddress?.id || null,
+        addresses: addresses || [],
+        selectedId,
         loading: false,
       });
     } catch (error: any) {
@@ -74,17 +87,6 @@ export const useAddressStore = create<AddressState>((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      // If this is marked as default, unset other defaults first
-      if (address.is_default) {
-        const { error: updateError } = await supabase
-          .from('addresses')
-          .update({ is_default: false })
-          .eq('user_id', address.user_id)
-          .eq('is_default', true);
-
-        if (updateError) throw updateError;
-      }
-
       const { data, error } = await supabase
         .from('addresses')
         .insert(address)
@@ -92,6 +94,12 @@ export const useAddressStore = create<AddressState>((set, get) => ({
         .single();
 
       if (error) throw error;
+
+      // Auto-select the new address
+      await supabase
+        .from('profiles')
+        .update({ selected_address_id: data.id })
+        .eq('id', address.user_id);
 
       set((state) => ({
         addresses: [data, ...state.addresses],
@@ -117,12 +125,22 @@ export const useAddressStore = create<AddressState>((set, get) => ({
       if (error) throw error;
 
       set((state) => {
+        const wasSelected = state.selectedId === id;
         const newAddresses = state.addresses.filter((a) => a.id !== id);
-        const newSelectedId = state.selectedId === id ? null : state.selectedId;
+        
+        // If removed address was selected, clear selection in profile
+        if (wasSelected && newAddresses.length > 0) {
+          const firstAddress = newAddresses[0];
+          supabase
+            .from('profiles')
+            .update({ selected_address_id: null })
+            .eq('id', firstAddress.user_id)
+            .then(() => console.log('Cleared selected address from profile'));
+        }
         
         return {
           addresses: newAddresses,
-          selectedId: newSelectedId,
+          selectedId: wasSelected ? null : state.selectedId,
           loading: false,
         };
       });
@@ -133,41 +151,24 @@ export const useAddressStore = create<AddressState>((set, get) => ({
     }
   },
 
-  selectAddress: (id: string | null) => {
-    set({ selectedId: id });
-  },
-
-  setDefaultAddress: async (id: string) => {
-    set({ loading: true, error: null });
-    
+  selectAddress: async (id: string | null, userId: string) => {
     try {
-      const address = get().addresses.find((a) => a.id === id);
-      if (!address) throw new Error('Address not found');
-
-      // Unset current default
-      await supabase
-        .from('addresses')
-        .update({ is_default: false })
-        .eq('user_id', address.user_id)
-        .eq('is_default', true);
-
-      // Set new default
+      // Special case: 'profile-address' is not a real address ID
+      // Store null in database (use profile as fallback) but keep 'profile-address' in local state for UI
+      const dbValue = id === 'profile-address' ? null : id;
+      
+      // Update in database
       const { error } = await supabase
-        .from('addresses')
-        .update({ is_default: true })
-        .eq('id', id);
+        .from('profiles')
+        .update({ selected_address_id: dbValue })
+        .eq('id', userId);
 
       if (error) throw error;
 
-      set((state) => ({
-        addresses: state.addresses.map((a) =>
-          a.id === id ? { ...a, is_default: true } : { ...a, is_default: false }
-        ),
-        loading: false,
-      }));
+      // Update local state (keep 'profile-address' for UI indication)
+      set({ selectedId: id });
     } catch (error: any) {
-      console.error('Error setting default address:', error);
-      set({ error: error.message, loading: false });
+      console.error('Error selecting address:', error);
       throw error;
     }
   },
@@ -179,10 +180,5 @@ export const useAddressStore = create<AddressState>((set, get) => ({
   getSelectedAddress: () => {
     const { addresses, selectedId } = get();
     return addresses.find((a) => a.id === selectedId) || null;
-  },
-
-  getDefaultAddress: () => {
-    const { addresses } = get();
-    return addresses.find((a) => a.is_default) || null;
   },
 }));

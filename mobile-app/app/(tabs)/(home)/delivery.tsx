@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, MapPin, Star } from 'lucide-react-native';
+import { MapPin, Star } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useAddressStore } from '@/stores/addressStore';
 import { useUserStore } from '@/stores/useUserStore';
@@ -29,7 +29,6 @@ export default function Delivery() {
     removeAddress,
     selectAddress,
     fetchAddresses,
-    setDefaultAddress,
   } = useAddressStore();
 
   const profile = useUserStore((state) => state.profile);
@@ -61,20 +60,23 @@ export default function Delivery() {
     );
   };
 
-  const handleSelect = (id: string) => {
-    if (selectedId === id) {
-      selectAddress(null);
-    } else {
-      selectAddress(id);
-    }
-  };
+  const handleSelect = async (id: string | null) => {
+    if (!profile?.id) return;
 
-  const handleSetDefault = async (id: string) => {
+    // Determine the new selection
+    const newSelection = selectedId === id ? null : id;
+
+    // Optimistic update - update UI immediately
+    const previousSelection = selectedId;
+    useAddressStore.setState({ selectedId: newSelection });
+
     try {
-      await setDefaultAddress(id);
-      Alert.alert('Success', 'Default address updated');
-    } catch {
-      Alert.alert('Error', 'Failed to set default address');
+      // Then update database in background
+      await selectAddress(newSelection, profile.id);
+    } catch (error) {
+      // Revert on error
+      useAddressStore.setState({ selectedId: previousSelection });
+      Alert.alert('Error', 'Failed to select address');
     }
   };
 
@@ -86,17 +88,12 @@ export default function Delivery() {
 
   const renderItem = ({ item }: { item: Address }) => {
     const selected = selectedId === item.id;
-    const isDefault = item.is_default;
 
     return (
       <TouchableOpacity
         onPress={() => handleSelect(item.id)}
         onLongPress={() => {
           Alert.alert('Address Options', 'What would you like to do?', [
-            {
-              text: 'Set as Default',
-              onPress: () => handleSetDefault(item.id),
-            },
             {
               text: 'Remove',
               style: 'destructive',
@@ -108,9 +105,11 @@ export default function Delivery() {
         activeOpacity={0.9}
         style={[
           styles.card,
-          { backgroundColor: colors.card },
-          selected && { borderWidth: 2, borderColor: colors.secondary },
-          isDefault && { borderWidth: 2, borderColor: colors.primary },
+          {
+            backgroundColor: colors.card,
+            borderWidth: 2,
+            borderColor: selected ? colors.secondary : colors.border,
+          },
         ]}
       >
         <View style={styles.cardHeader}>
@@ -119,16 +118,15 @@ export default function Delivery() {
               {item.label}
             </Text>
           )}
-          {isDefault && (
+          {selected && (
             <View
               style={[
-                styles.defaultBadge,
-                { backgroundColor: colors.primary + '20' },
+                styles.selectedBadge,
+                { backgroundColor: colors.secondary + '20' },
               ]}
             >
-              <Star size={12} color={colors.primary} fill={colors.primary} />
-              <Text style={[styles.defaultText, { color: colors.primary }]}>
-                Default
+              <Text style={[styles.selectedText, { color: colors.secondary }]}>
+                Selected
               </Text>
             </View>
           )}
@@ -140,12 +138,6 @@ export default function Delivery() {
             {formatAddress(item)}
           </Text>
         </View>
-
-        {selected && (
-          <View style={styles.checkWrapper}>
-            <Check size={18} color={colors.secondary} />
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -154,18 +146,43 @@ export default function Delivery() {
   const ProfileAddressCard = () => {
     if (!profile?.address) return null;
 
+    const isSelected = selectedId === 'profile-address';
+
     return (
       <View style={{ marginBottom: 12 }}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
           Profile Address
         </Text>
-        <View
-          style={[styles.card, { backgroundColor: colors.card, opacity: 0.8 }]}
+        <TouchableOpacity
+          onPress={() => handleSelect('profile-address')}
+          activeOpacity={0.9}
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderWidth: 2,
+              borderColor: isSelected ? colors.secondary : colors.border,
+            },
+          ]}
         >
           <View style={styles.cardHeader}>
             <Text style={[styles.cardLabel, { color: colors.text }]}>
               From Profile
             </Text>
+            {isSelected && (
+              <View
+                style={[
+                  styles.selectedBadge,
+                  { backgroundColor: colors.secondary + '20' },
+                ]}
+              >
+                <Text
+                  style={[styles.selectedText, { color: colors.secondary }]}
+                >
+                  Selected
+                </Text>
+              </View>
+            )}
           </View>
           <View style={styles.addressContent}>
             <MapPin size={16} color={colors.textSecondary} />
@@ -175,7 +192,7 @@ export default function Delivery() {
               {profile.state && `, ${profile.state}`}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -278,6 +295,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     position: 'relative',
+    borderWidth: 2,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -299,7 +317,7 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
   },
-  defaultBadge: {
+  selectedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -307,23 +325,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  defaultText: {
+  selectedText: {
     fontSize: 12,
     fontWeight: '600',
   },
   removeButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-  },
-  checkWrapper: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   removeText: {
     color: '#EF4444',
