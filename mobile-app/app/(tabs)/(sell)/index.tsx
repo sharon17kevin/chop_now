@@ -82,7 +82,7 @@ export default function SellScreen() {
     if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
       Alert.alert(
         'Permission Required',
-        'Camera and photo library access is needed to upload product images.'
+        'Camera and photo library access is needed to upload product images.',
       );
       return false;
     }
@@ -94,7 +94,7 @@ export default function SellScreen() {
     if (images.length >= 5) {
       Alert.alert(
         'Limit Reached',
-        'You can upload a maximum of 5 images per product.'
+        'You can upload a maximum of 5 images per product.',
       );
       return;
     }
@@ -115,7 +115,7 @@ export default function SellScreen() {
         if (!validation.valid) {
           Alert.alert(
             'Invalid Image',
-            validation.error || 'Image validation failed'
+            validation.error || 'Image validation failed',
           );
           return;
         }
@@ -131,7 +131,7 @@ export default function SellScreen() {
     if (images.length >= 5) {
       Alert.alert(
         'Limit Reached',
-        'You can upload a maximum of 5 images per product.'
+        'You can upload a maximum of 5 images per product.',
       );
       return;
     }
@@ -158,7 +158,7 @@ export default function SellScreen() {
           } else {
             Alert.alert(
               'Invalid Image',
-              validation.error || 'One or more images failed validation'
+              validation.error || 'One or more images failed validation',
             );
           }
         }
@@ -180,7 +180,7 @@ export default function SellScreen() {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Denied',
-          'Location access is needed to set product location.'
+          'Location access is needed to set product location.',
         );
         return;
       }
@@ -256,7 +256,7 @@ export default function SellScreen() {
         'product-images',
         (current, total) => {
           setUploadProgress((current / total) * 100);
-        }
+        },
       );
 
       const imageUrls = uploadedImages.map((img) => img.url);
@@ -302,13 +302,13 @@ export default function SellScreen() {
               setIsOrganic(false);
             },
           },
-        ]
+        ],
       );
     } catch (error: any) {
       console.error('Error publishing product:', error);
       Alert.alert(
         'Error',
-        error.message || 'Failed to publish product. Please try again.'
+        error.message || 'Failed to publish product. Please try again.',
       );
     } finally {
       setIsUploading(false);
@@ -325,7 +325,7 @@ export default function SellScreen() {
         { text: 'Photo Library', onPress: pickImageFromLibrary },
         { text: 'Cancel', style: 'cancel' },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -340,25 +340,36 @@ export default function SellScreen() {
       >
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={styles.headerLeft}>
-              <Text style={[styles.title, { color: colors.text }]}>
-                Sell Your Produce
-              </Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Share your fresh products with the community
-              </Text>
-            </View>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Sell Your Produce
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Share your fresh products with the community
+            </Text>
+          </View>
+          <View style={styles.headerButtons}>
             <TouchableOpacity
-              style={[styles.ordersButton, { backgroundColor: colors.primary }]}
+              style={[styles.headerButton, { backgroundColor: colors.primary }]}
               onPress={() => router.push('/(tabs)/(sell)/orders')}
             >
-              <Package size={20} color="#fff" />
-              <Text style={styles.ordersButtonText}>Orders</Text>
+              <Package size={18} color="#fff" />
+              <Text style={styles.headerButtonText}>Orders</Text>
               {pendingCount && pendingCount > 0 ? (
-                <View style={styles.ordersBadge}>
-                  <Text style={styles.ordersBadgeText}>{pendingCount}</Text>
+                <View style={styles.buttonBadge}>
+                  <Text style={styles.badgeText}>{pendingCount}</Text>
                 </View>
               ) : null}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                { backgroundColor: colors.secondary },
+              ]}
+              onPress={() => router.push('/(tabs)/(sell)/stock')}
+            >
+              <Package size={18} color="#fff" />
+              <Text style={styles.headerButtonText}>Stock</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -766,14 +777,39 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
+    marginBottom: 12,
   },
-  headerLeft: {
-    flex: 1,
-    flexShrink: 1,
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  headerButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  buttonBadge: {
+    backgroundColor: '#FF3B30',
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 2,
+    paddingHorizontal: 5,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
   },
   ordersButton: {
     flexDirection: 'row',
