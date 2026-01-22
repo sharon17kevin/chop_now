@@ -5,12 +5,13 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  TouchableOpacity,
 } from 'react-native';
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { typography } from '@/styles/typography';
 import {
   Clock,
@@ -21,6 +22,8 @@ import {
   Truck,
   Home,
   ShoppingBag,
+  Star,
+  MessageSquare,
 } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -28,6 +31,7 @@ import { supabase } from '@/lib/supabase';
 export default function Breakdown() {
   const { colors } = useTheme();
   const params = useLocalSearchParams();
+  const router = useRouter();
 
   const orderId = params.orderId as string;
   const status = params.status as string;
@@ -552,6 +556,85 @@ export default function Breakdown() {
             </Text>
           </View>
         </View>
+
+        {/* Review Section - Show for completed, delivered, or cancelled orders */}
+        {(status === 'delivered' ||
+          status === 'cancelled' ||
+          status === 'completed') && (
+          <View
+            style={[
+              styles.section,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <Star size={20} color={colors.primary} />
+              <Text
+                style={[
+                  typography.body1,
+                  { color: colors.text, fontWeight: '700', marginLeft: 8 },
+                ]}
+              >
+                Rate Your Experience
+              </Text>
+            </View>
+
+            <Text
+              style={[
+                typography.body2,
+                { color: colors.textSecondary, marginBottom: 16 },
+              ]}
+            >
+              {status === 'delivered'
+                ? 'How was your experience with this vendor?'
+                : status === 'cancelled'
+                  ? 'Share your experience to help us improve.'
+                  : 'Let us know how your order went.'}
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.reviewButton,
+                { backgroundColor: colors.secondary },
+              ]}
+              onPress={() => {
+                router.push({
+                  pathname: '/(tabs)/(orders)/review',
+                  params: {
+                    orderId: orderId,
+                    vendorId: orderDetails?.vendor_id,
+                    vendorName:
+                      orderDetails?.profiles?.farm_name ||
+                      orderDetails?.profiles?.full_name ||
+                      vendorName,
+                    orderStatus: status,
+                  },
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <MessageSquare size={18} color={colors.buttonText} />
+              <Text
+                style={[
+                  typography.body2,
+                  {
+                    color: colors.buttonText,
+                    fontWeight: '700',
+                    marginLeft: 8,
+                  },
+                ]}
+              >
+                Write a Review
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -638,5 +721,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  reviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
