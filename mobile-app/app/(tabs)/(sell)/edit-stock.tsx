@@ -14,12 +14,19 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
-import { Save, Plus, Minus, DollarSign, Calendar } from 'lucide-react-native';
+import {
+  Save,
+  Plus,
+  Minus,
+  DollarSign,
+  Calendar,
+  Trash2,
+} from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface Product {
@@ -40,6 +47,7 @@ interface Product {
 export default function EditStockScreen() {
   const { colors } = useTheme();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { productId } = useLocalSearchParams();
 
   const [stockAdjustment, setStockAdjustment] = useState('');
@@ -192,6 +200,30 @@ export default function EditStockScreen() {
     },
   });
 
+  // Delete product mutation
+  const deleteProductMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendor-stock'] });
+      Alert.alert('Success', 'Product deleted successfully', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error.message || 'Failed to delete product');
+    },
+  });
+
   const handleQuickAdjust = (delta: number) => {
     if (!product) return;
     const newStock = Math.max(0, product.stock + delta);
@@ -248,6 +280,27 @@ export default function EditStockScreen() {
     }
 
     updatePriceMutation.mutate(price);
+  };
+
+  const handleDelete = () => {
+    if (!product) return;
+
+    Alert.alert(
+      'Delete Product',
+      `Are you sure you want to delete "${product.name}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteProductMutation.mutate(),
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -672,6 +725,41 @@ export default function EditStockScreen() {
                   <Text style={styles.buttonText}>
                     {hasPromotion ? 'Save Promotion' : 'Remove Promotion'}
                   </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            {/* Delete Section */}
+            <View style={[styles.section, { backgroundColor: colors.card }]}>
+              <Text style={[styles.sectionTitle, { color: colors.error }]}>
+                Danger Zone
+              </Text>
+              <Text
+                style={[
+                  styles.inputLabel,
+                  { color: colors.textSecondary, marginBottom: 16 },
+                ]}
+              >
+                Permanently delete this product from your inventory. This action
+                cannot be undone.
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: colors.error,
+                    opacity: deleteProductMutation.isPending ? 0.6 : 1,
+                  },
+                ]}
+                onPress={handleDelete}
+                disabled={deleteProductMutation.isPending}
+              >
+                {deleteProductMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Trash2 size={20} color="#fff" />
+                    <Text style={styles.buttonText}>Delete Product</Text>
+                  </>
                 )}
               </TouchableOpacity>
             </View>

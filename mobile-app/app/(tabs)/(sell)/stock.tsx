@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { isDiscountActive } from '@/stores/useProductStore';
 import AppHeader from '@/components/AppHeader';
 import {
   Package,
@@ -159,7 +160,7 @@ export default function StockManagementScreen() {
                   <Text style={styles.badgeText}>OK</Text>
                 </View>
               )}
-              {item.discount_percentage && (
+              {isDiscountActive(item) && (
                 <View
                   style={[
                     styles.badge,
