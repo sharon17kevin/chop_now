@@ -64,7 +64,7 @@ export default function Breakdown() {
             full_name,
             farm_name
           )
-        `
+        `,
         )
         .eq('id', orderId)
         .single();
@@ -431,7 +431,7 @@ export default function Breakdown() {
                   Subtotal (
                   {orderDetails.order_items.reduce(
                     (sum: number, item: any) => sum + item.quantity,
-                    0
+                    0,
                   )}{' '}
                   items)
                 </Text>
@@ -446,7 +446,7 @@ export default function Breakdown() {
                     .reduce(
                       (sum: number, item: any) =>
                         sum + item.price * item.quantity,
-                      0
+                      0,
                     )
                     .toFixed(2)}
                 </Text>

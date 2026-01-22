@@ -22,49 +22,73 @@ export const useVendorRating = (vendorId: string) => {
       setLoading(true);
       setError(null);
 
-      // Fetch vendor's average rating from profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+      // Fetch all reviews for this vendor
+      const { data: reviews, error: reviewsError } = await supabase
+        .from('reviews')
         .select('rating')
-        .eq('id', vendorId)
-        .single();
+        .eq('vendor_id', vendorId)
+        .eq('is_published', true);
 
-      if (profileError) throw profileError;
+      if (reviewsError) throw reviewsError;
 
-      // TODO: When you create a reviews table, fetch breakdown like this:
-      // const { data: reviews, error: reviewsError } = await supabase
-      //   .from('reviews')
-      //   .select('rating')
-      //   .eq('vendor_id', vendorId);
-      
-      // For now, return mock breakdown based on average
-      // Replace this with real data when reviews table exists
-      const avgRating = profile?.rating || 0;
-      const total = Math.floor(Math.random() * 2000) + 500; // Mock total
-      
+      // Calculate rating statistics from actual reviews
+      if (!reviews || reviews.length === 0) {
+        // No reviews yet
+        setRating({
+          average: 0,
+          total: 0,
+          breakdown: {
+            '5': 0,
+            '4': 0,
+            '3': 0,
+            '2': 0,
+            '1': 0,
+          },
+        });
+        return;
+      }
+
+      // Calculate average
+      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+      const average = totalRating / reviews.length;
+
+      // Calculate breakdown
+      const breakdown = reviews.reduce((acc, review) => {
+        const ratingKey = review.rating.toString();
+        acc[ratingKey] = (acc[ratingKey] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Ensure all rating levels exist (even if 0)
+      const completeBreakdown = {
+        '5': breakdown['5'] || 0,
+        '4': breakdown['4'] || 0,
+        '3': breakdown['3'] || 0,
+        '2': breakdown['2'] || 0,
+        '1': breakdown['1'] || 0,
+      };
+
       setRating({
-        average: avgRating,
-        total: total,
-        breakdown: generateMockBreakdown(total),
+        average: average,
+        total: reviews.length,
+        breakdown: completeBreakdown,
       });
+
+      // Update vendor's rating in profile table (optional background update)
+      if (average > 0) {
+        supabase
+          .from('profiles')
+          .update({ rating: average })
+          .eq('id', vendorId)
+          .then(() => console.log('Vendor rating updated in profile'))
+          .catch((err) => console.error('Error updating vendor rating:', err));
+      }
     } catch (err: any) {
       console.error('Error fetching vendor rating:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Mock breakdown generator - replace with real data when reviews table exists
-  const generateMockBreakdown = (total: number): Record<string, number> => {
-    const distribution = [0.6, 0.2, 0.1, 0.06, 0.04]; // 5*, 4*, 3*, 2*, 1*
-    return {
-      '5': Math.floor(total * distribution[0]),
-      '4': Math.floor(total * distribution[1]),
-      '3': Math.floor(total * distribution[2]),
-      '2': Math.floor(total * distribution[3]),
-      '1': Math.floor(total * distribution[4]),
-    };
   };
 
   return { rating, loading, error, refetch: fetchVendorRating };

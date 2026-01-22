@@ -69,7 +69,7 @@ export default function WriteReviewScreen() {
       if (existingReview) {
         Alert.alert(
           'Already Reviewed',
-          'You have already submitted a review for this order.'
+          'You have already submitted a review for this order.',
         );
         setSubmitting(false);
         return;
@@ -120,7 +120,7 @@ export default function WriteReviewScreen() {
             },
           },
         ],
-        { cancelable: false }
+        { cancelable: false },
       );
     } catch (err: any) {
       console.error('Error submitting review:', err);
@@ -159,7 +159,10 @@ export default function WriteReviewScreen() {
           { backgroundColor: colors.card, borderBottomColor: colors.border },
         ]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -326,7 +329,8 @@ export default function WriteReviewScreen() {
               styles.submitButton,
               {
                 backgroundColor: colors.secondary,
-                opacity: submitting || rating === 0 || !comment.trim() ? 0.5 : 1,
+                opacity:
+                  submitting || rating === 0 || !comment.trim() ? 0.5 : 1,
               },
             ]}
             onPress={handleSubmit}
