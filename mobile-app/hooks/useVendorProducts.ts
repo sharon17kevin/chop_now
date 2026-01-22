@@ -8,11 +8,16 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  original_price?: number | null;
+  discount_percentage?: number | null;
+  is_on_sale?: boolean;
+  sale_ends_at?: string | null;
   image_url: string;
   category: string;
   stock: number;
   unit: string;
   is_available: boolean;
+  status?: 'pending' | 'approved' | 'rejected';
   created_at: string;
 }
 
@@ -50,6 +55,7 @@ export const useVendorProducts = (vendorId: string): UseVendorProductsReturn => 
         .select('*')
         .eq('vendor_id', vendorId)
         .eq('is_available', true)
+        .eq('status', 'approved')
         .order('category')
         .order('name');
 
@@ -81,7 +87,6 @@ export const useVendorProducts = (vendorId: string): UseVendorProductsReturn => 
       grouped['All'] = fetchedProducts;
 
       setProductsByCategory(grouped);
-      console.log('✅ Fetched', fetchedProducts.length, 'products in', uniqueCategories.length - 1, 'categories');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       console.error('❌ Error fetching vendor products:', errorMessage);

@@ -70,12 +70,10 @@ export const useProductStore = create<ProductState>((set) => ({
   freshPicksLimit: 10,
 
   setCategory: (category: CategoryFilter) => {
-    console.log('🔍 ProductStore: Category changed to', category);
     set({ selectedCategory: category, freshPicksLimit: 10 }); // Reset limit on category change
   },
 
   setSortBy: (sort: SortOption) => {
-    console.log('🔄 ProductStore: Sort changed to', sort);
     set({ sortBy: sort });
   },
 
@@ -90,8 +88,6 @@ export const useProductStore = create<ProductState>((set) => ({
 
 // Fetch products from Supabase
 export async function fetchProductsByCategory(category: CategoryFilter): Promise<Product[]> {
-  console.log('📦 Fetching products for category:', category);
-
   const query = supabase
     .from('products')
     .select(`
@@ -112,9 +108,18 @@ export async function fetchProductsByCategory(category: CategoryFilter): Promise
     console.error('❌ Error fetching products:', error);
     throw error;
   }
-
-  console.log('✅ Fetched', products?.length || 0, 'products');
+  
   return products || [];
+}
+
+// Helper function to check if a discount is currently active
+export function isDiscountActive(product: Product): boolean {
+  const now = new Date();
+  const isOnSale = product.is_on_sale === true;
+  const hasDiscount = (product.discount_percentage || 0) > 0;
+  const notExpired = !product.sale_ends_at || new Date(product.sale_ends_at) > now;
+  
+  return isOnSale && hasDiscount && notExpired;
 }
 
 // Helper function to sort products
@@ -140,14 +145,8 @@ export function sortProducts(products: Product[], sortBy: SortOption): Product[]
 
 // Smart Selectors
 export function getHotDeals(products: Product[]): Product[] {
-  const now = new Date();
-  
-  // Get products on sale that haven't expired
-  let activeDeals = products.filter(p => {
-    if (!p.is_on_sale) return false;
-    if (p.sale_ends_at && new Date(p.sale_ends_at) < now) return false;
-    return true;
-  });
+  // Get products with active discounts
+  const activeDeals = products.filter(p => isDiscountActive(p));
   
   // If we have active deals, sort by discount percentage (highest first)
   if (activeDeals.length > 0) {
@@ -157,7 +156,6 @@ export function getHotDeals(products: Product[]): Product[] {
   }
   
   // Fallback: If no deals exist, return first 10 products
-  console.log('⚠️ No active deals found, showing regular products');
   return products.slice(0, 10);
 }
 
@@ -181,9 +179,21 @@ export function getTrendingProducts(products: Product[]): Product[] {
 }
 
 export function getFreshPicks(products: Product[], limit: number = 10): Product[] {
-  // Return first N products sorted by creation date (newest first)
+  // Filter out expired discounts first, then sort by creation date (newest first)
   // The products are already filtered by category from the React Query hook
   return products
+    .map(p => {
+      // If discount has expired, strip discount fields for display
+      if (!isDiscountActive(p) && (p.is_on_sale || p.discount_percentage)) {
+        return {
+          ...p,
+          is_on_sale: false,
+          discount_percentage: 0,
+          original_price: null,
+        };
+      }
+      return p;
+    })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, limit);
 }

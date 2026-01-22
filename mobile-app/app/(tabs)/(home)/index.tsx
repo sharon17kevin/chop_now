@@ -123,7 +123,7 @@ export default function HomeScreen() {
   const hotDealsProducts = useMemo(() => getHotDeals(products), [products]);
   const freshPicksProducts = useMemo(
     () => getFreshPicks(products, freshPicksLimit),
-    [products, freshPicksLimit]
+    [products, freshPicksLimit],
   );
   const hasMoreProducts = totalCount > freshPicksLimit;
 
@@ -157,7 +157,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchUnreadCount();
-    }, [fetchUnreadCount])
+    }, [fetchUnreadCount]),
   );
 
   useEffect(() => {
@@ -178,12 +178,29 @@ export default function HomeScreen() {
   useEffect(() => {
     console.log('🏠 Products updated:', {
       selectedCategory,
+      totalProducts: products.length,
       hotDeals: hotDealsProducts.length,
       freshPicks: freshPicksProducts.length,
       isLoading,
       error,
     });
+
+    // Log hot deals details
+    if (hotDealsProducts.length > 0) {
+      console.log(
+        '🔥 Hot deals:',
+        hotDealsProducts.map((p) => ({
+          name: p.name,
+          discount: p.discount_percentage,
+          originalPrice: p.original_price,
+          currentPrice: p.price,
+          isOnSale: p.is_on_sale,
+          expiresAt: p.sale_ends_at,
+        })),
+      );
+    }
   }, [
+    products,
     hotDealsProducts,
     freshPicksProducts,
     selectedCategory,
@@ -428,6 +445,7 @@ export default function HomeScreen() {
                       vendorName={item.profiles?.full_name}
                       discount={item.discount_percentage}
                       originalPrice={item.original_price}
+                      saleEndsAt={item.sale_ends_at}
                     />
                   )}
                   style={{

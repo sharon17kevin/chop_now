@@ -32,6 +32,7 @@ import ProductCard from '@/components/ProductCard';
 import { supabase } from '@/lib/supabase';
 import { useUserStore } from '@/stores/useUserStore';
 import { useWishlist } from '@/hooks/useWishlist';
+import { isDiscountActive } from '@/stores/useProductStore';
 
 export default function VendorPage() {
   const { colors } = useTheme();
@@ -63,7 +64,7 @@ export default function VendorPage() {
       let foundProduct = null;
       for (const category in productsByCategory) {
         foundProduct = productsByCategory[category].find(
-          (p: any) => p.id === productId
+          (p: any) => p.id === productId,
         );
         if (foundProduct) {
           setSelectedCategory(category);
@@ -354,8 +355,8 @@ export default function VendorPage() {
               {selectedProduct.description}
             </Text>
 
-            {/* Promo/Discount Banner */}
-            {selectedProduct.discount_percentage > 0 && (
+            {/* Promo/Discount Banner - only show if discount is active */}
+            {isDiscountActive(selectedProduct) && (
               <View
                 style={[
                   styles.promoBanner,
@@ -375,7 +376,7 @@ export default function VendorPage() {
                     >
                       {selectedProduct.discount_percentage}% OFF
                     </Text>
-                    {selectedProduct.discount_end_date && (
+                    {selectedProduct.sale_ends_at && (
                       <Text
                         style={[
                           styles.promoExpiry,
@@ -384,18 +385,22 @@ export default function VendorPage() {
                       >
                         Ends{' '}
                         {new Date(
-                          selectedProduct.discount_end_date
+                          selectedProduct.sale_ends_at,
                         ).toLocaleDateString()}
                       </Text>
                     )}
                   </View>
                   <Text style={[styles.promoText, { color: colors.text }]}>
                     Save ₦
-                    {(
-                      (selectedProduct.price *
-                        selectedProduct.discount_percentage) /
-                      100
-                    ).toLocaleString()}{' '}
+                    {selectedProduct.original_price
+                      ? (
+                          selectedProduct.original_price - selectedProduct.price
+                        ).toLocaleString()
+                      : (
+                          (selectedProduct.price *
+                            selectedProduct.discount_percentage) /
+                          100
+                        ).toLocaleString()}{' '}
                     on this item!
                   </Text>
                 </View>
@@ -404,17 +409,13 @@ export default function VendorPage() {
 
             <View style={styles.priceRow}>
               <View>
-                {selectedProduct.discount_percentage > 0 ? (
+                {isDiscountActive(selectedProduct) ? (
                   <>
                     <View style={styles.discountPriceRow}>
                       <Text
                         style={[styles.detailPrice, { color: colors.primary }]}
                       >
-                        ₦
-                        {(
-                          selectedProduct.price *
-                          (1 - selectedProduct.discount_percentage / 100)
-                        ).toLocaleString()}
+                        ₦{selectedProduct.price.toLocaleString()}
                       </Text>
                       <View
                         style={[
@@ -428,14 +429,16 @@ export default function VendorPage() {
                         </Text>
                       </View>
                     </View>
-                    <Text
-                      style={[
-                        styles.originalPrice,
-                        { color: colors.textTetiary },
-                      ]}
-                    >
-                      ₦{selectedProduct.price.toLocaleString()}
-                    </Text>
+                    {selectedProduct.original_price && (
+                      <Text
+                        style={[
+                          styles.originalPrice,
+                          { color: colors.textTetiary },
+                        ]}
+                      >
+                        ₦{selectedProduct.original_price.toLocaleString()}
+                      </Text>
+                    )}
                     <Text
                       style={[styles.detailUnit, { color: colors.textTetiary }]}
                     >
@@ -466,8 +469,8 @@ export default function VendorPage() {
                       selectedProduct.stock > 10
                         ? colors.success
                         : selectedProduct.stock > 0
-                        ? colors.warning
-                        : colors.error,
+                          ? colors.warning
+                          : colors.error,
                   },
                 ]}
               >
@@ -539,13 +542,7 @@ export default function VendorPage() {
                   <ShoppingBag size={20} color="#fff" />
                   <Text style={styles.addButtonText}>
                     Add to Cart - ₦
-                    {selectedProduct.discount_percentage > 0
-                      ? (
-                          selectedProduct.price *
-                          (1 - selectedProduct.discount_percentage / 100) *
-                          quantity
-                        ).toLocaleString()
-                      : (selectedProduct.price * quantity).toLocaleString()}
+                    {(selectedProduct.price * quantity).toLocaleString()}
                   </Text>
                 </>
               )}

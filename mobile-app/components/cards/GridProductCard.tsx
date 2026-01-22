@@ -1,6 +1,6 @@
 import { useAddToCart } from '@/hooks/useAddToCart';
 import { useTheme } from '@/hooks/useTheme';
-import { Product } from '@/stores/useProductStore';
+import { Product, isDiscountActive } from '@/stores/useProductStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useWishlistStore } from '@/stores/useWishlistStore';
 import { useRouter } from 'expo-router';
@@ -74,7 +74,7 @@ export default function GridProductCard({ product }: GridProductCardProps) {
         product.id,
         profile.id,
         profile.favorite_count || 0,
-        (count) => updateProfile({ favorite_count: count })
+        (count) => updateProfile({ favorite_count: count }),
       );
     } finally {
       setIsAddingToWishlist(false);
@@ -122,7 +122,7 @@ export default function GridProductCard({ product }: GridProductCardProps) {
         </TouchableOpacity>
 
         {/* Discount Badge */}
-        {product.discount_percentage ? (
+        {product.discount_percentage && isDiscountActive(product) ? (
           <View
             style={[styles.discountBadge, { backgroundColor: colors.error }]}
           >

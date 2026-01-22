@@ -5,11 +5,9 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  TextInput,
   Alert,
   ActivityIndicator,
   RefreshControl,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,13 +18,10 @@ import { useAuth } from '@/hooks/useAuth';
 import AppHeader from '@/components/AppHeader';
 import {
   Package,
-  Edit2,
   AlertTriangle,
   CheckCircle,
-  X,
   Plus,
   Minus,
-  Save,
 } from 'lucide-react-native';
 
 interface Product {
@@ -38,6 +33,10 @@ interface Product {
   unit: string;
   is_available: boolean;
   image_url: string;
+  discount_percentage: number | null;
+  original_price: number | null;
+  is_on_sale: boolean | null;
+  sale_ends_at: string | null;
 }
 
 export default function StockManagementScreen() {
@@ -46,9 +45,6 @@ export default function StockManagementScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [stockAdjustment, setStockAdjustment] = useState('');
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [filterLowStock, setFilterLowStock] = useState(false);
 
   // Fetch vendor products
@@ -65,7 +61,7 @@ export default function StockManagementScreen() {
       const { data, error } = await supabase
         .from('products')
         .select(
-          'id, name, category, stock, price, unit, is_available, image_url',
+          'id, name, category, stock, price, unit, is_available, image_url, discount_percentage, original_price, is_on_sale, sale_ends_at',
         )
         .eq('vendor_id', user.id)
         .order('stock', { ascending: true });
@@ -94,9 +90,6 @@ export default function StockManagementScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-stock'] });
-      setShowUpdateModal(false);
-      setSelectedProduct(null);
-      setStockAdjustment('');
       Alert.alert('Success', 'Stock updated successfully');
     },
     onError: (error: any) => {
@@ -107,28 +100,6 @@ export default function StockManagementScreen() {
   const handleQuickAdjust = (product: Product, delta: number) => {
     const newStock = Math.max(0, product.stock + delta);
     updateStockMutation.mutate({ productId: product.id, newStock });
-  };
-
-  const handleManualUpdate = () => {
-    if (!selectedProduct) return;
-
-    const adjustment = parseInt(stockAdjustment);
-    if (isNaN(adjustment)) {
-      Alert.alert('Invalid Input', 'Please enter a valid number');
-      return;
-    }
-
-    const newStock = Math.max(0, selectedProduct.stock + adjustment);
-    updateStockMutation.mutate({
-      productId: selectedProduct.id,
-      newStock,
-    });
-  };
-
-  const openUpdateModal = (product: Product) => {
-    setSelectedProduct(product);
-    setStockAdjustment('');
-    setShowUpdateModal(true);
   };
 
   const filteredProducts = filterLowStock
@@ -146,11 +117,18 @@ export default function StockManagementScreen() {
     const isOutOfStock = item.stock === 0;
 
     return (
-      <View
+      <TouchableOpacity
         style={[
           styles.productCard,
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}
+        onPress={() =>
+          router.push({
+            pathname: '/(tabs)/(sell)/edit-stock',
+            params: { productId: item.id },
+          })
+        }
+        activeOpacity={0.7}
       >
         <View style={styles.productInfo}>
           <View style={styles.productHeader}>
@@ -179,6 +157,18 @@ export default function StockManagementScreen() {
                 >
                   <CheckCircle size={12} color="#fff" />
                   <Text style={styles.badgeText}>OK</Text>
+                </View>
+              )}
+              {item.discount_percentage && (
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: colors.success + '20', marginLeft: 4 },
+                  ]}
+                >
+                  <Text style={[styles.badgeText, { color: colors.success }]}>
+                    🔥 {item.discount_percentage}% OFF
+                  </Text>
                 </View>
               )}
             </View>
@@ -213,18 +203,13 @@ export default function StockManagementScreen() {
               styles.quickButton,
               { backgroundColor: colors.error + '20' },
             ]}
-            onPress={() => handleQuickAdjust(item, -1)}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleQuickAdjust(item, -1);
+            }}
             disabled={item.stock === 0 || updateStockMutation.isPending}
           >
             <Minus size={16} color={colors.error} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.editButton, { backgroundColor: colors.secondary }]}
-            onPress={() => openUpdateModal(item)}
-            disabled={updateStockMutation.isPending}
-          >
-            <Edit2 size={16} color="#fff" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -232,13 +217,16 @@ export default function StockManagementScreen() {
               styles.quickButton,
               { backgroundColor: colors.success + '20' },
             ]}
-            onPress={() => handleQuickAdjust(item, 1)}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleQuickAdjust(item, 1);
+            }}
             disabled={updateStockMutation.isPending}
           >
             <Plus size={16} color={colors.success} />
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -361,119 +349,6 @@ export default function StockManagementScreen() {
           }
         />
       )}
-
-      {/* Update Modal */}
-      <Modal
-        visible={showUpdateModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowUpdateModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Update Stock
-              </Text>
-              <TouchableOpacity onPress={() => setShowUpdateModal(false)}>
-                <X size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {selectedProduct && (
-              <View>
-                <Text style={[styles.productNameModal, { color: colors.text }]}>
-                  {selectedProduct.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.currentStockText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Current Stock: {selectedProduct.stock} {selectedProduct.unit}
-                </Text>
-
-                <Text style={[styles.inputLabel, { color: colors.text }]}>
-                  Add/Remove Stock
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: colors.filter,
-                      color: colors.text,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  placeholder="e.g. +50 or -10"
-                  placeholderTextColor={colors.textSecondary}
-                  keyboardType="numeric"
-                  value={stockAdjustment}
-                  onChangeText={setStockAdjustment}
-                />
-
-                <Text
-                  style={[
-                    styles.newStockPreview,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  New Stock:{' '}
-                  <Text style={{ color: colors.primary, fontWeight: '700' }}>
-                    {Math.max(
-                      0,
-                      selectedProduct.stock + (parseInt(stockAdjustment) || 0),
-                    )}{' '}
-                    {selectedProduct.unit}
-                  </Text>
-                </Text>
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.modalButton,
-                      { backgroundColor: colors.filter },
-                    ]}
-                    onPress={() => setShowUpdateModal(false)}
-                  >
-                    <Text
-                      style={[styles.modalButtonText, { color: colors.text }]}
-                    >
-                      Cancel
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.modalButton,
-                      {
-                        backgroundColor: colors.secondary,
-                        opacity: updateStockMutation.isPending ? 0.6 : 1,
-                      },
-                    ]}
-                    onPress={handleManualUpdate}
-                    disabled={updateStockMutation.isPending}
-                  >
-                    {updateStockMutation.isPending ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <>
-                        <Save size={16} color="#fff" />
-                        <Text
-                          style={[styles.modalButtonText, { color: '#fff' }]}
-                        >
-                          Update
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -597,13 +472,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
@@ -616,68 +484,5 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  productNameModal: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  currentStockText: {
-    fontSize: 14,
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  input: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  newStockPreview: {
-    fontSize: 14,
-    marginBottom: 20,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

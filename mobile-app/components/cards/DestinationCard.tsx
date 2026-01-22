@@ -182,6 +182,7 @@ export const DestinationMiniCard = ({
   vendorName,
   discount,
   originalPrice,
+  saleEndsAt,
 }: Pick<
   Props,
   | 'image'
@@ -195,14 +196,17 @@ export const DestinationMiniCard = ({
 > & {
   discount?: number | null;
   originalPrice?: number | null;
+  saleEndsAt?: string | null;
 }) => {
   const { colors } = useTheme();
   const router = useRouter();
   const { isInWishlist, toggleWishlist } = useWishlist();
 
-  // Default test values - remove these in production
-  discount = discount ?? 15; // Default 15% discount for testing
-  originalPrice = originalPrice ?? 5000; // Default ₦5000 original price for testing
+  // Check if discount is still active
+  const isDiscountActive =
+    discount &&
+    discount > 0 &&
+    (!saleEndsAt || new Date(saleEndsAt) > new Date());
 
   const inWishlist = productId ? isInWishlist(productId) : false;
 
@@ -241,33 +245,33 @@ export const DestinationMiniCard = ({
       >
         <Image source={{ uri: image }} style={styles.image} />
 
-        {/* Hot Deal Banner - diagonal ribbon */}
-        {/* {discount && discount > 0 && ( */}
-        <View
-          style={{
-            position: 'absolute',
-            top: 12,
-            left: -8,
-            backgroundColor: '#DC2626',
-            paddingVertical: 6,
-            paddingHorizontal: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          <Text
+        {/* Hot Deal Banner - only show if discount is active */}
+        {isDiscountActive && (
+          <View
             style={{
-              color: 'white',
-              fontSize: 11,
-              fontWeight: '800',
-              letterSpacing: 0.5,
+              position: 'absolute',
+              top: 12,
+              left: -8,
+              backgroundColor: '#DC2626',
+              paddingVertical: 6,
+              paddingHorizontal: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
             }}
           >
-            🔥 {discount}% OFF
-          </Text>
-        </View>
-        {/* )} */}
+            <Text
+              style={{
+                color: 'white',
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 0.5,
+              }}
+            >
+              🔥 {discount}% OFF
+            </Text>
+          </View>
+        )}
 
         {/* Wishlist button - top right */}
         {productId && (
@@ -331,40 +335,40 @@ export const DestinationMiniCard = ({
               {isOpen ? 'Available' : 'Out of Stock'}
             </Text>
           </View>
-          {/* Original price display */}
-          {/* {discount && discount > 0 && originalPrice && ( */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginTop: 4,
-              gap: 6,
-            }}
-          >
-            <Text
+          {/* Original price and savings - only show if discount is active */}
+          {isDiscountActive && originalPrice && (
+            <View
               style={{
-                color: colors.textSecondary,
-                fontSize: 11,
-                textDecorationLine: 'line-through',
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 4,
+                gap: 6,
               }}
             >
-              ₦{originalPrice.toLocaleString()}
-            </Text>
-            <Text
-              style={{
-                color: colors.success,
-                fontSize: 11,
-                fontWeight: '700',
-              }}
-            >
-              Save ₦
-              {(
-                originalPrice -
-                (originalPrice * (100 - discount)) / 100
-              ).toLocaleString()}
-            </Text>
-          </View>
-          {/* )} */}
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: 11,
+                  textDecorationLine: 'line-through',
+                }}
+              >
+                ₦{originalPrice.toLocaleString()}
+              </Text>
+              <Text
+                style={{
+                  color: colors.success,
+                  fontSize: 11,
+                  fontWeight: '700',
+                }}
+              >
+                Save ₦
+                {(
+                  originalPrice -
+                  (originalPrice * (100 - discount)) / 100
+                ).toLocaleString()}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
