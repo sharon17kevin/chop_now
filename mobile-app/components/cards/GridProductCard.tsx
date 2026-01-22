@@ -30,6 +30,11 @@ export default function GridProductCard({ product }: GridProductCardProps) {
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const inWishlist = isInWishlist(product.id);
 
+  // Debug: Log stock value
+  console.log(
+    `Product: ${product.name}, Stock: ${product.stock}, Type: ${typeof product.stock}, IsZero: ${product.stock === 0}`,
+  );
+
   const handlePress = () => {
     // Navigate to vendor page with product details
     if (product.id && product.vendor_id) {
@@ -101,6 +106,19 @@ export default function GridProductCard({ product }: GridProductCardProps) {
           }}
           style={styles.image}
         />
+        {/* Out of Stock Overlay */}
+        {product.stock === 0 && (
+          <View style={styles.outOfStockOverlay}>
+            <View
+              style={[
+                styles.outOfStockBadge,
+                { backgroundColor: colors.error },
+              ]}
+            >
+              <Text style={styles.outOfStockText}>Out of Stock</Text>
+            </View>
+          </View>
+        )}
         {/* Like Button */}
         <TouchableOpacity
           style={[
@@ -122,7 +140,9 @@ export default function GridProductCard({ product }: GridProductCardProps) {
         </TouchableOpacity>
 
         {/* Discount Badge */}
-        {product.discount_percentage && isDiscountActive(product) ? (
+        {product.discount_percentage &&
+        isDiscountActive(product) &&
+        product.stock > 0 ? (
           <View
             style={[styles.discountBadge, { backgroundColor: colors.error }]}
           >
@@ -271,6 +291,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+  },
+  outOfStockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outOfStockBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  outOfStockText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   discountBadge: {
     position: 'absolute',

@@ -277,7 +277,7 @@ export default function VendorPage() {
           ]}
         >
           <Text style={{ color: colors.error, fontWeight: '600' }}>
-            Error: {error}
+            {error}
           </Text>
           <TouchableOpacity onPress={handleRefresh}>
             <Text style={{ color: colors.primary, fontWeight: '700' }}>
@@ -354,6 +354,36 @@ export default function VendorPage() {
             >
               {selectedProduct.description}
             </Text>
+
+            {/* Out of Stock Banner */}
+            {selectedProduct.stock === 0 && (
+              <View
+                style={[
+                  styles.promoBanner,
+                  {
+                    backgroundColor: colors.error + '15',
+                    borderColor: colors.error,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.promoIcon,
+                    { backgroundColor: colors.error + '20' },
+                  ]}
+                >
+                  <Package size={20} color={colors.error} />
+                </View>
+                <View style={styles.promoContent}>
+                  <Text style={[styles.promoTitle, { color: colors.error }]}>
+                    Out of Stock
+                  </Text>
+                  <Text style={[styles.promoText, { color: colors.text }]}>
+                    This product is currently unavailable. Check back later.
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Promo/Discount Banner - only show if discount is active */}
             {isDiscountActive(selectedProduct) && (
