@@ -53,6 +53,14 @@ export default function CheckoutScreen() {
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState('');
+  const [promoData, setPromoData] = useState<{
+    id: string;
+    code: string;
+    discount: number;
+    type: string;
+    description: string;
+  } | null>(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   // Fetch cart items from database
@@ -91,7 +99,7 @@ export default function CheckoutScreen() {
             vendor_id,
             profiles:vendor_id (full_name)
           )
-        `
+        `,
         )
         .eq('user_id', profile.id);
 
@@ -109,13 +117,58 @@ export default function CheckoutScreen() {
     }
   };
 
-  const handleApplyPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'WELCOME10') {
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+
+    setValidatingPromo(true);
+    setPromoError('');
+
+    try {
+      const { data, error } = await supabase.rpc('validate_promo_code', {
+        p_code: promoCode.toUpperCase().trim(),
+        p_user_id: profile?.id || '',
+        p_order_total: subtotal,
+        p_vendor_id: null, // Set to null for platform-wide codes, or items[0]?.vendor_id for vendor-specific
+      });
+
+      if (error) {
+        console.error('Error validating promo code:', error);
+        setPromoError('Failed to validate promo code');
+        return;
+      }
+
+      // Parse the JSON result
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
+
+      if (!result.valid) {
+        setPromoError(result.error || 'Invalid promo code');
+        setPromoApplied(false);
+        setPromoData(null);
+        return;
+      }
+
+      // Set promo data
+      setPromoData({
+        id: result.promo_code_id,
+        code: promoCode.toUpperCase().trim(),
+        discount: result.discount_amount,
+        type: result.discount_type,
+        description: result.description || '',
+      });
       setPromoApplied(true);
       setPromoError('');
-    } else {
-      setPromoError('Invalid promo code');
-      setPromoApplied(false);
+      Alert.alert(
+        'Success',
+        `Promo code applied! You saved ₦${result.discount_amount.toFixed(2)}`,
+      );
+    } catch (err) {
+      console.error('Error applying promo code:', err);
+      setPromoError('Failed to apply promo code');
+    } finally {
+      setValidatingPromo(false);
     }
   };
 
@@ -136,8 +189,8 @@ export default function CheckoutScreen() {
       // Update local state
       setItems(
         items.map((item) =>
-          item.id === cartItemId ? { ...item, quantity: newQuantity } : item
-        )
+          item.id === cartItemId ? { ...item, quantity: newQuantity } : item,
+        ),
       );
     } catch (error) {
       console.error('Error updating quantity:', error);
@@ -172,7 +225,7 @@ export default function CheckoutScreen() {
     if (selectedPayment === 'Wallet') {
       Alert.alert(
         'Coming Soon',
-        'Wallet payment will be available soon. Please use Card or Transfer for now.'
+        'Wallet payment will be available soon. Please use Card or Transfer for now.',
       );
       return;
     }
@@ -246,7 +299,7 @@ export default function CheckoutScreen() {
 
   const verifyAndCreateOrder = async (
     reference: string,
-    orderMetadata: any
+    orderMetadata: any,
   ) => {
     try {
       setProcessing(true);
@@ -263,23 +316,26 @@ export default function CheckoutScreen() {
         // Payment was not successful
         Alert.alert(
           'Payment Not Completed',
-          'Your payment was not completed. Please try again.'
+          'Your payment was not completed. Please try again.',
         );
         setProcessing(false);
         return;
       }
 
       // Payment successful - create orders
-      const vendorGroups = items.reduce((acc, item) => {
-        const vendorId = item.products?.vendor_id;
-        if (!vendorId) return acc;
+      const vendorGroups = items.reduce(
+        (acc, item) => {
+          const vendorId = item.products?.vendor_id;
+          if (!vendorId) return acc;
 
-        if (!acc[vendorId]) {
-          acc[vendorId] = [];
-        }
-        acc[vendorId].push(item);
-        return acc;
-      }, {} as Record<string, CartItem[]>);
+          if (!acc[vendorId]) {
+            acc[vendorId] = [];
+          }
+          acc[vendorId].push(item);
+          return acc;
+        },
+        {} as Record<string, CartItem[]>,
+      );
 
       const profile = useUserStore.getState().profile;
 
@@ -288,7 +344,7 @@ export default function CheckoutScreen() {
       for (const [vendorId, vendorItems] of Object.entries(vendorGroups)) {
         const orderTotal = vendorItems.reduce(
           (sum, item) => sum + (item.products?.price || 0) * item.quantity,
-          0
+          0,
         );
 
         // Create the order first with payment tracking
@@ -303,6 +359,8 @@ export default function CheckoutScreen() {
             payment_amount: orderTotal,
             status: 'pending',
             delivery_address: 'Default address', // TODO: Add actual delivery address
+            promo_code_id: promoData?.id || null,
+            promo_discount: promoData?.discount || 0,
           })
           .select()
           .single();
@@ -310,6 +368,28 @@ export default function CheckoutScreen() {
         if (orderError) {
           console.error('Error creating order:', orderError);
           continue;
+        }
+
+        // Record promo code usage if a promo was applied
+        if (promoData && order) {
+          try {
+            const { error: promoUsageError } = await supabase.rpc(
+              'record_promo_usage',
+              {
+                p_promo_code_id: promoData.id,
+                p_user_id: profile?.id,
+                p_order_id: order.id,
+                p_discount_amount: promoData.discount,
+              },
+            );
+
+            if (promoUsageError) {
+              console.error('Error recording promo usage:', promoUsageError);
+              // Don't fail the order if promo recording fails
+            }
+          } catch (promoErr) {
+            console.error('Error in promo usage recording:', promoErr);
+          }
         }
 
         // Create order items
@@ -350,7 +430,7 @@ export default function CheckoutScreen() {
                 total_amount: orderTotal,
                 item_count: vendorItems.reduce(
                   (sum, item) => sum + item.quantity,
-                  0
+                  0,
                 ),
                 order_items: vendorItems.map((item) => ({
                   product_name: item.products?.name,
@@ -358,7 +438,7 @@ export default function CheckoutScreen() {
                   price: item.products?.price,
                 })),
               },
-            }
+            },
           );
 
           if (error) {
@@ -389,7 +469,7 @@ export default function CheckoutScreen() {
             text: 'View Orders',
             onPress: () => router.replace('/(tabs)/(orders)'),
           },
-        ]
+        ],
       );
 
       // Refresh cart
@@ -398,7 +478,7 @@ export default function CheckoutScreen() {
       console.error('Order creation error:', error);
       Alert.alert(
         'Error',
-        error.message || 'Something went wrong. Please contact support.'
+        error.message || 'Something went wrong. Please contact support.',
       );
     } finally {
       setProcessing(false);
@@ -407,11 +487,11 @@ export default function CheckoutScreen() {
 
   const subtotal = items.reduce(
     (sum, item) => sum + (item.products?.price || 0) * item.quantity,
-    0
+    0,
   );
   const deliveryFee = 2.99;
   const serviceFee = 1.49;
-  const discount = promoApplied ? subtotal * 0.1 : 0; // 10% discount
+  const discount = promoApplied && promoData ? promoData.discount : 0;
   const total = subtotal + deliveryFee + serviceFee - discount;
 
   if (loading) {
@@ -514,14 +594,19 @@ export default function CheckoutScreen() {
               styles.promoButton,
               { backgroundColor: colors.primary },
               promoApplied ? { backgroundColor: colors.success } : null,
+              validatingPromo ? { opacity: 0.7 } : null,
             ]}
             onPress={handleApplyPromo}
-            disabled={!promoCode}
+            disabled={!promoCode || validatingPromo || promoApplied}
           >
             <Text
               style={[styles.promoButtonText, { color: colors.buttonText }]}
             >
-              {promoApplied ? 'Applied' : 'Apply'}
+              {validatingPromo
+                ? 'Validating...'
+                : promoApplied
+                  ? 'Applied'
+                  : 'Apply'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -637,7 +722,7 @@ export default function CheckoutScreen() {
               ₦{serviceFee.toFixed(2)}
             </Text>
           </View>
-          {promoApplied && (
+          {promoApplied && promoData && (
             <View style={styles.summaryRow}>
               <Text
                 style={[
@@ -645,7 +730,7 @@ export default function CheckoutScreen() {
                   { color: colors.success, fontWeight: '700' },
                 ]}
               >
-                Discount (10%)
+                Discount ({promoData.description || promoData.code})
               </Text>
               <Text style={[styles.summaryValue, { color: colors.success }]}>
                 -₦{discount.toFixed(2)}
