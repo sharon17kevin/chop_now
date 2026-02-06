@@ -15,11 +15,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Camera,
-  Plus,
   MapPin,
   DollarSign,
   X,
   Package,
+  BarChart3,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
@@ -60,7 +60,7 @@ export default function SellScreen() {
     queryKey: ['pending-orders-count', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
-      const { count, error } = await supabase
+      const { count } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
         .eq('vendor_id', user.id)
@@ -76,8 +76,7 @@ export default function SellScreen() {
       await ImagePicker.requestCameraPermissionsAsync();
     const { status: mediaStatus } =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
-    const { status: locationStatus } =
-      await Location.requestForegroundPermissionsAsync();
+    await Location.requestForegroundPermissionsAsync();
 
     if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
       Alert.alert(
@@ -262,7 +261,7 @@ export default function SellScreen() {
       const imageUrls = uploadedImages.map((img) => img.url);
 
       // Insert product into database
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('products')
         .insert({
           vendor_id: user.id,
@@ -348,6 +347,14 @@ export default function SellScreen() {
             </Text>
           </View>
           <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={[styles.headerButton, { backgroundColor: colors.success }]}
+              onPress={() => router.push('/(tabs)/(sell)/analytics')}
+            >
+              <BarChart3 size={18} color="#fff" />
+              <Text style={styles.headerButtonText}>Analytics</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.headerButton, { backgroundColor: colors.primary }]}
               onPress={() => router.push('/(tabs)/(sell)/orders')}

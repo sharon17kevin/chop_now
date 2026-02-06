@@ -347,7 +347,13 @@ export default function CheckoutScreen() {
           0,
         );
 
-        // Create the order first with payment tracking
+        // Calculate escrow amounts (5% platform fee)
+        const platformFeePercentage = 5.0;
+        const platformFee =
+          Math.round(orderTotal * (platformFeePercentage / 100) * 100) / 100;
+        const vendorPayout = Math.round((orderTotal - platformFee) * 100) / 100;
+
+        // Create the order first with payment tracking and escrow
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .insert({
@@ -361,6 +367,12 @@ export default function CheckoutScreen() {
             delivery_address: 'Default address', // TODO: Add actual delivery address
             promo_code_id: promoData?.id || null,
             promo_discount: promoData?.discount || 0,
+            // Escrow fields
+            escrow_status: 'held', // Funds locked until delivery + 24hrs
+            platform_fee_percentage: platformFeePercentage,
+            platform_fee_amount: platformFee,
+            vendor_payout_amount: vendorPayout,
+            payout_status: 'on_hold', // Will change to 'pending' after release
           })
           .select()
           .single();

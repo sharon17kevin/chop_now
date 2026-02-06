@@ -99,16 +99,37 @@ export default function OrderDetailScreen() {
   // Update order status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
+      // If marking as delivered, use special function to schedule escrow release
+      if (newStatus === 'delivered') {
+        const { data, error } = await supabase.rpc('set_order_delivered', {
+          p_order_id: orderId,
+          p_release_delay_hours: 24,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+        return data;
+      } else {
+        // Regular status update
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: newStatus })
+          .eq('id', orderId);
+
+        if (error) throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, newStatus) => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       queryClient.invalidateQueries({ queryKey: ['vendor-orders'] });
+      
+      if (newStatus === 'delivered') {
+        // Show info about escrow release
+        Alert.alert(
+          'Order Delivered',
+          'Funds will be released to your wallet in 24 hours. Customers have a 24-hour window to report issues.',
+          [{ text: 'OK' }]
+        );
+      }
     },
   });
 
