@@ -1,9 +1,10 @@
 import { useTheme } from '@/hooks/useTheme';
-import { useRouter } from 'expo-router';
-import { Clock, Star, Heart } from 'lucide-react-native';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useWishlist } from '@/hooks/useWishlist';
+import { useRouter } from 'expo-router';
+import { Heart, Star, ImageIcon } from 'lucide-react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 
 interface Props {
   id: string;
@@ -94,9 +95,19 @@ const DestinationCard = ({
         ]}
       >
         <View
-          style={[styles.imageContainer, { backgroundColor: colors.primary }]}
+          style={[styles.imageContainer, { backgroundColor: colors.filter }]}
         >
-          <Image source={{ uri: image }} style={styles.image} />
+          <View style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}>
+            <ImageIcon size={40} color={colors.textSecondary} opacity={0.3} />
+          </View>
+          <Image 
+            source={{ uri: image }} 
+            style={styles.image}
+            cachePolicy="memory-disk"
+            transition={200}
+            contentFit="cover"
+            placeholder={{ blurhash: 'L6Pj0^jE.AyE_3t7t7R**0o#DgR4' }}
+          />
 
           {/* Wishlist button - top right */}
           {productId && (
@@ -243,7 +254,17 @@ export const DestinationMiniCard = ({
           { position: 'relative', backgroundColor: colors.filter },
         ]}
       >
-        <Image source={{ uri: image }} style={styles.image} />
+        <View style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}>
+          <ImageIcon size={40} color={colors.textSecondary} opacity={0.3} />
+        </View>
+        <Image 
+          source={{ uri: image }} 
+          style={styles.image}
+          cachePolicy="memory-disk"
+          transition={200}
+          contentFit="cover"
+          placeholder={{ blurhash: 'L6Pj0^jE.AyE_3t7t7R**0o#DgR4' }}
+        />
 
         {/* Hot Deal Banner - only show if discount is active */}
         {isDiscountActive && (
@@ -398,6 +419,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
+    position: 'relative',
+  },
+  imagePlaceholder: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoContainer: {
     flex: 1,

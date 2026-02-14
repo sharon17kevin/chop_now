@@ -1,12 +1,12 @@
 import { useTheme } from '@/hooks/useTheme';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
-  Animated,
-  StyleSheet,
   AccessibilityInfo,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 interface Props {

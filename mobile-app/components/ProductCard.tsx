@@ -1,7 +1,8 @@
 // components/ProductCard.tsx
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Heart } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { Heart, ImageIcon } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -83,12 +84,18 @@ export default function ProductCard({
     >
       {/* Product Image Container */}
       <View style={styles.imageContainer}>
+        <View style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}>
+          <ImageIcon size={40} color={colors.textSecondary} opacity={0.3} />
+        </View>
         <Image
           source={{
             uri: images?.[0] || image_url || 'https://via.placeholder.com/200',
           }}
           style={styles.image}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={200}
+          placeholder={{ blurhash: 'L6Pj0^jE.AyE_3t7t7R**0o#DgR4' }}
         />
 
         {/* Out of Stock Overlay */}
@@ -180,6 +187,13 @@ const styles = StyleSheet.create({
     height: 140,
     backgroundColor: '#f0f0f0',
     position: 'relative',
+  },
+  imagePlaceholder: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   image: {
     width: '100%',

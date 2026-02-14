@@ -25,13 +25,13 @@ import {
   Settings,
   ShoppingBag,
   Star,
+  User,
   Wallet,
 } from 'lucide-react-native';
 import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -39,6 +39,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const menuItems = [
@@ -110,7 +111,7 @@ export default function ProfileScreen() {
     vendorApplication,
     fetchVendorApplication,
     hasPendingApplication,
-    isApplicationRejected
+    isApplicationRejected,
   } = useUserStore();
   const { account: virtualAccount, fetchAccount } = useVirtualAccountStore();
   const { isVendor } = useRole();
@@ -137,7 +138,7 @@ export default function ProfileScreen() {
   const recentOrders = [...ongoingOrders, ...completedOrders]
     .sort(
       (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     )
     .slice(0, 2);
 
@@ -206,7 +207,7 @@ export default function ProfileScreen() {
             const keys = await AsyncStorage.getAllKeys();
             const authKeys = keys.filter(
               (key) =>
-                !key.includes('onboarding') && !key.includes('Onboarding')
+                !key.includes('onboarding') && !key.includes('Onboarding'),
             );
             if (authKeys.length > 0) {
               await AsyncStorage.multiRemove(authKeys);
@@ -241,15 +242,26 @@ export default function ProfileScreen() {
         {/* Profile Header */}
         <View style={[styles.profileHeader, { backgroundColor: colors.card }]}>
           <View style={styles.avatarContainer}>
+            <View
+              style={[
+                styles.avatarPlaceholder,
+                { backgroundColor: colors.filter },
+              ]}
+            >
+              <User size={40} color={colors.textSecondary} opacity={0.3} />
+            </View>
             <Image
-              source={
-                profile?.profile_image
-                  ? { uri: profile.profile_image }
-                  : {
-                      uri: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400',
-                    }
-              }
+              source={{
+                uri:
+                  profile?.profile_image ||
+                  'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400',
+              }}
               style={styles.avatar}
+              cachePolicy="memory-disk"
+              transition={200}
+              priority="high"
+              contentFit="cover"
+              placeholder={{ blurhash: 'L6Pj0^jE.AyE_3t7t7R**0o#DgR4' }}
             />
             <TouchableOpacity
               onPress={() =>
@@ -364,13 +376,13 @@ export default function ProfileScreen() {
                     backgroundColor: isPending
                       ? colors.primary + '15'
                       : isRejected
-                      ? colors.error + '15'
-                      : colors.warning + '15',
+                        ? colors.error + '15'
+                        : colors.warning + '15',
                     borderColor: isPending
                       ? colors.primary + '40'
                       : isRejected
-                      ? colors.error + '40'
-                      : colors.warning + '40',
+                        ? colors.error + '40'
+                        : colors.warning + '40',
                   },
                 ]}
                 onPress={() =>
@@ -385,8 +397,8 @@ export default function ProfileScreen() {
                       backgroundColor: isPending
                         ? colors.primary
                         : isRejected
-                        ? colors.error
-                        : colors.warning,
+                          ? colors.error
+                          : colors.warning,
                     },
                   ]}
                 >
@@ -401,10 +413,10 @@ export default function ProfileScreen() {
                     {isPending
                       ? 'Application Under Review'
                       : isRejected
-                      ? 'Application Rejected'
-                      : isVendor
-                      ? 'Vendor Verification Pending'
-                      : 'Become a Vendor'}
+                        ? 'Application Rejected'
+                        : isVendor
+                          ? 'Vendor Verification Pending'
+                          : 'Become a Vendor'}
                   </Text>
                   <Text
                     style={[
@@ -415,11 +427,11 @@ export default function ProfileScreen() {
                     {isPending
                       ? "We're reviewing your vendor application. This usually takes 2-3 business days."
                       : isRejected
-                      ? vendorApplication?.rejection_reason ||
-                        'Your application was not approved. Tap to reapply.'
-                      : isVendor
-                      ? 'Your vendor account is under review (2-3 business days)'
-                      : 'Complete verification to unlock vendor features and start selling'}
+                        ? vendorApplication?.rejection_reason ||
+                          'Your application was not approved. Tap to reapply.'
+                        : isVendor
+                          ? 'Your vendor account is under review (2-3 business days)'
+                          : 'Complete verification to unlock vendor features and start selling'}
                   </Text>
                 </View>
                 <ChevronRight size={20} color={colors.textSecondary} />
@@ -602,6 +614,14 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginBottom: 16,
+  },
+  avatarPlaceholder: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatar: {
     width: 100,

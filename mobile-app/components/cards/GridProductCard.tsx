@@ -4,17 +4,17 @@ import { Product, isDiscountActive } from '@/stores/useProductStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useWishlistStore } from '@/stores/useWishlistStore';
 import { useRouter } from 'expo-router';
-import { Heart, Plus, Star } from 'lucide-react-native';
+import { Heart, Plus, Star, ImageIcon } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 
 interface GridProductCardProps {
   product: Product;
@@ -100,11 +100,18 @@ export default function GridProductCard({ product }: GridProductCardProps) {
       activeOpacity={0.9}
     >
       <View style={styles.imageContainer}>
+        <View style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}>
+          <ImageIcon size={40} color={colors.textSecondary} opacity={0.3} />
+        </View>
         <Image
           source={{
             uri: product.image_url || 'https://via.placeholder.com/150',
           }}
           style={styles.image}
+          cachePolicy="memory-disk"
+          transition={200}
+          contentFit="cover"
+          placeholder={{ blurhash: 'L6Pj0^jE.AyE_3t7t7R**0o#DgR4' }}
         />
         {/* Out of Stock Overlay */}
         {product.stock === 0 && (
@@ -231,6 +238,13 @@ const styles = StyleSheet.create({
     height: 120,
     backgroundColor: '#F3F4F6',
     position: 'relative',
+  },
+  imagePlaceholder: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   image: {
     width: '100%',

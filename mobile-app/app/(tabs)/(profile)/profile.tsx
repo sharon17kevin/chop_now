@@ -8,10 +8,10 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { supabase } from '@/lib/supabase';
 import {
   User,
@@ -29,6 +29,7 @@ import { useTheme } from '@/hooks/useTheme';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadImage } from '@/lib/uploadService';
 import { useUserStore } from '@/stores/useUserStore';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Profile {
   full_name: string;
@@ -47,10 +48,11 @@ interface Profile {
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const {
     profile: userProfile,
     isLoadingProfile,
-    updateProfile: updateStoreProfile,
+    fetchProfile,
   } = useUserStore();
   const [profile, setProfile] = useState<Profile>({
     full_name: '',
@@ -90,43 +92,14 @@ export default function ProfileScreen() {
       setSaving(true);
       setError(null);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
+      if (!user?.id) {
         setError('Please sign in to update your profile');
         return;
       }
 
-      const { data: existingProfile } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (existingProfile) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            full_name: profile.full_name,
-            email: profile.email,
-            phone: profile.phone,
-            address: profile.address,
-            profile_image: profile.profile_image,
-            banner_image: profile.banner_image,
-            farm_name: profile.farm_name,
-            farm_location: profile.farm_location,
-            farm_description: profile.farm_description,
-            business_phone: profile.business_phone,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
-
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase.from('profiles').insert({
-          id: user.id,
+        .update({
           full_name: profile.full_name,
           email: profile.email,
           phone: profile.phone,
@@ -137,29 +110,24 @@ export default function ProfileScreen() {
           farm_location: profile.farm_location,
           farm_description: profile.farm_description,
           business_phone: profile.business_phone,
-        });
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
 
-        if (insertError) throw insertError;
-      }
+      if (updateError) throw updateError;
 
-      // Update the store with new profile data
-      updateStoreProfile({
-        full_name: profile.full_name,
-        email: profile.email,
-        phone: profile.phone,
-        address: profile.address,
-        profile_image: profile.profile_image,
-        banner_image: profile.banner_image,
-        farm_name: profile.farm_name,
-        farm_location: profile.farm_location,
-        farm_description: profile.farm_description,
-        business_phone: profile.business_phone,
-      });
+      // Refetch profile from database to ensure sync
+      await fetchProfile(user.id);
 
       Alert.alert('Success', 'Profile updated successfully');
       setIsEditing(false);
     } catch (err) {
+      console.error('Error saving profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to save profile');
+      Alert.alert(
+        'Error',
+        err instanceof Error ? err.message : 'Failed to save profile',
+      );
     } finally {
       setSaving(false);
     }
@@ -175,7 +143,7 @@ export default function ProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images',
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -185,19 +153,34 @@ export default function ProfileScreen() {
         setUploadingAvatar(true);
         const uri = result.assets[0].uri;
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+        if (!user?.id) throw new Error('Not authenticated');
 
-        const uploadResult = await uploadImage(uri, user.id, 'profile');
+        const uploadResult = await uploadImage(uri, user.id, 'avatars');
+
+        // Update local state
         setProfile({ ...profile, profile_image: uploadResult.url });
-        Alert.alert('Success', 'Avatar uploaded successfully');
+
+        // Auto-save to database
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            profile_image: uploadResult.url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        // Refetch to sync
+        await fetchProfile(user.id);
+
+        Alert.alert('Success', 'Avatar updated successfully');
       }
     } catch (err) {
+      console.error('Error uploading avatar:', err);
       Alert.alert(
         'Error',
-        err instanceof Error ? err.message : 'Failed to upload avatar'
+        err instanceof Error ? err.message : 'Failed to upload avatar',
       );
     } finally {
       setUploadingAvatar(false);
@@ -214,7 +197,7 @@ export default function ProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images',
         allowsEditing: true,
         aspect: [16, 9],
         quality: 0.8,
@@ -224,19 +207,34 @@ export default function ProfileScreen() {
         setUploadingBanner(true);
         const uri = result.assets[0].uri;
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+        if (!user?.id) throw new Error('Not authenticated');
 
         const uploadResult = await uploadImage(uri, user.id, 'banners');
+
+        // Update local state
         setProfile({ ...profile, banner_image: uploadResult.url });
-        Alert.alert('Success', 'Banner uploaded successfully');
+
+        // Auto-save to database
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            banner_image: uploadResult.url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        // Refetch to sync
+        await fetchProfile(user.id);
+
+        Alert.alert('Success', 'Banner updated successfully');
       }
     } catch (err) {
+      console.error('Error uploading banner:', err);
       Alert.alert(
         'Error',
-        err instanceof Error ? err.message : 'Failed to upload banner'
+        err instanceof Error ? err.message : 'Failed to upload banner',
       );
     } finally {
       setUploadingBanner(false);
@@ -309,10 +307,26 @@ export default function ProfileScreen() {
               {/* Banner Image - Vendors Only */}
               {profile.role === 'vendor' && (
                 <View style={styles.bannerContainer}>
+                  <View
+                    style={[
+                      styles.bannerPlaceholder,
+                      { backgroundColor: colors.filter },
+                    ]}
+                  >
+                    <ImageIcon
+                      size={40}
+                      color={colors.textSecondary}
+                      opacity={0.3}
+                    />
+                  </View>
                   {profile.banner_image ? (
                     <Image
                       source={{ uri: profile.banner_image }}
                       style={styles.bannerImage}
+                      cachePolicy="memory-disk"
+                      transition={200}
+                      contentFit="cover"
+                      placeholder={{ blurhash: 'L6Pj0^jE.AyE_3t7t7R**0o#DgR4' }}
                     />
                   ) : (
                     <View
@@ -366,10 +380,22 @@ export default function ProfileScreen() {
                 <View
                   style={[styles.avatar, { backgroundColor: colors.filter }]}
                 >
+                  {!profile.profile_image && (
+                    <User
+                      size={48}
+                      color={colors.textSecondary}
+                      opacity={0.3}
+                    />
+                  )}
                   {profile.profile_image ? (
                     <Image
                       source={{ uri: profile.profile_image }}
                       style={styles.avatarImage}
+                      cachePolicy="memory-disk"
+                      transition={200}
+                      contentFit="cover"
+                      priority="high"
+                      placeholder={{ blurhash: 'L6Pj0^jE.AyE_3t7t7R**0o#DgR4' }}
                     />
                   ) : (
                     <User size={48} color={colors.textSecondary} />
@@ -707,6 +733,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   bannerImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
