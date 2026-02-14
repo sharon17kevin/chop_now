@@ -97,11 +97,16 @@ const DestinationCard = ({
         <View
           style={[styles.imageContainer, { backgroundColor: colors.filter }]}
         >
-          <View style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}>
+          <View
+            style={[
+              styles.imagePlaceholder,
+              { backgroundColor: colors.filter },
+            ]}
+          >
             <ImageIcon size={40} color={colors.textSecondary} opacity={0.3} />
           </View>
-          <Image 
-            source={{ uri: image }} 
+          <Image
+            source={{ uri: image }}
             style={styles.image}
             cachePolicy="memory-disk"
             transition={200}
@@ -254,11 +259,13 @@ export const DestinationMiniCard = ({
           { position: 'relative', backgroundColor: colors.filter },
         ]}
       >
-        <View style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}>
+        <View
+          style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}
+        >
           <ImageIcon size={40} color={colors.textSecondary} opacity={0.3} />
         </View>
-        <Image 
-          source={{ uri: image }} 
+        <Image
+          source={{ uri: image }}
           style={styles.image}
           cachePolicy="memory-disk"
           transition={200}

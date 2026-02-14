@@ -100,7 +100,9 @@ export default function GridProductCard({ product }: GridProductCardProps) {
       activeOpacity={0.9}
     >
       <View style={styles.imageContainer}>
-        <View style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}>
+        <View
+          style={[styles.imagePlaceholder, { backgroundColor: colors.filter }]}
+        >
           <ImageIcon size={40} color={colors.textSecondary} opacity={0.3} />
         </View>
         <Image
