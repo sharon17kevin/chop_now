@@ -131,7 +131,7 @@ const DestinationCard = ({
         <View style={styles.infoContainer}>
           <View style={{ flex: 1 }}>
             <Text style={[{ color: colors.textTrans, fontWeight: '600' }]}>
-              {name}
+              {name || 'Product'}
             </Text>
             <TouchableOpacity onPress={handleVendorPress} activeOpacity={0.7}>
               <Text
@@ -140,7 +140,7 @@ const DestinationCard = ({
                   { color: colors.secondary, fontWeight: '600', fontSize: 12 },
                 ]}
               >
-                by {address}
+                by {address || 'Vendor'}
               </Text>
             </TouchableOpacity>
             <Text
@@ -165,7 +165,7 @@ const DestinationCard = ({
                   { color: colors.textTrans, fontWeight: '700', fontSize: 16 },
                 ]}
               >
-                ₦{price.toLocaleString()}
+                ₦{(price || 0).toLocaleString()}
               </Text>
             </View>
             <View
@@ -328,7 +328,7 @@ export const DestinationMiniCard = ({
             style={[{ color: colors.text, fontWeight: '700', fontSize: 15 }]}
             numberOfLines={1}
           >
-            {name}
+            {name || 'Product'}
           </Text>
           <View
             style={{
@@ -380,7 +380,7 @@ export const DestinationMiniCard = ({
                   textDecorationLine: 'line-through',
                 }}
               >
-                ₦{originalPrice.toLocaleString()}
+                ₦{(originalPrice || 0).toLocaleString()}
               </Text>
               <Text
                 style={{
@@ -391,8 +391,8 @@ export const DestinationMiniCard = ({
               >
                 Save ₦
                 {(
-                  originalPrice -
-                  (originalPrice * (100 - discount)) / 100
+                  (originalPrice || 0) -
+                  ((originalPrice || 0) * (100 - (discount || 0))) / 100
                 ).toLocaleString()}
               </Text>
             </View>

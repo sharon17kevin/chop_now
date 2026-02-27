@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (
     email: string,
-    password: string
+    password: string,
   ) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   loginWithApple: () => Promise<{ success: boolean; error?: string }>;
@@ -25,7 +25,7 @@ interface AuthContextType {
     name: string,
     email: string,
     password: string,
-    role: 'customer' | 'vendor'
+    role: 'customer' | 'vendor',
   ) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (token: string) => Promise<{ success: boolean; error?: string }>;
   resendOtp: () => Promise<{ success: boolean; error?: string }>;
@@ -34,7 +34,7 @@ interface AuthContextType {
     code: string,
     name: string,
     password: string,
-    role: 'customer' | 'vendor'
+    role: 'customer' | 'vendor',
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
@@ -57,136 +57,97 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('🔄 Initializing auth state...');
 
-        // ✅ Use Supabase as the source of truth for session
-        const { data, error } = await supabase.auth.getSession();
+        // ✅ Parallelize session and onboarding checks
+        const [sessionResult, onboardingCompleted] = await Promise.all([
+          supabase.auth.getSession(),
+          AsyncStorage.getItem('onboardingCompleted'),
+        ]);
 
-        if (error) {
-          console.error('❌ Error getting session:', error);
-          throw error;
-        }
+        if (!mounted) return;
 
-        const session = data?.session ?? null;
+        const session = sessionResult.data?.session ?? null;
 
-        if (mounted) {
-          if (session) {
-            console.log('✅ Session found, user:', session.user.email);
+        // Set onboarding state immediately (non-blocking)
+        setHasCompletedOnboarding(onboardingCompleted === 'true');
 
-            // ✅ Verify user still exists in auth.users
-            const { data: userData, error: userError } =
-              await supabase.auth.admin.getUserById(session.user.id);
+        if (session) {
+          console.log('✅ Session found, user:', session.user.email);
 
-            if (userError || !userData.user) {
-              console.error('❌ User no longer exists, clearing session');
-              await SecureStore.deleteItemAsync('supabaseSession');
-              await supabase.auth.signOut();
-              setUser(null);
-              setIsAuthenticated(false);
-              useUserStore.getState().clearProfile();
-            } else {
-              setUser(session.user);
+          // ✅ Set authenticated state immediately for faster UI
+          setUser(session.user);
+          setIsAuthenticated(true);
+
+          // ✅ Persist session securely (non-blocking)
+          SecureStore.setItemAsync(
+            'supabaseSession',
+            JSON.stringify(session),
+          ).catch((error) =>
+            console.error('⚠️ Failed to persist session:', error),
+          );
+
+          // ✅ Fetch profile in background (non-blocking)
+          console.log('📊 Fetching user profile...');
+          useUserStore
+            .getState()
+            .fetchProfile(session.user.id)
+            .then(() => {
+              console.log('✅ Profile fetched');
+            })
+            .catch((error) => {
+              console.error('⚠️ Profile fetch failed:', error);
+              // Don't clear session - user can still use app, profile might be created later
+            });
+        } else {
+          console.log('❌ No session found in Supabase');
+
+          // Try to restore from SecureStore as fallback
+          try {
+            const storedSession =
+              await SecureStore.getItemAsync('supabaseSession');
+            if (storedSession) {
+              console.log('🔄 Found stored session, attempting to restore...');
+              const parsedSession = JSON.parse(storedSession);
+
+              // Set the session in Supabase
+              const { data: sessionData, error: setError } =
+                await supabase.auth.setSession({
+                  access_token: parsedSession.access_token,
+                  refresh_token: parsedSession.refresh_token,
+                });
+
+              if (setError || !sessionData.session) {
+                throw new Error('Failed to restore session');
+              }
+
+              console.log('✅ Session restored successfully');
+
+              // Set authenticated immediately
+              setUser(sessionData.session.user);
               setIsAuthenticated(true);
 
-              // ✅ Persist session securely for backup
-              await SecureStore.setItemAsync(
-                'supabaseSession',
-                JSON.stringify(session)
-              );
-
-              // ✅ Fetch user profile and role
-              console.log('📊 Fetching user profile...');
-              try {
-                await useUserStore.getState().fetchProfile(session.user.id);
-                console.log('✅ Profile fetched');
-              } catch (error) {
-                console.error(
-                  '⚠️ Profile fetch failed - user might not have profile, clearing session',
-                  error
-                );
-                // If profile doesn't exist, clear session
-                await SecureStore.deleteItemAsync('supabaseSession');
-                await supabase.auth.signOut();
-                setUser(null);
-                setIsAuthenticated(false);
-                useUserStore.getState().clearProfile();
-              }
-            }
-          } else {
-            console.log('❌ No session found in Supabase');
-
-            // Try to restore from SecureStore as fallback
-            try {
-              const storedSession = await SecureStore.getItemAsync(
-                'supabaseSession'
-              );
-              if (storedSession) {
-                console.log(
-                  '🔄 Found stored session, attempting to restore...'
-                );
-                const parsedSession = JSON.parse(storedSession);
-
-                // Set the session in Supabase
-                const { data: sessionData, error: setError } =
-                  await supabase.auth.setSession({
-                    access_token: parsedSession.access_token,
-                    refresh_token: parsedSession.refresh_token,
-                  });
-
-                if (setError) {
-                  console.error('❌ Failed to restore session:', setError);
-                  throw setError;
-                }
-
-                if (sessionData.session) {
-                  console.log('✅ Session restored successfully');
-
-                  // Verify profile exists before marking as authenticated
-                  try {
-                    await useUserStore
-                      .getState()
-                      .fetchProfile(sessionData.session.user.id);
-                    console.log('✅ Profile fetched after restore');
-
-                    // Only set authenticated if profile exists
-                    setUser(sessionData.session.user);
-                    setIsAuthenticated(true);
-                  } catch (error) {
-                    console.error(
-                      '❌ Profile fetch failed after restore - clearing session:',
-                      error
-                    );
-                    // Profile doesn't exist, clear everything
-                    await SecureStore.deleteItemAsync('supabaseSession');
-                    await supabase.auth.signOut();
-                    setUser(null);
-                    setIsAuthenticated(false);
-                    useUserStore.getState().clearProfile();
-                  }
-                } else {
-                  console.log('ℹ️ No valid session in stored data');
-                  setUser(null);
-                  setIsAuthenticated(false);
-                  useUserStore.getState().clearProfile();
-                }
-              } else {
-                console.log('ℹ️ No stored session found in SecureStore');
-                setUser(null);
-                setIsAuthenticated(false);
-                useUserStore.getState().clearProfile();
-              }
-            } catch (restoreError) {
-              console.error('❌ Error restoring session:', restoreError);
+              // Fetch profile in background (non-blocking)
+              useUserStore
+                .getState()
+                .fetchProfile(sessionData.session.user.id)
+                .catch((error) => {
+                  console.error(
+                    '⚠️ Profile fetch failed after restore:',
+                    error,
+                  );
+                });
+            } else {
+              console.log('ℹ️ No stored session found in SecureStore');
               setUser(null);
               setIsAuthenticated(false);
-              await SecureStore.deleteItemAsync('supabaseSession');
               useUserStore.getState().clearProfile();
             }
+          } catch (restoreError) {
+            console.error('❌ Error restoring session:', restoreError);
+            setUser(null);
+            setIsAuthenticated(false);
+            SecureStore.deleteItemAsync('supabaseSession').catch(() => {});
+            useUserStore.getState().clearProfile();
           }
-
-          // Restore onboarding state (non-sensitive, can use AsyncStorage)
-          const onboardingCompleted = await AsyncStorage.getItem(
-            'onboardingCompleted'
-          );
-          setHasCompletedOnboarding(onboardingCompleted === 'true');
         }
       } catch (error) {
         console.error('❌ Error initializing auth:', error);
@@ -231,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('💾 Persisting session for:', currentUser.email);
             await SecureStore.setItemAsync(
               'supabaseSession',
-              JSON.stringify(session)
+              JSON.stringify(session),
             );
 
             // ✅ Fetch/refresh profile when session changes
@@ -253,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             useUserStore.getState().clearProfile();
           }
         }
-      }
+      },
     );
 
     initAuth();
@@ -278,7 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         await SecureStore.setItemAsync(
           'supabaseSession',
-          JSON.stringify(result.data)
+          JSON.stringify(result.data),
         );
 
         // ✅ Fetch user profile and role
@@ -302,7 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string,
     email: string,
     password: string,
-    role: 'customer' | 'vendor'
+    role: 'customer' | 'vendor',
   ) => {
     console.log('🔐 useAuth.signup called', { name, email, role });
 
@@ -330,7 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('💾 Storing session in SecureStore');
         await SecureStore.setItemAsync(
           'supabaseSession',
-          JSON.stringify(result.data.session)
+          JSON.stringify(result.data.session),
         );
       } else {
         console.log('⚠️ No session returned (email confirmation required)');
@@ -385,7 +346,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     code: string,
     name: string,
     password: string,
-    role: 'customer' | 'vendor'
+    role: 'customer' | 'vendor',
   ) => {
     console.log('🔐 useAuth.verifyEmailOtp - Starting verification...');
 
@@ -395,7 +356,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       code,
       name,
       password,
-      role
+      role,
     );
 
     if (!result.success) {
@@ -432,7 +393,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         await SecureStore.setItemAsync(
           'supabaseSession',
-          JSON.stringify(sessionData.session)
+          JSON.stringify(sessionData.session),
         );
 
         // ✅ Fetch user profile ONCE
@@ -440,7 +401,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await useUserStore.getState().fetchProfile(sessionData.session.user.id);
 
         console.log(
-          '✅ Verification complete - navigation handled by _layout.tsx'
+          '✅ Verification complete - navigation handled by _layout.tsx',
         );
         // ✅ Don't navigate here - let _layout.tsx handle it automatically
         return { success: true };
@@ -449,7 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // This shouldn't happen anymore since Edge Function always returns session
     console.error(
-      '⚠️ No session in Edge Function response - this is unexpected'
+      '⚠️ No session in Edge Function response - this is unexpected',
     );
     return {
       success: false,
@@ -475,7 +436,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         await SecureStore.setItemAsync(
           'supabaseSession',
-          JSON.stringify(result.data)
+          JSON.stringify(result.data),
         );
 
         // Fetch user profile
@@ -509,7 +470,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         await SecureStore.setItemAsync(
           'supabaseSession',
-          JSON.stringify(result.data)
+          JSON.stringify(result.data),
         );
 
         // Fetch user profile
