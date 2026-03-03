@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { WishlistService } from '@/services/wishlist';
+import { CartService } from '@/services/cart';
 import { Trash2, ShoppingCart, Heart } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '@/components/AppHeader';
@@ -56,27 +58,7 @@ export default function WishlistScreen() {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('wishlist')
-        .select(
-          `
-          id,
-          product:products!inner (
-            id,
-            name,
-            price,
-            image_url,
-            description,
-            vendor_id,
-            profiles!products_vendor_id_fkey (
-              full_name
-            )
-          )
-        `
-        )
-        .eq('user_id', user.id);
-
-      if (fetchError) throw fetchError;
+      const data = await WishlistService.getDetailedByUser(user.id);
 
       // Transform the data to match interface
       const transformedData = (data || []).map((item: any) => ({
@@ -106,12 +88,7 @@ export default function WishlistScreen() {
 
   async function removeFromWishlist(itemId: string) {
     try {
-      const { error: deleteError } = await supabase
-        .from('wishlist')
-        .delete()
-        .eq('id', itemId);
-
-      if (deleteError) throw deleteError;
+      await WishlistService.removeById(itemId);
 
       setWishlist((prev) => prev.filter((item) => item.id !== itemId));
     } catch (err) {
@@ -139,26 +116,14 @@ export default function WishlistScreen() {
       }
 
       // Check if already in cart
-      const { data: existing } = await supabase
-        .from('cart_items')
-        .select('id, quantity')
-        .eq('user_id', user.id)
-        .eq('product_id', item.product.id)
-        .single();
+      const existing = await CartService.getExistingCartItem(user.id, item.product.id);
 
       if (existing) {
         // Update quantity
-        await supabase
-          .from('cart_items')
-          .update({ quantity: existing.quantity + 1 })
-          .eq('id', existing.id);
+        await CartService.updateQuantity(existing.id, existing.quantity + 1);
       } else {
         // Add new item
-        await supabase.from('cart_items').insert({
-          user_id: user.id,
-          product_id: item.product.id,
-          quantity: 1,
-        });
+        await CartService.addItem(user.id, item.product.id, 1);
       }
 
       alert(`Added ${item.product.name} to cart!`);

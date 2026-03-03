@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { PaymentMethodService } from '@/services/paymentMethods';
 import {
   CreditCard,
   Plus,
@@ -67,16 +68,9 @@ export default function PaymentScreen() {
 
       setUserEmail(user.email || '');
 
-      const { data, error: fetchError } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+      const data = await PaymentMethodService.getByUser(user.id);
 
-      if (fetchError) throw fetchError;
-
-      setPaymentMethods(data || []);
+      setPaymentMethods(data);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to load payment methods'
@@ -155,12 +149,7 @@ export default function PaymentScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error: deleteError } = await supabase
-                .from('payment_methods')
-                .update({ is_active: false })
-                .eq('id', id);
-
-              if (deleteError) throw deleteError;
+              await PaymentMethodService.deactivate(id);
 
               setPaymentMethods((prev) =>
                 prev.filter((item) => item.id !== id)
@@ -187,18 +176,10 @@ export default function PaymentScreen() {
       if (!user) return;
 
       // Clear all defaults first
-      await supabase
-        .from('payment_methods')
-        .update({ is_default: false })
-        .eq('user_id', user.id);
+      await PaymentMethodService.clearDefaults(user.id);
 
       // Set new default
-      const { error: updateError } = await supabase
-        .from('payment_methods')
-        .update({ is_default: true })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
+      await PaymentMethodService.setDefault(id);
 
       fetchPaymentMethods();
     } catch (err) {

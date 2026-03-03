@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { ProductService } from '@/services/products';
 
 interface Product {
   id: string;
@@ -49,31 +48,16 @@ export const useVendorProducts = (vendorId: string): UseVendorProductsReturn => 
 
       setError(null);
 
-      // Fetch all products for this vendor
-      const { data, error: fetchError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('vendor_id', vendorId)
-        .eq('is_available', true)
-        .eq('status', 'approved')
-        .order('category')
-        .order('name');
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      const fetchedProducts = (data || []) as Product[];
+      const data = await ProductService.getByVendor(vendorId);
+      const fetchedProducts = data as Product[];
       setProducts(fetchedProducts);
 
-      // Extract unique categories
       const uniqueCategories = [
         'All',
         ...Array.from(new Set(fetchedProducts.map((p) => p.category).filter(Boolean))),
       ];
       setCategories(uniqueCategories);
 
-      // Group products by category
       const grouped = fetchedProducts.reduce((acc, product) => {
         const cat = product.category || 'Other';
         if (!acc[cat]) {
@@ -83,13 +67,11 @@ export const useVendorProducts = (vendorId: string): UseVendorProductsReturn => 
         return acc;
       }, {} as { [key: string]: Product[] });
 
-      // Add "All" category with all products
       grouped['All'] = fetchedProducts;
-
       setProductsByCategory(grouped);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
-      console.error('❌ Error fetching vendor products:', errorMessage);
+      console.error('Error fetching vendor products:', errorMessage);
       setError(errorMessage);
     } finally {
       setLoading(false);

@@ -1,5 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
-import { supabase } from '@/lib/supabase';
+import { AddressService } from '@/services/addresses';
 import { useUserStore } from '@/stores/useUserStore';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -42,17 +42,15 @@ export default function AddressForm({ onSuccess, initialData }: AddressFormProps
 
         try {
             setLoading(true);
-            const { error } = await supabase.from('addresses').insert({
+            await AddressService.create({
                 user_id: profile.id,
                 street: formData.street,
                 city: formData.city,
                 state: formData.state,
-                zip: formData.zip,
+                country: '',
+                postal_code: formData.zip || null,
                 label: formData.label,
-                is_default: formData.is_default,
             });
-
-            if (error) throw error;
 
             Alert.alert('Success', 'Address saved successfully');
             if (onSuccess) onSuccess();

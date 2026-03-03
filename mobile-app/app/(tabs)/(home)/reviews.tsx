@@ -14,7 +14,7 @@ import { ArrowLeft, Star } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import ReviewCard from '@/components/ReviewCard';
 import { useVendorReviews } from '@/hooks/useVendorReviews';
-import { supabase } from '@/lib/supabase';
+import { ReviewService } from '@/services/reviews';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function ReviewsScreen() {
@@ -52,26 +52,14 @@ export default function ReviewsScreen() {
 
     try {
       // Check if user has already voted
-      const { data: existingVote } = await supabase
-        .from('review_votes')
-        .select('*')
-        .eq('review_id', reviewId)
-        .eq('user_id', user.id)
-        .single();
+      const existingVote = await ReviewService.getReviewVote(reviewId, user.id);
 
       if (existingVote) {
         // Toggle vote
-        await supabase
-          .from('review_votes')
-          .update({ is_helpful: !existingVote.is_helpful })
-          .eq('id', existingVote.id);
+        await ReviewService.updateReviewVote(existingVote.id, !existingVote.is_helpful);
       } else {
         // Create new vote
-        await supabase.from('review_votes').insert({
-          review_id: reviewId,
-          user_id: user.id,
-          is_helpful: true,
-        });
+        await ReviewService.createReviewVote(reviewId, user.id, true);
       }
 
       // Refresh reviews to show updated counts

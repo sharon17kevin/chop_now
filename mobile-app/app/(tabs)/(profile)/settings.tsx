@@ -13,6 +13,7 @@ import { Sun, Moon, Smartphone, HelpCircle, Bell } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/lib/supabase';
+import { ProfileService } from '@/services/profiles';
 import AppHeader from '@/components/AppHeader';
 
 export default function SettingsScreen() {
@@ -44,25 +45,12 @@ export default function SettingsScreen() {
       setUserId(user.id);
       console.log('Fetching push notification setting for user:', user.id);
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('push_notifications_enabled')
-        .eq('id', user.id)
-        .single();
+      const pushEnabled = await ProfileService.getPushNotificationSetting(user.id);
 
-      console.log('Profile data:', profile);
+      console.log('Push notifications enabled:', pushEnabled);
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        throw error;
-      }
-
-      if (profile?.push_notifications_enabled !== undefined) {
-        setPushNotificationsEnabled(profile.push_notifications_enabled);
-        console.log(
-          'Push notifications enabled:',
-          profile.push_notifications_enabled
-        );
+      if (pushEnabled !== undefined) {
+        setPushNotificationsEnabled(pushEnabled);
       }
     } catch (err) {
       console.error('Error fetching notification preferences:', err);
@@ -84,16 +72,9 @@ export default function SettingsScreen() {
     setPushNotificationsEnabled(value);
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ push_notifications_enabled: value })
-        .eq('id', userId)
-        .select();
+      const data = await ProfileService.updatePushNotificationSetting(userId, value);
 
-      console.log('Update result:', { data, error });
-
-      if (error) throw error;
-
+      console.log('Update result:', data);
       console.log('Push notification setting updated successfully');
     } catch (err) {
       console.error('Error updating push notifications:', err);

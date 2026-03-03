@@ -1,5 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
-import { supabase } from '@/lib/supabase';
+import { VendorApplicationService } from '@/services/vendorApplications';
 import { useUserStore } from '@/stores/useUserStore';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Clock, Store } from 'lucide-react-native';
@@ -58,16 +58,9 @@ export default function VendorReg() {
       
       if (!profile?.id) return;
 
-      const { data, error } = await supabase
-        .from('vendor_applications')
-        .select('*')
-        .eq('user_id', profile.id)
-        .in('status', ['pending', 'approved'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      const data = await VendorApplicationService.checkExisting(profile.id);
 
-      if (data && !error) {
+      if (data) {
         setExistingApplication(data);
       }
     } catch (error) {
@@ -123,7 +116,7 @@ export default function VendorReg() {
         .filter((zone) => zone.length > 0);
 
       // Insert vendor application for admin review
-      const { error } = await supabase.from('vendor_applications').insert({
+      await VendorApplicationService.submit({
         user_id: profile.id,
         farm_name: formData.farmName,
         farm_location: formData.farmLocation,
@@ -137,8 +130,6 @@ export default function VendorReg() {
         business_hours: formData.businessHours,
         status: 'pending',
       });
-
-      if (error) throw error;
 
       Alert.alert(
         'Application Submitted! ✅',

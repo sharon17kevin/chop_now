@@ -1,5 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
-import { supabase } from '@/lib/supabase';
+import { AdminService } from '@/services/admin';
 import { useUserStore } from '@/stores/useUserStore';
 import { useRouter } from 'expo-router';
 import {
@@ -80,21 +80,7 @@ export default function VendorReview() {
     try {
       console.log('Fetching vendor applications...');
 
-      const { data, error } = await supabase
-        .from('vendor_applications')
-        .select(
-          `
-          *,
-          profiles:user_id(full_name, email)
-        `
-        )
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+      const data = await AdminService.getPendingVendorApplications();
 
       console.log('Applications fetched:', data?.length || 0);
       setApplications(data || []);
@@ -125,15 +111,10 @@ export default function VendorReview() {
             try {
               setProcessing(true);
 
-              const { error } = await supabase.rpc(
-                'approve_vendor_application',
-                {
-                  application_id: application.id,
-                  admin_id: profile?.id,
-                }
+              await AdminService.approveVendorApplication(
+                application.id,
+                profile?.id || '',
               );
-
-              if (error) throw error;
 
               Alert.alert('Success', 'Vendor application approved!');
               fetchApplications(); // Refresh list
@@ -161,13 +142,11 @@ export default function VendorReview() {
     try {
       setProcessing(true);
 
-      const { error } = await supabase.rpc('reject_vendor_application', {
-        application_id: selectedApp.id,
-        admin_id: profile?.id,
-        rejection_reason: rejectionReason,
-      });
-
-      if (error) throw error;
+      await AdminService.rejectVendorApplication(
+        selectedApp.id,
+        profile?.id || '',
+        rejectionReason,
+      );
 
       Alert.alert('Application Rejected', 'User has been notified.');
       setShowRejectModal(false);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { ReviewService } from '@/services/reviews';
 
 export interface Review {
   id: string;
@@ -16,8 +16,6 @@ export interface Review {
   vendor_response_at: string | null;
   created_at: string;
   updated_at: string;
-
-  // Joined data
   reviewer_name: string;
   reviewer_image: string | null;
 }
@@ -25,7 +23,7 @@ export interface Review {
 export const useVendorReviews = (
   vendorId: string,
   options?: {
-    rating?: number; // Filter by specific rating (1-5)
+    rating?: number;
     limit?: number;
     offset?: number;
   }
@@ -51,39 +49,16 @@ export const useVendorReviews = (
       const limit = options?.limit || 20;
       const offset = options?.offset || 0;
 
-      let query = supabase
-        .from('reviews')
-        .select(
-          `
-          *,
-          profiles:user_id (
-            full_name,
-            profile_image
-          )
-        `,
-          { count: 'exact' }
-        )
-        .eq('vendor_id', vendorId)
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-
-      // Filter by rating if specified
-      if (options?.rating) {
-        query = query.eq('rating', options.rating);
-      }
-
-      const { data, error: fetchError, count } = await query;
-
-      if (fetchError) throw fetchError;
-
-      console.log('Raw review data:', JSON.stringify(data?.[0], null, 2)); // Debug log
+      const { data, count } = await ReviewService.getVendorReviews(vendorId, {
+        rating: options?.rating,
+        limit,
+        offset,
+      });
 
       // Transform data to match Review interface
-      const transformedReviews: Review[] = (data || []).map((review: any) => {
-        // Handle the joined profiles data - it might be nested differently
+      const transformedReviews: Review[] = data.map((review: any) => {
         const profileData = review.profiles || review.user_id || {};
-        
+
         return {
           ...review,
           reviewer_name: profileData?.full_name || 'Anonymous',
@@ -91,11 +66,9 @@ export const useVendorReviews = (
         };
       });
 
-      console.log('Transformed review:', JSON.stringify(transformedReviews[0], null, 2)); // Debug log
-
       setReviews(transformedReviews);
-      setTotalCount(count || 0);
-      setHasMore(count ? offset + limit < count : false);
+      setTotalCount(count);
+      setHasMore(offset + limit < count);
     } catch (err: any) {
       console.error('Error fetching vendor reviews:', err);
       setError(err.message);
@@ -106,9 +79,6 @@ export const useVendorReviews = (
 
   const loadMore = () => {
     if (hasMore && !loading) {
-      const currentOffset = options?.offset || 0;
-      const limit = options?.limit || 20;
-      // You would need to pass this back to the parent component to update options
       fetchReviews();
     }
   };

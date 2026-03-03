@@ -1,6 +1,6 @@
 import AppHeader from '@/components/AppHeader';
 import { useTheme } from '@/hooks/useTheme';
-import { supabase } from '@/lib/supabase';
+import { OrderService } from '@/services/orders';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import {
@@ -67,30 +67,7 @@ export default function OrderDetailScreen() {
   } = useQuery({
     queryKey: ['order', orderId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(
-          `
-          *,
-          order_items (
-            id,
-            product_id,
-            quantity,
-            price,
-            products (
-              name
-            )
-          ),
-          profiles:user_id (
-            full_name,
-            phone
-          )
-        `
-        )
-        .eq('id', orderId)
-        .single();
-
-      if (error) throw error;
+      const data = await OrderService.getOrderDetail(orderId!);
       return data as Order;
     },
     enabled: !!orderId,
@@ -101,21 +78,10 @@ export default function OrderDetailScreen() {
     mutationFn: async (newStatus: string) => {
       // If marking as delivered, use special function to schedule escrow release
       if (newStatus === 'delivered') {
-        const { data, error } = await supabase.rpc('set_order_delivered', {
-          p_order_id: orderId,
-          p_release_delay_hours: 24,
-        });
-
-        if (error) throw error;
-        return data;
+        return await OrderService.setOrderDelivered(orderId!);
       } else {
         // Regular status update
-        const { error } = await supabase
-          .from('orders')
-          .update({ status: newStatus })
-          .eq('id', orderId);
-
-        if (error) throw error;
+        await OrderService.updateOrderStatus(orderId!, newStatus);
       }
     },
     onSuccess: (_, newStatus) => {

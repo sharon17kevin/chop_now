@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
-import { supabase } from '@/lib/supabase';
 import { useUserStore } from '@/stores/useUserStore';
+import { CartService } from '@/services/cart';
 
 interface AddToCartOptions {
   productId: string;
@@ -37,27 +37,12 @@ export function useAddToCart() {
         return false;
       }
 
-      // Check if already in cart
-      const { data: existing } = await supabase
-        .from('cart_items')
-        .select('id, quantity')
-        .eq('user_id', userId)
-        .eq('product_id', productId)
-        .single();
+      const existing = await CartService.getExistingCartItem(userId, productId);
 
       if (existing) {
-        // Update quantity
-        await supabase
-          .from('cart_items')
-          .update({ quantity: existing.quantity + quantity })
-          .eq('id', existing.id);
+        await CartService.updateQuantity(existing.id, existing.quantity + quantity);
       } else {
-        // Add new item
-        await supabase.from('cart_items').insert({
-          user_id: userId,
-          product_id: productId,
-          quantity: quantity,
-        });
+        await CartService.addItem(userId, productId, quantity);
       }
 
       Alert.alert('Success', `Added ${productName} to cart!`);

@@ -29,7 +29,7 @@ import {
 import { useTheme } from '@/hooks/useTheme';
 import { useVendorProducts } from '@/hooks/useVendorProducts';
 import ProductCard from '@/components/ProductCard';
-import { supabase } from '@/lib/supabase';
+import { CartService } from '@/services/cart';
 import { useUserStore } from '@/stores/useUserStore';
 import { useWishlist } from '@/hooks/useWishlist';
 import { isDiscountActive } from '@/stores/useProductStore';
@@ -127,26 +127,14 @@ export default function VendorPage() {
       }
 
       // Check if already in cart
-      const { data: existing } = await supabase
-        .from('cart_items')
-        .select('id, quantity')
-        .eq('user_id', userId)
-        .eq('product_id', selectedProduct.id)
-        .single();
+      const existing = await CartService.getExistingCartItem(userId, selectedProduct.id);
 
       if (existing) {
         // Update quantity
-        await supabase
-          .from('cart_items')
-          .update({ quantity: existing.quantity + quantity })
-          .eq('id', existing.id);
+        await CartService.updateQuantity(existing.id, existing.quantity + quantity);
       } else {
         // Add new item
-        await supabase.from('cart_items').insert({
-          user_id: userId,
-          product_id: selectedProduct.id,
-          quantity: quantity,
-        });
+        await CartService.addItem(userId, selectedProduct.id, quantity);
       }
 
       alert(`Added ${quantity} ${selectedProduct.name} to cart!`);

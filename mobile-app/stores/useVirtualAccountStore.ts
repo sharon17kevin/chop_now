@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { VirtualAccountService } from '@/services/virtualAccounts';
 
 interface VirtualAccount {
   id: string;
@@ -16,8 +16,7 @@ interface VirtualAccountStore {
   account: VirtualAccount | null;
   isLoading: boolean;
   error: string | null;
-  
-  // Actions
+
   fetchAccount: (userId: string) => Promise<void>;
   setAccount: (account: VirtualAccount) => void;
   clearAccount: () => void;
@@ -37,15 +36,7 @@ export const useVirtualAccountStore = create<VirtualAccountStore>((set) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const { data, error } = await supabase
-        .from('virtual_accounts')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (error) throw error;
-
+      const data = await VirtualAccountService.getByUser(userId);
       set({ account: data, isLoading: false });
     } catch (err) {
       console.error('Error fetching virtual account:', err);

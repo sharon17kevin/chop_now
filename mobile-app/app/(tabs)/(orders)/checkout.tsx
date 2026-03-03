@@ -2,6 +2,9 @@ import AppHeader from '@/components/AppHeader';
 import { useTheme } from '@/hooks/useTheme';
 import { useUserStore } from '@/stores/useUserStore';
 import { supabase } from '@/lib/supabase';
+import { CartService } from '@/services/cart';
+import { OrderService } from '@/services/orders';
+import { AdminService } from '@/services/admin';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -83,30 +86,7 @@ export default function CheckoutScreen() {
       }
 
       // Fetch cart items with product details
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select(
-          `
-          id,
-          product_id,
-          quantity,
-          products:product_id (
-            id,
-            name,
-            price,
-            image_url,
-            unit,
-            vendor_id,
-            profiles:vendor_id (full_name)
-          )
-        `,
-        )
-        .eq('user_id', profile.id);
-
-      if (error) {
-        console.error('Error fetching cart items:', error);
-        throw error;
-      }
+      const data = await CartService.getCartItems(profile.id);
 
       setItems((data || []) as any);
     } catch (error) {
@@ -127,21 +107,12 @@ export default function CheckoutScreen() {
     setPromoError('');
 
     try {
-      const { data, error } = await supabase.rpc('validate_promo_code', {
-        p_code: promoCode.toUpperCase().trim(),
-        p_user_id: profile?.id || '',
-        p_order_total: subtotal,
-        p_vendor_id: null, // Set to null for platform-wide codes, or items[0]?.vendor_id for vendor-specific
-      });
-
-      if (error) {
-        console.error('Error validating promo code:', error);
-        setPromoError('Failed to validate promo code');
-        return;
-      }
-
-      // Parse the JSON result
-      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      const result = await AdminService.validatePromoCode(
+        promoCode.toUpperCase().trim(),
+        profile?.id || '',
+        subtotal,
+        null, // Set to null for platform-wide codes, or items[0]?.vendor_id for vendor-specific
+      );
 
       if (!result.valid) {
         setPromoError(result.error || 'Invalid promo code');
@@ -179,12 +150,7 @@ export default function CheckoutScreen() {
     }
 
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .update({ quantity: newQuantity })
-        .eq('id', cartItemId);
-
-      if (error) throw error;
+      await CartService.updateQuantity(cartItemId, newQuantity);
 
       // Update local state
       setItems(
@@ -200,12 +166,7 @@ export default function CheckoutScreen() {
 
   const removeItem = async (cartItemId: string) => {
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('id', cartItemId);
-
-      if (error) throw error;
+      await CartService.removeItem(cartItemId);
 
       // Update local state
       setItems(items.filter((item) => item.id !== cartItemId));
@@ -354,30 +315,21 @@ export default function CheckoutScreen() {
         const vendorPayout = Math.round((orderTotal - platformFee) * 100) / 100;
 
         // Create the order first with payment tracking and escrow
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .insert({
-            user_id: profile?.id,
+        let order;
+        try {
+          order = await OrderService.createOrderWithEscrow({
+            user_id: profile?.id || '',
             vendor_id: vendorId,
             total: orderTotal,
             payment_reference: reference,
-            payment_status: 'paid',
-            payment_amount: orderTotal,
-            status: 'pending',
             delivery_address: 'Default address', // TODO: Add actual delivery address
             promo_code_id: promoData?.id || null,
             promo_discount: promoData?.discount || 0,
-            // Escrow fields
-            escrow_status: 'held', // Funds locked until delivery + 24hrs
             platform_fee_percentage: platformFeePercentage,
             platform_fee_amount: platformFee,
             vendor_payout_amount: vendorPayout,
-            payout_status: 'on_hold', // Will change to 'pending' after release
-          })
-          .select()
-          .single();
-
-        if (orderError) {
+          });
+        } catch (orderError) {
           console.error('Error creating order:', orderError);
           continue;
         }
@@ -385,20 +337,12 @@ export default function CheckoutScreen() {
         // Record promo code usage if a promo was applied
         if (promoData && order) {
           try {
-            const { error: promoUsageError } = await supabase.rpc(
-              'record_promo_usage',
-              {
-                p_promo_code_id: promoData.id,
-                p_user_id: profile?.id,
-                p_order_id: order.id,
-                p_discount_amount: promoData.discount,
-              },
+            await AdminService.recordPromoUsage(
+              promoData.id,
+              profile?.id || '',
+              order.id,
+              promoData.discount,
             );
-
-            if (promoUsageError) {
-              console.error('Error recording promo usage:', promoUsageError);
-              // Don't fail the order if promo recording fails
-            }
           } catch (promoErr) {
             console.error('Error in promo usage recording:', promoErr);
           }
@@ -412,11 +356,9 @@ export default function CheckoutScreen() {
           price: item.products?.price || 0,
         }));
 
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItemsToInsert);
-
-        if (itemsError) {
+        try {
+          await OrderService.createOrderItems(orderItemsToInsert);
+        } catch (itemsError) {
           console.error('Error creating order items:', itemsError);
           // Continue even if items creation fails
         }
@@ -465,12 +407,11 @@ export default function CheckoutScreen() {
       }
 
       // Clear cart
-      const { error: clearError } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', profile?.id);
-
-      if (clearError) console.error('Failed to clear cart:', clearError);
+      try {
+        await CartService.clearCart(profile?.id || '');
+      } catch (clearError) {
+        console.error('Failed to clear cart:', clearError);
+      }
 
       // Show success and navigate
       Alert.alert(

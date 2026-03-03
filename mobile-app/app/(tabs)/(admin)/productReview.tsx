@@ -1,5 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
-import { supabase } from '@/lib/supabase';
+import { AdminService } from '@/services/admin';
 import { useUserStore } from '@/stores/useUserStore';
 import { useRouter } from 'expo-router';
 import {
@@ -92,24 +92,7 @@ export default function ProductReview() {
 
   const fetchProducts = async () => {
     try {
-      let query = supabase
-        .from('products')
-        .select(
-          `
-          *,
-          profiles:vendor_id(full_name, business_name)
-        `
-        )
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      if (categoryFilter !== 'all') {
-        query = query.eq('category', categoryFilter);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const data = await AdminService.getPendingProducts(categoryFilter);
 
       setProducts(data || []);
     } catch (error: any) {
@@ -139,12 +122,10 @@ export default function ProductReview() {
             try {
               setProcessing(true);
 
-              const { error } = await supabase.rpc('approve_product', {
-                product_id: product.id,
-                admin_id: profile?.id,
-              });
-
-              if (error) throw error;
+              await AdminService.approveProduct(
+                product.id,
+                profile?.id || '',
+              );
 
               Alert.alert('Success', 'Product approved!');
               fetchProducts();
@@ -172,13 +153,11 @@ export default function ProductReview() {
     try {
       setProcessing(true);
 
-      const { error } = await supabase.rpc('reject_product', {
-        product_id: selectedProduct.id,
-        admin_id: profile?.id,
-        rejection_reason: rejectionReason,
-      });
-
-      if (error) throw error;
+      await AdminService.rejectProduct(
+        selectedProduct.id,
+        profile?.id || '',
+        rejectionReason,
+      );
 
       Alert.alert('Product Rejected', 'Vendor has been notified.');
       setShowRejectModal(false);

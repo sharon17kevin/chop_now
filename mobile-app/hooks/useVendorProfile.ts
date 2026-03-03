@@ -1,20 +1,15 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { ProfileService } from '@/services/profiles';
 
 export interface VendorProfile {
-  // Core fields
   id: string;
   email: string;
   full_name: string;
   role: string;
   created_at: string;
   updated_at: string;
-
-  // Contact fields
   phone: string | null;
   business_phone: string | null;
-  
-  // Location fields
   address: string | null;
   city: string | null;
   state: string | null;
@@ -22,27 +17,19 @@ export interface VendorProfile {
   postal_code: string | null;
   latitude: number | null;
   longitude: number | null;
-
-  // Profile fields
   profile_image: string | null;
   bio: string | null;
   date_of_birth: string | null;
-
-  // Vendor-specific fields
   farm_name: string | null;
   farm_location: string | null;
   farm_description: string | null;
   verified: boolean;
   business_hours: BusinessHours | null;
   delivery_zones: string[];
-
-  // Statistics
   rating: number;
   total_orders: number;
   total_sales: number;
   favorite_count: number;
-
-  // Settings
   notification_preferences: {
     push: boolean;
     email: boolean;
@@ -80,13 +67,7 @@ export const useVendorProfile = (vendorId: string) => {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', vendorId)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
+      const data = await ProfileService.getVendorProfile(vendorId);
 
       if (!data) {
         setError('Vendor profile not found');

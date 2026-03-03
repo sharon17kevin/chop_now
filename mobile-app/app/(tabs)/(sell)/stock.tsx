@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { ProductService } from '@/services/products';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { isDiscountActive } from '@/stores/useProductStore';
@@ -58,16 +58,7 @@ export default function StockManagementScreen() {
     queryKey: ['vendor-stock', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
-
-      const { data, error } = await supabase
-        .from('products')
-        .select(
-          'id, name, category, stock, price, unit, is_available, image_url, discount_percentage, original_price, is_on_sale, sale_ends_at',
-        )
-        .eq('vendor_id', user.id)
-        .order('stock', { ascending: true });
-
-      if (error) throw error;
+      const data = await ProductService.getVendorStock(user.id);
       return data as Product[];
     },
     enabled: !!user?.id,
@@ -82,12 +73,7 @@ export default function StockManagementScreen() {
       productId: string;
       newStock: number;
     }) => {
-      const { error } = await supabase
-        .from('products')
-        .update({ stock: newStock, updated_at: new Date().toISOString() })
-        .eq('id', productId);
-
-      if (error) throw error;
+      await ProductService.updateStock(productId, newStock);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-stock'] });

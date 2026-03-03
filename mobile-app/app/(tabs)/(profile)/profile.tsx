@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { supabase } from '@/lib/supabase';
+import { ProfileService } from '@/services/profiles';
 import {
   User,
   Save,
@@ -97,9 +97,7 @@ export default function ProfileScreen() {
         return;
       }
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
+      await ProfileService.updateProfile(user.id, {
           full_name: profile.full_name,
           email: profile.email,
           phone: profile.phone,
@@ -110,11 +108,7 @@ export default function ProfileScreen() {
           farm_location: profile.farm_location,
           farm_description: profile.farm_description,
           business_phone: profile.business_phone,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
+        });
 
       // Refetch profile from database to ensure sync
       await fetchProfile(user.id);
@@ -161,15 +155,9 @@ export default function ProfileScreen() {
         setProfile({ ...profile, profile_image: uploadResult.url });
 
         // Auto-save to database
-        const { error } = await supabase
-          .from('profiles')
-          .update({
+        await ProfileService.updateProfile(user.id, {
             profile_image: uploadResult.url,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
-
-        if (error) throw error;
+        });
 
         // Refetch to sync
         await fetchProfile(user.id);
@@ -215,15 +203,9 @@ export default function ProfileScreen() {
         setProfile({ ...profile, banner_image: uploadResult.url });
 
         // Auto-save to database
-        const { error } = await supabase
-          .from('profiles')
-          .update({
+        await ProfileService.updateProfile(user.id, {
             banner_image: uploadResult.url,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
-
-        if (error) throw error;
+        });
 
         // Refetch to sync
         await fetchProfile(user.id);

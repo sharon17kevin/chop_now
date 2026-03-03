@@ -4,7 +4,7 @@ import Indicator from '@/components/common/Indicator';
 import { miniCardsData } from '@/data/mockData';
 import { useTheme } from '@/hooks/useTheme';
 import { useUserStore } from '@/stores/useUserStore';
-import { supabase } from '@/lib/supabase';
+import { CartService } from '@/services/cart';
 import { typography } from '@/styles/typography';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Clock, Heart, Share, Star } from 'lucide-react-native';
@@ -97,29 +97,11 @@ export default function ItemInfoScreen() {
       // const vendorId = 'some-vendor-uuid';   // Will be fetched from product data
 
       // Check if item already in cart
-      const { data: existingItem, error: fetchError } = await supabase
-        .from('cart_items')
-        .select('id, quantity')
-        .eq('user_id', profile.id)
-        .eq('product_id', productId)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('Error checking cart:', fetchError);
-        throw fetchError;
-      }
+      const existingItem = await CartService.getExistingCartItemMaybe(profile.id, productId);
 
       if (existingItem) {
         // Update existing cart item quantity
-        const { error: updateError } = await supabase
-          .from('cart_items')
-          .update({ quantity: existingItem.quantity + qty })
-          .eq('id', existingItem.id);
-
-        if (updateError) {
-          console.error('Error updating cart:', updateError);
-          throw updateError;
-        }
+        await CartService.updateQuantity(existingItem.id, existingItem.quantity + qty);
 
         Alert.alert(
           'Cart Updated',
@@ -134,18 +116,7 @@ export default function ItemInfoScreen() {
         );
       } else {
         // Add new cart item
-        const { error: insertError } = await supabase
-          .from('cart_items')
-          .insert({
-            user_id: profile.id,
-            product_id: productId,
-            quantity: qty,
-          });
-
-        if (insertError) {
-          console.error('Error adding to cart:', insertError);
-          throw insertError;
-        }
+        await CartService.addItem(profile.id, productId, qty);
 
         Alert.alert('Added to Cart', `${qty} item(s) added successfully!`, [
           { text: 'Continue Shopping', style: 'cancel' },

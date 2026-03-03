@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { BannerService } from '@/services/banners';
 
 export interface Banner {
   id: string;
@@ -23,7 +23,6 @@ export interface Banner {
 export function useBanners() {
   const queryClient = useQueryClient();
 
-  // Fetch active banners
   const {
     data: banners = [],
     isLoading,
@@ -31,78 +30,17 @@ export function useBanners() {
     refetch,
   } = useQuery({
     queryKey: ['banners'],
-    queryFn: async () => {
-      const now = new Date().toISOString();
-
-      const { data, error } = await supabase
-        .from('banners')
-        .select('*')
-        .eq('is_active', true)
-        .lte('start_date', now)
-        .or(`end_date.is.null,end_date.gte.${now}`)
-        .order('display_order', { ascending: true });
-
-      if (error) throw error;
-
-      return data as Banner[];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryFn: () => BannerService.getActiveBanners() as Promise<Banner[]>,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Increment impressions
   const incrementImpressions = useMutation({
-    mutationFn: async (bannerId: string) => {
-      const { error } = await supabase.rpc('increment_banner_impressions', {
-        banner_id: bannerId,
-      });
-
-      // Fallback if function doesn't exist
-      if (error && error.code === '42883') {
-        const { data: banner } = await supabase
-          .from('banners')
-          .select('impressions')
-          .eq('id', bannerId)
-          .single();
-
-        if (banner) {
-          await supabase
-            .from('banners')
-            .update({ impressions: (banner.impressions || 0) + 1 })
-            .eq('id', bannerId);
-        }
-      } else if (error) {
-        throw error;
-      }
-    },
+    mutationFn: (bannerId: string) => BannerService.incrementImpressions(bannerId),
   });
 
-  // Increment clicks
   const incrementClicks = useMutation({
-    mutationFn: async (bannerId: string) => {
-      const { error } = await supabase.rpc('increment_banner_clicks', {
-        banner_id: bannerId,
-      });
-
-      // Fallback if function doesn't exist
-      if (error && error.code === '42883') {
-        const { data: banner } = await supabase
-          .from('banners')
-          .select('clicks')
-          .eq('id', bannerId)
-          .single();
-
-        if (banner) {
-          await supabase
-            .from('banners')
-            .update({ clicks: (banner.clicks || 0) + 1 })
-            .eq('id', bannerId);
-        }
-      } else if (error) {
-        throw error;
-      }
-    },
+    mutationFn: (bannerId: string) => BannerService.incrementClicks(bannerId),
     onSuccess: () => {
-      // Optionally refetch banners to update counts
       queryClient.invalidateQueries({ queryKey: ['banners'] });
     },
   });

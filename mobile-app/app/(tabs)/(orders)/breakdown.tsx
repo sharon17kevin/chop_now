@@ -26,7 +26,7 @@ import {
   MessageSquare,
 } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { OrderService } from '@/services/orders';
 
 export default function Breakdown() {
   const { colors } = useTheme();
@@ -43,35 +43,7 @@ export default function Breakdown() {
   // Fetch order details with items
   const { data: orderDetails, isLoading } = useQuery({
     queryKey: ['order-details', orderId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(
-          `
-          *,
-          order_items (
-            id,
-            quantity,
-            price,
-            products (
-              id,
-              name,
-              image_url,
-              unit
-            )
-          ),
-          profiles:vendor_id (
-            full_name,
-            farm_name
-          )
-        `,
-        )
-        .eq('id', orderId)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => OrderService.getOrderDetailsForBreakdown(orderId),
     enabled: !!orderId,
   });
 

@@ -1,5 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
-import { supabase } from '@/lib/supabase';
+import { AdminService } from '@/services/admin';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -78,13 +78,9 @@ export default function Analysis() {
 
   const fetchAnalytics = async () => {
     try {
-      // Fetch total orders and revenue
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('total, created_at, status');
+      const rawData = await AdminService.getAnalyticsData();
 
-      if (ordersError) throw ordersError;
-
+      const orders = rawData.orders;
       const totalRevenue =
         orders?.reduce((sum, order) => sum + Number(order.total), 0) || 0;
       const totalOrders = orders?.length || 0;
@@ -110,23 +106,6 @@ export default function Analysis() {
           ? ((recentOrders - previousOrders) / previousOrders) * 100
           : 0;
 
-      // Fetch active vendors
-      const { count: vendorsCount, error: vendorsError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'vendor')
-        .eq('verified', true);
-
-      if (vendorsError) throw vendorsError;
-
-      // Fetch total products
-      const { count: productsCount, error: productsError } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_available', true);
-
-      if (productsError) throw productsError;
-
       // Fetch orders by status
       const ordersByStatus = [
         {
@@ -151,18 +130,9 @@ export default function Analysis() {
         },
       ];
 
-      // Fetch top vendors by sales
-      const { data: topVendorsData, error: topVendorsError } = await supabase
-        .from('orders')
-        .select('vendor_id, total, profiles!orders_vendor_id_fkey(farm_name)')
-        .order('total', { ascending: false })
-        .limit(5);
-
-      if (topVendorsError) throw topVendorsError;
-
       // Group by vendor
       const vendorMap = new Map();
-      topVendorsData?.forEach((order: any) => {
+      rawData.topVendorsData?.forEach((order: any) => {
         const vendorId = order.vendor_id;
         if (!vendorMap.has(vendorId)) {
           vendorMap.set(vendorId, {
@@ -181,18 +151,9 @@ export default function Analysis() {
         .sort((a, b) => b.total_sales - a.total_sales)
         .slice(0, 5);
 
-      // Fetch top products
-      const { data: topProductsData, error: topProductsError } = await supabase
-        .from('order_items')
-        .select('product_id, quantity, price, products(name)')
-        .order('quantity', { ascending: false })
-        .limit(100);
-
-      if (topProductsError) throw topProductsError;
-
       // Group by product
       const productMap = new Map();
-      topProductsData?.forEach((item: any) => {
+      rawData.topProductsData?.forEach((item: any) => {
         const productId = item.product_id;
         if (!productMap.has(productId)) {
           productMap.set(productId, {
@@ -216,9 +177,9 @@ export default function Analysis() {
         revenueGrowth: ordersGrowth, // Using orders growth as proxy
         totalOrders,
         ordersGrowth,
-        activeVendors: vendorsCount || 0,
+        activeVendors: rawData.vendorsCount,
         vendorsGrowth: 0, // Would need historical data
-        totalProducts: productsCount || 0,
+        totalProducts: rawData.productsCount,
         productsGrowth: 0, // Would need historical data
         averageOrderValue,
         topVendors,

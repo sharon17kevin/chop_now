@@ -1,5 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
-import { supabase } from '@/lib/supabase';
+import { AdminService } from '@/services/admin';
 import { useUserStore } from '@/stores/useUserStore';
 import { useRouter } from 'expo-router';
 import {
@@ -58,59 +58,8 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      // Fetch vendor applications stats
-      const { data: applications, error: appError } = await supabase
-        .from('vendor_applications')
-        .select('status');
-
-      if (appError) throw appError;
-
-      const pending =
-        applications?.filter((a) => a.status === 'pending').length || 0;
-      const approved =
-        applications?.filter((a) => a.status === 'approved').length || 0;
-      const rejected =
-        applications?.filter((a) => a.status === 'rejected').length || 0;
-
-      // Fetch total products
-      const { count: productsCount, error: productsError } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-
-      if (productsError) throw productsError;
-
-      // Fetch pending products
-      const { count: pendingProductsCount, error: pendingProductsError } =
-        await supabase
-          .from('products')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending');
-
-      if (pendingProductsError) throw pendingProductsError;
-
-      // Fetch total orders
-      const { count: ordersCount, error: ordersError } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true });
-
-      if (ordersError) throw ordersError;
-
-      // Fetch total users
-      const { count: usersCount, error: usersError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      if (usersError) throw usersError;
-
-      setStats({
-        pendingApplications: pending,
-        approvedVendors: approved,
-        rejectedApplications: rejected,
-        totalProducts: productsCount || 0,
-        pendingProducts: pendingProductsCount || 0,
-        totalOrders: ordersCount || 0,
-        totalUsers: usersCount || 0,
-      });
+      const data = await AdminService.getDashboardStats();
+      setStats(data);
     } catch (error: any) {
       console.error('Error fetching dashboard stats:', error);
     } finally {

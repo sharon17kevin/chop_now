@@ -27,6 +27,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Bell, MapPin, Search, Star } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
+import { NotificationService } from '@/services/notifications';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dimensions,
@@ -140,13 +141,8 @@ export default function HomeScreen() {
       } = await supabase.auth.getUser();
 
       if (user) {
-        const { count } = await supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('is_read', false);
-
-        setUnreadNotifications(count || 0);
+        const count = await NotificationService.getUnreadCount(user.id);
+        setUnreadNotifications(count);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);

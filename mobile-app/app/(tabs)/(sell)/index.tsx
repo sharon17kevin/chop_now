@@ -26,7 +26,8 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { supabase } from '@/lib/supabase';
+import { OrderService } from '@/services/orders';
+import { ProductService } from '@/services/products';
 import { uploadMultipleImages, validateImage } from '@/lib/uploadService';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -60,12 +61,7 @@ export default function SellScreen() {
     queryKey: ['pending-orders-count', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
-      const { count } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('vendor_id', user.id)
-        .eq('status', 'pending');
-      return count || 0;
+      return OrderService.getVendorPendingCount(user.id);
     },
     enabled: !!user?.id,
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -261,27 +257,21 @@ export default function SellScreen() {
       const imageUrls = uploadedImages.map((img) => img.url);
 
       // Insert product into database
-      const { error } = await supabase
-        .from('products')
-        .insert({
-          vendor_id: user.id,
-          name: productName.trim(),
-          description: description.trim(),
-          price: parseFloat(price),
-          category: selectedCategory.toLowerCase(),
-          stock: parseInt(quantity),
-          unit: unit,
-          images: imageUrls,
-          image_url: imageUrls[0], // Backwards compatibility
-          location: location,
-          is_organic: isOrganic,
-          status: 'pending', // Requires admin approval
-          is_available: true,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      await ProductService.addProduct({
+        vendor_id: user.id,
+        name: productName.trim(),
+        description: description.trim(),
+        price: parseFloat(price),
+        category: selectedCategory.toLowerCase(),
+        stock: parseInt(quantity),
+        unit: unit,
+        images: imageUrls,
+        image_url: imageUrls[0], // Backwards compatibility
+        location: location,
+        is_organic: isOrganic,
+        status: 'pending', // Requires admin approval
+        is_available: true,
+      });
 
       Alert.alert(
         'Success! 🎉',

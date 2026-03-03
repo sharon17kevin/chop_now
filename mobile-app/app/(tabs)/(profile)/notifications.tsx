@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { NotificationService } from '@/services/notifications';
 import { Bell, Check, Package, Tag, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,17 +52,11 @@ export default function NotificationsScreen() {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const data = await NotificationService.getByUser(user.id);
 
-      console.log('Notifications query result:', { data, error: fetchError });
+      console.log('Notifications query result:', { data });
 
-      if (fetchError) throw fetchError;
-
-      setNotifications(data || []);
+      setNotifications(data);
     } catch (err) {
       console.error('Error fetching notifications:', err);
       setError(
@@ -74,12 +69,7 @@ export default function NotificationsScreen() {
 
   async function markAsRead(id: string) {
     try {
-      const { error: updateError } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
+      await NotificationService.markAsRead(id);
 
       setNotifications((prev) =>
         prev.map((notif) =>
@@ -99,13 +89,7 @@ export default function NotificationsScreen() {
 
       if (!user) return;
 
-      const { error: updateError } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-
-      if (updateError) throw updateError;
+      await NotificationService.markAllAsRead(user.id);
 
       setNotifications((prev) =>
         prev.map((notif) => ({ ...notif, is_read: true }))

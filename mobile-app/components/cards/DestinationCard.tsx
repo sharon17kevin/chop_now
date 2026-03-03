@@ -219,10 +219,11 @@ export const DestinationMiniCard = ({
   const { isInWishlist, toggleWishlist } = useWishlist();
 
   // Check if discount is still active
-  const isDiscountActive =
+  const isDiscountActive = Boolean(
     discount &&
     discount > 0 &&
-    (!saleEndsAt || new Date(saleEndsAt) > new Date());
+    (!saleEndsAt || new Date(saleEndsAt) > new Date())
+  );
 
   const inWishlist = productId ? isInWishlist(productId) : false;
 

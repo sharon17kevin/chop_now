@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { ProductService } from '@/services/products';
 import { useTheme } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
 import {
@@ -69,16 +69,7 @@ export default function EditStockScreen() {
     queryKey: ['product-details', productId],
     queryFn: async () => {
       if (!productId) throw new Error('No product ID');
-
-      const { data, error } = await supabase
-        .from('products')
-        .select(
-          'id, name, category, stock, price, unit, is_available, image_url, discount_percentage, original_price, is_on_sale, sale_ends_at',
-        )
-        .eq('id', productId)
-        .single();
-
-      if (error) throw error;
+      const data = await ProductService.getProductDetail(productId as string);
       return data as Product;
     },
     enabled: !!productId,
@@ -105,12 +96,7 @@ export default function EditStockScreen() {
   // Update stock mutation
   const updateStockMutation = useMutation({
     mutationFn: async (newStock: number) => {
-      const { error } = await supabase
-        .from('products')
-        .update({ stock: newStock, updated_at: new Date().toISOString() })
-        .eq('id', productId);
-
-      if (error) throw error;
+      await ProductService.updateStock(productId as string, newStock);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-stock'] });
@@ -159,12 +145,7 @@ export default function EditStockScreen() {
         updateData.sale_ends_at = null;
       }
 
-      const { error } = await supabase
-        .from('products')
-        .update(updateData)
-        .eq('id', productId);
-
-      if (error) throw error;
+      await ProductService.updatePromotion(productId as string, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-stock'] });
@@ -181,12 +162,7 @@ export default function EditStockScreen() {
   // Update price mutation
   const updatePriceMutation = useMutation({
     mutationFn: async (price: number) => {
-      const { error } = await supabase
-        .from('products')
-        .update({ price, updated_at: new Date().toISOString() })
-        .eq('id', productId);
-
-      if (error) throw error;
+      await ProductService.updatePrice(productId as string, price);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-stock'] });
@@ -203,12 +179,7 @@ export default function EditStockScreen() {
   // Delete product mutation
   const deleteProductMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) throw error;
+      await ProductService.deleteProduct(productId as string);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-stock'] });

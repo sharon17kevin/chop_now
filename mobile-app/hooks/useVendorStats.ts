@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { OrderService } from '@/services/orders';
+import { ProductService } from '@/services/products';
 
 interface OrdersByStatus {
   pending: number;
@@ -38,39 +39,24 @@ export function useVendorStats(vendorId?: string) {
       }
 
       // Fetch orders for status breakdown
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('id, user_id, status')
-        .eq('vendor_id', vendorId);
+      const orders = await OrderService.getVendorOrders(vendorId);
 
-      // Calculate orders by status
       const ordersByStatus: OrdersByStatus = {
-        pending: orders?.filter(o => o.status === 'pending').length || 0,
-        confirmed: orders?.filter(o => o.status === 'confirmed').length || 0,
-        processing: orders?.filter(o => o.status === 'processing').length || 0,
-        delivered: orders?.filter(o => o.status === 'delivered').length || 0,
-        cancelled: orders?.filter(o => o.status === 'cancelled').length || 0,
+        pending: orders.filter(o => o.status === 'pending').length,
+        confirmed: orders.filter(o => o.status === 'confirmed').length,
+        processing: orders.filter(o => o.status === 'processing').length,
+        delivered: orders.filter(o => o.status === 'delivered').length,
+        cancelled: orders.filter(o => o.status === 'cancelled').length,
       };
 
-      // Calculate unique customers
-      const uniqueCustomers = new Set(orders?.map(o => o.user_id) || []).size;
+      const uniqueCustomers = new Set(orders.map(o => o.user_id)).size;
 
       // Fetch top products
-      const { data: orderItems } = await supabase
-        .from('order_items')
-        .select(`
-          product_id,
-          quantity,
-          price,
-          products!inner(name, image_url, vendor_id),
-          orders!inner(status, vendor_id)
-        `)
-        .eq('orders.vendor_id', vendorId)
-        .eq('orders.status', 'delivered');
+      const orderItems = await OrderService.getVendorTopProducts(vendorId);
 
       // Group by product and calculate stats
       const productMap = new Map<string, { name: string; unitsSold: number; revenue: number; image_url?: string }>();
-      orderItems?.forEach(item => {
+      orderItems.forEach(item => {
         const product = item.products as any;
         const existing = productMap.get(item.product_id);
         if (existing) {
@@ -92,18 +78,13 @@ export function useVendorStats(vendorId?: string) {
         .slice(0, 5);
 
       // Fetch low stock count
-      const { count: lowStockCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('vendor_id', vendorId)
-        .lt('stock', 10)
-        .eq('is_available', true);
+      const lowStockCount = await ProductService.getLowStockCount(vendorId);
 
       return {
         ordersByStatus,
         topProducts,
         uniqueCustomers,
-        lowStockCount: lowStockCount || 0,
+        lowStockCount,
       };
     },
     enabled: !!vendorId,

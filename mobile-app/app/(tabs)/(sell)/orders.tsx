@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { OrderService } from '@/services/orders';
 import { useTheme } from '@/hooks/useTheme';
 import { useUserStore } from '@/stores/useUserStore';
 import AppHeader from '@/components/AppHeader';
@@ -70,35 +70,7 @@ export default function VendorOrdersScreen() {
     queryKey: ['vendor-orders', profile?.id],
     queryFn: async () => {
       if (!profile?.id) throw new Error('No vendor profile');
-
-      const { data, error } = await supabase
-        .from('orders')
-        .select(
-          `
-          id,
-          user_id,
-          status,
-          total,
-          created_at,
-          order_items (
-            id,
-            product_id,
-            quantity,
-            price,
-            products!inner (
-              name
-            )
-          ),
-          profiles!user_id (
-            full_name,
-            phone
-          )
-        `
-        )
-        .eq('vendor_id', profile.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await OrderService.getVendorOrdersDetailed(profile.id);
       return data as unknown as VendorOrder[];
     },
     enabled: !!profile?.id,
@@ -207,9 +179,7 @@ export default function VendorOrdersScreen() {
     try {
       setCancellingOrderId(orderId);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const session = await OrderService.getSession();
 
       if (!session) {
         Alert.alert('Error', 'Please login to cancel order');
@@ -226,33 +196,26 @@ export default function VendorOrdersScreen() {
             text: 'Yes, Cancel',
             style: 'destructive',
             onPress: async () => {
-              const { data, error } = await supabase.functions.invoke(
-                'cancel-order',
-                {
-                  body: {
-                    order_id: orderId,
-                    reason: 'Vendor cancelled order',
-                    refund_method: 'wallet',
-                  },
-                }
-              );
+              try {
+                const data = await OrderService.cancelOrder(
+                  orderId,
+                  'Vendor cancelled order'
+                );
 
-              if (error) {
+                if (data?.error) {
+                  Alert.alert('Error', data.error);
+                  return;
+                }
+
+                Alert.alert('Success', 'Order cancelled and customer refunded');
+                refetch();
+              } catch (error: any) {
                 console.error('Cancel order error:', error);
                 Alert.alert(
                   'Error',
                   'Failed to cancel order. Please try again.'
                 );
-                return;
               }
-
-              if (data?.error) {
-                Alert.alert('Error', data.error);
-                return;
-              }
-
-              Alert.alert('Success', 'Order cancelled and customer refunded');
-              refetch();
             },
           },
         ]

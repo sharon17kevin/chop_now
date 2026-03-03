@@ -1,6 +1,8 @@
 import AppHeader from '@/components/AppHeader';
 import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/lib/supabase';
+import { ProfileService } from '@/services/profiles';
+import { WalletService } from '@/services/wallet';
 import { useVirtualAccountStore } from '@/stores/useVirtualAccountStore';
 import { formatTimeAgo } from '@/utils/time';
 import { useRouter } from 'expo-router';
@@ -65,27 +67,12 @@ export default function WalletScreen() {
       }
 
       // Fetch wallet balance from user profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('wallet_balance')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        setBalance(profile.wallet_balance || 0);
-      }
+      const walletBalance = await ProfileService.getProfileWalletBalance(user.id);
+      setBalance(walletBalance);
 
       // Fetch recent transactions
-      const { data: txData } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (txData) {
-        setTransactions(txData as Transaction[]);
-      }
+      const txData = await WalletService.getTransactions(user.id);
+      setTransactions(txData as Transaction[]);
     } catch (err) {
       console.error('Error fetching wallet data:', err);
     } finally {

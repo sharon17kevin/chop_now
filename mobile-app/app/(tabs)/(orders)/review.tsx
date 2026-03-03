@@ -16,7 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Star, MessageSquare } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { typography } from '@/styles/typography';
-import { supabase } from '@/lib/supabase';
+import { ReviewService } from '@/services/reviews';
 import { useUserStore } from '@/stores/useUserStore';
 
 export default function WriteReviewScreen() {
@@ -58,13 +58,7 @@ export default function WriteReviewScreen() {
       setSubmitting(true);
 
       // Check if user already reviewed this vendor for this order
-      const { data: existingReview } = await supabase
-        .from('reviews')
-        .select('id')
-        .eq('user_id', profile.id)
-        .eq('vendor_id', vendorId)
-        .eq('order_id', orderId)
-        .single();
+      const existingReview = await ReviewService.checkExistingReview(profile.id, vendorId, orderId);
 
       if (existingReview) {
         Alert.alert(
@@ -76,7 +70,7 @@ export default function WriteReviewScreen() {
       }
 
       // Insert review
-      const { error: insertError } = await supabase.from('reviews').insert({
+      await ReviewService.createReview({
         user_id: profile.id,
         vendor_id: vendorId,
         order_id: orderId,
@@ -91,11 +85,6 @@ export default function WriteReviewScreen() {
         vendor_response_at: null,
         is_published: true, // Auto-publish or set to false for moderation
       });
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        throw insertError;
-      }
 
       Alert.alert(
         'Success',

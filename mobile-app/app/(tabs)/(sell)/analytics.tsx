@@ -28,7 +28,7 @@ import { useVendorEarnings } from '@/hooks/useVendorEarnings';
 import { useVendorStats } from '@/hooks/useVendorStats';
 import { useVendorRating } from '@/hooks/useVendorRating';
 import AppHeader from '@/components/AppHeader';
-import { supabase } from '@/lib/supabase';
+import { ProfileService } from '@/services/profiles';
 import { useQuery } from '@tanstack/react-query';
 
 export default function AnalyticsScreen() {
@@ -57,16 +57,7 @@ export default function AnalyticsScreen() {
     queryKey: ['vendor-wallet', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
-      const { data, error } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .single();
-      if (error) {
-        // Wallet might not exist yet, return 0
-        return 0;
-      }
-      return data?.balance || 0;
+      return ProfileService.getWalletBalance(user.id);
     },
     enabled: !!user?.id,
   });

@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { NotificationService } from '@/services/notifications';
 import { Package, Tag, AlertCircle, Bell } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
@@ -39,22 +39,13 @@ export default function NotificationDetailScreen() {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
+      const data = await NotificationService.getById(id!);
 
       setNotification(data);
 
       // Mark as read if unread
       if (data && !data.is_read) {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('id', id);
+        await NotificationService.markAsRead(id!);
       }
     } catch (err) {
       console.error('Error fetching notification:', err);

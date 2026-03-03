@@ -20,7 +20,9 @@ import {
   HelpCircle,
   Send,
 } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
+import { SupportService } from '@/services/support';
+import { ProfileService } from '@/services/profiles';
+import { NotificationService } from '@/services/notifications';
 import { useUserStore } from '@/stores/useUserStore';
 
 const SUPPORT_EMAIL = 'support@chownow.com';
@@ -72,29 +74,20 @@ export default function Support() {
       setSubmitting(true);
 
       // Create support ticket
-      const { data: ticket, error } = await supabase
-        .from('support_tickets')
-        .insert({
-          user_id: profile?.id,
+      const ticket = await SupportService.createTicket({
+          user_id: profile?.id!,
           subject: subject.trim(),
           category,
           description: description.trim(),
           status: 'open',
           priority: 'medium',
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      });
 
       // Get all admin users
-      const { data: adminUsers } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'admin');
+      const adminUsers = await ProfileService.getAdminUsers();
 
       // Create notifications for all admins
-      if (adminUsers && adminUsers.length > 0) {
+      if (adminUsers.length > 0) {
         const categoryLabel =
           TICKET_CATEGORIES.find((cat) => cat.value === category)?.label ||
           category;
@@ -110,7 +103,7 @@ export default function Support() {
           is_read: false,
         }));
 
-        await supabase.from('notifications').insert(notifications);
+        await NotificationService.createBulk(notifications);
       }
 
       Alert.alert(
