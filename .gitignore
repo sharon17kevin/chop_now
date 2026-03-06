@@ -1,7 +1,6 @@
 # dependencies
 node_modules/
 
-.expo/
 # expo
 .expo/
 dist/
@@ -35,13 +34,19 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# sensitive files with credentials
-supabase/migrations/20260303_setup_escrow_cron_job.sql
-
-# documentation and architecture (contains system details)
+# temporary files
 architecture/
-docs/
-MISSING_TABLES_ANALYSIS.md
-PAYMENT_WORKFLOW_TASKS.md
-VERIFY_PAYMENT_SYSTEM.md
-tasks-feature-improvements.md
+tmpclaude-*
+temp-*
+*.tmp
+
+# logs
+*.log
+log.md
+
+# local development files
+local/
+
+# IDE
+.vscode/
+.idea/
