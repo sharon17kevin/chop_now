@@ -27,9 +27,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVendorEarnings } from '@/hooks/useVendorEarnings';
 import { useVendorStats } from '@/hooks/useVendorStats';
 import { useVendorRating } from '@/hooks/useVendorRating';
+import { useWalletBalance } from '@/hooks/useWallet';
 import AppHeader from '@/components/AppHeader';
-import { ProfileService } from '@/services/profiles';
-import { useQuery } from '@tanstack/react-query';
 
 export default function AnalyticsScreen() {
   const { colors } = useTheme();
@@ -53,14 +52,7 @@ export default function AnalyticsScreen() {
     data: walletBalance,
     isLoading: walletLoading,
     refetch: refetchWallet,
-  } = useQuery({
-    queryKey: ['vendor-wallet', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 0;
-      return ProfileService.getWalletBalance(user.id);
-    },
-    enabled: !!user?.id,
-  });
+  } = useWalletBalance(user?.id);
 
   const [refreshing, setRefreshing] = React.useState(false);
 

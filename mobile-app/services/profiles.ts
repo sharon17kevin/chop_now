@@ -87,14 +87,32 @@ export const ProfileService = {
         return data || [];
     },
 
-    async getProfileWalletBalance(userId: string) {
+    async getBankAccount(userId: string) {
         const { data, error } = await supabase
             .from('profiles')
-            .select('wallet_balance')
+            .select('bank_account_number, bank_code, bank_name, account_name, bank_account_verified')
             .eq('id', userId)
             .single();
 
         if (error) throw error;
-        return data?.wallet_balance || 0;
+        return data;
+    },
+
+    async updateBankAccount(userId: string, bankDetails: {
+        bank_account_number: string;
+        bank_code: string;
+        bank_name: string;
+        account_name: string;
+    }) {
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                ...bankDetails,
+                bank_account_verified: true,
+                bank_account_verified_at: new Date().toISOString(),
+            })
+            .eq('id', userId);
+
+        if (error) throw error;
     },
 };

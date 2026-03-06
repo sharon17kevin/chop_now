@@ -31,7 +31,7 @@ export function useVendorEarnings(vendorId?: string) {
 
       // Calculate total revenue from delivered orders
       const deliveredOrders = orders.filter(o => o.status === 'delivered');
-      const totalRevenue = deliveredOrders.reduce((sum, o) => sum + Number(o.total), 0);
+      const totalRevenue = deliveredOrders.reduce((sum, o) => sum + Number(o.vendor_payout_amount || o.total * 0.95), 0);
       const totalOrders = deliveredOrders.length;
 
       const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -43,7 +43,7 @@ export function useVendorEarnings(vendorId?: string) {
       const monthlyOrders = deliveredOrders.filter(
         o => new Date(o.created_at) >= thirtyDaysAgo
       );
-      const monthlyRevenue = monthlyOrders.reduce((sum, o) => sum + Number(o.total), 0);
+      const monthlyRevenue = monthlyOrders.reduce((sum, o) => sum + Number(o.vendor_payout_amount || o.total * 0.95), 0);
 
       // Calculate growth (current 30 days vs previous 30 days)
       const sixtyDaysAgo = new Date();
@@ -54,7 +54,7 @@ export function useVendorEarnings(vendorId?: string) {
         return orderDate >= sixtyDaysAgo && orderDate < thirtyDaysAgo;
       });
 
-      const previousMonthRevenue = previousMonthOrders.reduce((sum, o) => sum + Number(o.total), 0);
+      const previousMonthRevenue = previousMonthOrders.reduce((sum, o) => sum + Number(o.vendor_payout_amount || o.total * 0.95), 0);
       const previousMonthCount = previousMonthOrders.length;
 
       const revenueGrowth = previousMonthRevenue > 0

@@ -38,13 +38,17 @@ serve(async (req) => {
         verified_at: new Date().toISOString(),
       })
 
-      // Credit user's wallet
-      await supabase.rpc('credit_wallet', {
-        p_user_id: userId,
-        p_amount: amountInNaira,
-        p_description: `Deposit via ${data.data.channel}`,
-        p_reference: data.data.reference
-      })
+      // Only credit wallet for deposit/top-up payments, NOT order payments.
+      // Order payments go through escrow and are released to vendors after delivery + 24hr hold.
+      const orderType = data.data.metadata?.order_type
+      if (orderType !== 'product_purchase') {
+        await supabase.rpc('credit_wallet', {
+          p_user_id: userId,
+          p_amount: amountInNaira,
+          p_description: `Deposit via ${data.data.channel}`,
+          p_reference: data.data.reference
+        })
+      }
 
       // If card payment, save card details
       if (authorization && authorization.authorization_code) {

@@ -7,21 +7,21 @@ import { useVirtualAccountStore } from '@/stores/useVirtualAccountStore';
 import { formatTimeAgo } from '@/utils/time';
 import { useRouter } from 'expo-router';
 import {
-    ArrowDownCircle,
-    ArrowUpCircle,
-    Plus,
-    TrendingUp,
-    Wallet
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Plus,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,9 +30,10 @@ interface Transaction {
   type: 'credit' | 'debit';
   amount: number;
   description: string;
-  status: string;
   created_at: string;
   reference: string;
+  balance_before: number;
+  balance_after: number;
 }
 
 export default function WalletScreen() {
@@ -66,8 +67,8 @@ export default function WalletScreen() {
         await fetchAccount(user.id);
       }
 
-      // Fetch wallet balance from user profile
-      const walletBalance = await ProfileService.getProfileWalletBalance(user.id);
+      // Fetch wallet balance from wallets table
+      const walletBalance = await ProfileService.getWalletBalance(user.id);
       setBalance(walletBalance);
 
       // Fetch recent transactions
@@ -183,7 +184,7 @@ export default function WalletScreen() {
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.card }]}
             onPress={() => {
-              // Navigate to withdrawal/transfer page
+              router.push('/(tabs)/(profile)/withdraw' as any);
             }}
             activeOpacity={0.7}
           >
@@ -203,7 +204,7 @@ export default function WalletScreen() {
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.card }]}
             onPress={() => {
-              // Navigate to transaction history
+              router.push('/(tabs)/(profile)/transactionHistory' as any);
             }}
             activeOpacity={0.7}
           >
@@ -303,21 +304,6 @@ export default function WalletScreen() {
                   >
                     {transaction.type === 'credit' ? '+' : '-'}₦
                     {transaction.amount.toLocaleString()}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.transactionStatus,
-                      {
-                        color:
-                          transaction.status === 'success'
-                            ? colors.success
-                            : transaction.status === 'pending'
-                            ? colors.warning
-                            : colors.error,
-                      },
-                    ]}
-                  >
-                    {transaction.status}
                   </Text>
                 </View>
               </View>
@@ -482,10 +468,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
-  },
-  transactionStatus: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'capitalize',
   },
 });

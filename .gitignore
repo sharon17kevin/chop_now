@@ -34,3 +34,14 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# sensitive files with credentials
+supabase/migrations/20260303_setup_escrow_cron_job.sql
+
+# documentation and architecture (contains system details)
+architecture/
+docs/
+MISSING_TABLES_ANALYSIS.md
+PAYMENT_WORKFLOW_TASKS.md
+VERIFY_PAYMENT_SYSTEM.md
+tasks-feature-improvements.md

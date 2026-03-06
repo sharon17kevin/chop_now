@@ -2,9 +2,10 @@
 
 ## Complete System Architecture
 
-**Generated:** March 2, 2026  
-**Status:** MVP Complete - Optimization Required  
-**Platform:** React Native (Expo) + Supabase
+**Generated:** March 3, 2026  
+**Status:** Payment System Upgraded - Escrow Automation in Progress  
+**Platform:** React Native (Expo) + Supabase  
+**Last Updated:** Wallet System + Paystack Integration + Cron Job Setup
 
 ---
 
@@ -29,8 +30,10 @@ Chow is a farm-to-table marketplace connecting local farmers with customers. The
 
 - **Customer Features:** Browse products, shopping cart, checkout, order tracking, reviews
 - **Vendor Features:** Product listing, stock management, order fulfillment, analytics, earnings
-- **Payment Processing:** Paystack integration with escrow system
-- **Escrow Management:** 24-hour hold period after delivery before releasing vendor payments
+- **Payment Processing:** Paystack integration with DVA (Dedicated Virtual Accounts) support
+- **Escrow Management:** 24-hour hold period after delivery with automated release via cron job
+- **Wallet System:** Vendor wallets for balance tracking, transaction audit trail
+- **Platform Revenue:** 5% commission on all completed orders, tracked separately
 
 ### Architecture Pattern
 
@@ -162,46 +165,99 @@ Chow is a farm-to-table marketplace connecting local farmers with customers. The
 - created_at (timestamp)
 ```
 
-**wallets**
+**wallets** ⚠️ MIGRATION READY - NOT YET DEPLOYED
 
 ```sql
 - id (uuid, PK)
 - user_id (uuid, FK to profiles, unique)
-- balance (numeric, default: 0)
+- balance (numeric, default: 0.00, CHECK >= 0)
+- currency (text, default: 'NGN')
 - created_at (timestamp)
 - updated_at (timestamp)
+
+-- Indexes:
+-- idx_wallets_user_id (user_id)
+-- idx_wallets_balance (balance)
+
+-- RLS: Users can SELECT their own wallet only
+-- Updates via RPC functions only (credit_wallet, debit_wallet)
+-- Migration: 20260303_create_wallet_system.sql
 ```
 
-**wallet_transactions**
+**wallet_transactions** ⚠️ MIGRATION READY - NOT YET DEPLOYED
 
 ```sql
 - id (uuid, PK)
 - wallet_id (uuid, FK to wallets)
-- user_id (uuid, FK to profiles)
-- amount (numeric)
-- type (text: 'credit' | 'debit')
-- transaction_type (text: 'deposit' | 'withdrawal' | 'refund' | 'escrow_release' | 'purchase')
-- reference (text)
+- amount (numeric, NOT NULL)
+- balance_before (numeric, NOT NULL)
+- balance_after (numeric, NOT NULL)
+- transaction_type (text: 'credit' | 'debit' | 'refund' | 'escrow_release' | 'withdrawal')
 - description (text)
+- reference (text, unique)
 - metadata (jsonb)
 - created_at (timestamp)
+
+-- Indexes:
+-- idx_wallet_transactions_wallet_id (wallet_id)
+-- idx_wallet_transactions_reference (reference)
+-- idx_wallet_transactions_created_at (created_at DESC)
+-- idx_wallet_transactions_type (transaction_type)
+
+-- RLS: Users can SELECT their own transactions only
+-- Audit trail: NEVER DELETE, always create new record
+-- Migration: 20260303_create_wallet_system.sql
 ```
 
-**payments**
+**payments** ⚠️ MIGRATION READY - NOT YET DEPLOYED
 
 ```sql
 - id (uuid, PK)
 - user_id (uuid, FK to profiles)
-- amount (numeric)
-- currency (text, default: 'NGN')
-- status (text: 'pending' | 'success' | 'failed')
-- reference (text, unique)
+- amount (numeric, NOT NULL)
+- reference (text, unique, NOT NULL)
+- status (text: 'pending' | 'success' | 'failed', default: 'pending')
+- gateway (text, default: 'paystack')
 - payment_method (text: 'card' | 'bank_transfer' | 'ussd' | 'dedicated_nuban')
-- paystack_reference (text)
-- authorization_code (text)
+- transaction_reference (text) -- Paystack transaction reference
+- channel (text) -- Paystack channel
+- ip_address (text)
 - metadata (jsonb)
-- verified_at (timestamp)
 - created_at (timestamp)
+- updated_at (timestamp)
+
+-- Indexes:
+-- idx_payments_user_id (user_id)
+-- idx_payments_reference (reference)
+-- idx_payments_status (status)
+-- idx_payments_created_at (created_at DESC)
+
+-- RLS: Users can SELECT their own payments only
+-- Migration: 20260303_create_paystack_integration.sql
+```
+
+**virtual_accounts** ⚠️ MIGRATION READY - NOT YET DEPLOYED
+
+```sql
+- id (uuid, PK)
+- user_id (uuid, FK to profiles, unique)
+- account_name (text, NOT NULL)
+- account_number (text, NOT NULL)
+- bank_name (text, NOT NULL)
+- bank_code (text)
+- customer_code (text) -- Paystack customer code
+- is_active (boolean, default: true)
+- metadata (jsonb)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+-- Indexes:
+-- idx_virtual_accounts_user_id (user_id)
+-- idx_virtual_accounts_account_number (account_number)
+
+-- RLS: Users can SELECT their own DVA only
+-- Purpose: Dedicated Virtual Accounts for top-ups via bank transfer
+-- Migration: 20260303_create_paystack_integration.sql
 ```
 
 **reviews**
@@ -296,20 +352,75 @@ Chow is a farm-to-table marketplace connecting local farmers with customers. The
   - Update order payment status
 - **Security:** HMAC signature verification
 
-**2. auto-release-escrow**
+**2. auto-release-escrow** ⚠️ READY - NEEDS DEPLOYMENT
 
 - **Path:** `/functions/v1/auto-release-escrow`
-- **Trigger:** Cron (hourly: `0 * * * *`)
+- **Trigger:** Cron job (hourly: `0 * * * *`)
 - **Actions:**
-  - Query orders eligible for release
+  - Query orders eligible for release (eligible_for_release_at <= NOW())
   - Call `auto_release_eligible_escrow()` RPC
   - Process up to 100 orders per run
-  - Return `{released_count, failed_count}`
-- **Status:** Created, needs deployment
+  - Return `{released: count, failed: count, errors: []}`
+- **Status:** Code ready, NOT deployed
+- **Cron Setup:** Migration 20260303_setup_escrow_cron_job.sql
+
+**3. paystack-create-dva** (Future)
+
+- **Path:** `/functions/v1/paystack-create-dva`
+- **Purpose:** Create Dedicated Virtual Account for user
+- **Status:** Planned, not implemented
+
+**4. paystack-verify** (Future)
+
+- **Path:** `/functions/v1/paystack-verify`
+- **Purpose:** Manually verify payment status
+- **Status:** Planned, not implemented
 
 ### RPC Functions (PostgreSQL)
 
-**Escrow Management**
+**Wallet Management** ⚠️ MIGRATION READY - NOT YET DEPLOYED
+
+```sql
+-- Credit vendor wallet (escrow release, refunds, top-ups)
+credit_wallet(
+  p_user_id uuid,
+  p_amount numeric,
+  p_description text,
+  p_reference text
+)
+  RETURNS: transaction_id (uuid)
+  SECURITY: DEFINER
+  ACTIONS:
+    - Lock wallet FOR UPDATE
+    - Add amount to balance
+    - Create wallet_transaction record with balance_before/after
+    - Auto-generate reference if not provided
+
+-- Debit vendor wallet (withdrawals, purchases)
+debit_wallet(
+  p_user_id uuid,
+  p_amount numeric,
+  p_description text,
+  p_reference text
+)
+  RETURNS: transaction_id (uuid)
+  SECURITY: DEFINER
+  ACTIONS:
+    - Lock wallet FOR UPDATE
+    - Check sufficient balance
+    - Subtract amount from balance
+    - Create wallet_transaction record
+    - Throw error if insufficient funds
+
+-- Get current wallet balance
+get_wallet_balance(p_user_id uuid)
+  RETURNS: numeric
+  SECURITY: INVOKER (RLS applies)
+  ACTIONS:
+    - SELECT balance FROM wallets WHERE user_id = p_user_id
+```
+
+**Escrow Management** ✅ DEPLOYED (20260127_create_escrow_system.sql)
 
 ```sql
 -- Calculate escrow split
@@ -344,24 +455,73 @@ auto_release_eligible_escrow()
     - Track successes/failures
 ```
 
-**Wallet Management**
+**Wallet Management** ⚠️ MIGRATION READY - NOT YET DEPLOYED
 
 ```sql
--- Credit user wallet
-credit_wallet(p_user_id, p_amount, p_type, p_reference)
-  RETURNS: wallet record
+-- Credit user wallet (escrow release, refunds, top-ups)
+credit_wallet(
+  p_user_id uuid,
+  p_amount numeric,
+  p_description text,
+  p_reference text DEFAULT NULL
+)
+  RETURNS: transaction_id (uuid)
+  SECURITY: DEFINER (bypasses RLS)
   ACTIONS:
-    - Create wallet if not exists
-    - Increment balance
-    - Create transaction record
+    - Lock wallet FOR UPDATE (prevents race conditions)
+    - Create wallet if doesn't exist
+    - Add amount to balance
+    - Create wallet_transaction record with balance snapshots
+    - Auto-generate reference if not provided
+  MIGRATION: 20260303_create_wallet_system.sql
 
--- Debit user wallet
-debit_wallet(p_user_id, p_amount, p_type, p_reference)
-  RETURNS: wallet record
+-- Debit user wallet (withdrawals, purchases)
+debit_wallet(
+  p_user_id uuid,
+  p_amount numeric,
+  p_description text,
+  p_reference text DEFAULT NULL
+)
+  RETURNS: transaction_id (uuid)
+  SECURITY: DEFINER (bypasses RLS)
   ACTIONS:
+    - Lock wallet FOR UPDATE
     - Check sufficient balance
-    - Decrement balance
-    - Create transaction record
+    - Subtract amount from balance
+    - Create wallet_transaction record
+    - Throw error if insufficient funds
+  MIGRATION: 20260303_create_wallet_system.sql
+
+-- Get current wallet balance
+get_wallet_balance(p_user_id uuid)
+  RETURNS: numeric
+  SECURITY: INVOKER (RLS applies)
+  ACTIONS:
+    - SELECT balance FROM wallets WHERE user_id = p_user_id
+    - Returns 0 if wallet doesn't exist
+  MIGRATION: 20260303_create_wallet_system.sql
+```
+
+**Paystack Integration** ⚠️ MIGRATION READY - NOT YET DEPLOYED
+
+```sql
+-- Get user payment history
+get_user_payment_history(p_user_id uuid, p_limit int DEFAULT 50)
+  RETURNS: TABLE (payment records)
+  SECURITY: INVOKER (RLS applies)
+  MIGRATION: 20260303_create_paystack_integration.sql
+
+-- Get user's Dedicated Virtual Account
+get_user_virtual_account(p_user_id uuid)
+  RETURNS: virtual_account record
+  SECURITY: INVOKER (RLS applies)
+  MIGRATION: 20260303_create_paystack_integration.sql
+
+-- Get payment statistics
+get_payment_stats(p_user_id uuid)
+  RETURNS: TABLE (total_payments, successful_payments, total_amount)
+  SECURITY: INVOKER (RLS applies)
+  MIGRATION: 20260303_create_paystack_integration.sql
 ```
 
 **Stock Management**
@@ -848,55 +1008,192 @@ if (hash !== signature) {
 
 ---
 
-## ⚠️ Known Issues
+## ⚠️ Known Issues & Deployment Status
 
-### Critical Issues
+### 🚨 Critical Issues (Blocking Vendor Payments)
 
-**1. Wallet Balance Shows ₦0**
+**1. Wallet System NOT Deployed** 🔴 CRITICAL
 
-- **Cause:** Escrow system not fully deployed
-- **Impact:** Vendors can't see their earnings
-- **Fix:** Deploy migration + Edge Function + cron
-- **Status:** Code ready, deployment pending
+- **Tables:** wallets, wallet_transactions
+- **Functions:** credit_wallet(), debit_wallet(), get_wallet_balance()
+- **Migration:** 20260303_create_wallet_system.sql ✅ Created, ❌ Not deployed
+- **Impact:** Vendors cannot see wallet balance (shows ₦0), escrow releases will fail
+- **Fix:** Deploy migration to Supabase
+- **Status:** Ready for deployment
+- **Time:** 2 minutes
 
-**2. Revenue Shows Customer Payment Total**
+**2. Paystack Integration NOT Deployed** 🔴 CRITICAL
 
-- **Cause:** Using `order.total` instead of `vendor_payout_amount`
-- **Impact:** Analytics show inflated revenue (includes 5% fee)
-- **Fix:** Update hooks to use `vendor_payout_amount`
-- **Files:** `useVendorEarnings.ts`, `useVendorStats.ts`
-- **Status:** Fix needed
+- **Tables:** payments, virtual_accounts
+- **Functions:** get_user_payment_history(), get_user_virtual_account(), get_payment_stats()
+- **Migration:** 20260303_create_paystack_integration.sql ✅ Created, ❌ Not deployed
+- **Impact:** Payment tracking incomplete, DVA feature unavailable
+- **Fix:** Deploy migration to Supabase
+- **Status:** Ready for deployment (idempotent with DROP IF EXISTS)
+- **Time:** 2 minutes
 
-**3. Auto-Release Not Running**
+**3. Auto-Release Edge Function NOT Deployed** 🔴 CRITICAL
 
-- **Cause:** Edge Function not deployed
-- **Impact:** Escrow never releases, vendors don't get paid
-- **Fix:** `supabase functions deploy auto-release-escrow`
-- **Status:** Code ready, deployment pending
+- **Function:** auto-release-escrow
+- **Path:** supabase/functions/auto-release-escrow/index.ts
+- **Impact:** Escrow never releases, vendors never get paid
+- **Fix:** Run `supabase functions deploy auto-release-escrow`
+- **Status:** Code ready, needs deployment
+- **Time:** 2 minutes
 
-### Medium Priority Issues
+**4. Escrow Cron Job NOT Configured** 🔴 CRITICAL
 
-**4. Money Tracking Complexity**
+- **Trigger:** Hourly cron (0 \* \* \* \*)
+- **Migration:** 20260303_setup_escrow_cron_job.sql ✅ Created, ❌ Not deployed
+- **Impact:** auto-release-escrow function never runs automatically
+- **Fix:** Deploy cron migration, configure Supabase URL and Service Role Key
+- **Status:** SQL template ready, needs manual config values
+- **Time:** 5-8 minutes
+- **Steps:**
+  1. Run migration in Supabase SQL Editor
+  2. Replace YOUR_SUPABASE_URL with project URL
+  3. Replace YOUR_SERVICE_ROLE_KEY with key from Dashboard → Settings → API
+  4. Verify cron created: `SELECT * FROM cron.job`
 
-- **Issue:** Multiple sources of truth (escrow vs wallet)
-- **Impact:** Confusion about available funds
-- **Fix:** Simplify analytics to show only wallet balance
-- **Status:** Partially fixed (removed "Releasing Soon" card)
+**Result of Above Issues:** Vendors see ₦0 wallet balance despite completed orders. Critical blocker for MVP launch.
 
-**5. Top Customer Calculation**
+---
 
-- **Issue:** Removed but query inefficient
-- **Impact:** N/A (feature removed)
-- **Status:** Cleaned up
+### ⚠️ High Priority Issues
 
-**6. Payment Webhook Race Condition**
+**5. Revenue Analytics Show Wrong Amount** 🟡 HIGH
 
-- **Issue:** Frontend might poll before webhook processes
-- **Impact:** Order creation might fail intermittently
-- **Fix:** Add retry logic or optimistic locking
-- **Status:** Rare occurrence, needs monitoring
+- **Cause:** useVendorEarnings.ts uses `order.total` instead of `vendor_payout_amount`
+- **Impact:** Analytics show customer payment amount (includes 5% platform fee)
+  - Example: Shows ₦29,000 instead of ₦27,550
+- **Fix Locations:**
+  - hooks/useVendorEarnings.ts lines 41-42, 53, 69
+  - Change to: `vendor_payout_amount || order.total * 0.95`
+- **Status:** Bug identified, fix NOT applied
+- **Time:** 5 minutes
 
-### Low Priority Issues
+**6. ProfileService Had Buggy Method** ✅ FIXED
+
+- **Issue:** getProfileWalletBalance() queried non-existent profile.wallet_balance column
+- **Fix:** Removed method, created useWallet.ts hook using getWalletBalance()
+- **Status:** Fixed, separation of concerns enforced
+- **Date:** March 3, 2026
+
+**7. Separation of Concerns Violations** ✅ FIXED
+
+- **Issue:** analytics.tsx had direct supabase imports and inline queries
+- **Fix:** Refactored to use useWalletBalance() hook only
+- **Status:** Fixed, architecture pattern enforced
+- **Date:** March 3, 2026
+
+---
+
+### 📋 Medium Priority Issues
+
+**8. Escrow Migration Status UNKNOWN** 🟡 MEDIUM
+
+- **Migration:** 20260127_create_escrow_system.sql
+- **Status:** Unknown if deployed to production
+- **Verification:** Run `SELECT * FROM orders LIMIT 1` and check for escrow_status column
+- **Impact:** If missing, entire escrow system won't work
+- **Fix:** Deploy if not exists
+
+**9. Payment Webhook Race Condition** 🟡 MEDIUM
+
+- **Issue:** Frontend polls payment status before webhook processes
+- **Impact:** Order creation might fail intermittently (rare)
+- **Fix:** Add retry logic with exponential backoff
+- **Status:** Low occurrence, needs monitoring
+
+**10. N+1 Query Patterns** 🟡 MEDIUM
+
+- **Location:** Order details pages may fetch items + products separately
+- **Impact:** Performance degradation at scale
+- **Fix:** Use Supabase joins or batch queries
+- **Status:** Needs investigation
+
+---
+
+### 🔵 Low Priority / Future Enhancements
+
+**11. Bank Withdrawal Feature** 🔵 FUTURE
+
+- **Tables:** payout\_\* columns exist in profiles (payout_bank_code, payout_account_number, payout_account_name)
+- **Purpose:** Allow vendors to withdraw wallet balance to bank account
+- **Status:** Database ready, frontend NOT implemented
+- **Priority:** Post-MVP
+
+**12. Dedicated Virtual Accounts** 🔵 FUTURE
+
+- **Table:** virtual_accounts (ready, not deployed)
+- **Purpose:** Each user gets permanent bank account for instant top-ups
+- **Integration:** Paystack DVA API
+- **Status:** Migration ready, Edge Function planned
+- **Priority:** Post-MVP
+
+**13. Real-time Order Updates** 🔵 FUTURE
+
+- **Tech:** Supabase Realtime subscriptions
+- **Purpose:** Live notifications when order status changes
+- **Status:** Supabase Realtime available, not implemented
+- **Priority:** Nice to have
+
+**14. Push Notifications Full Implementation** 🔵 FUTURE
+
+- **Current:** Database fields exist (push_token, push_notifications_enabled)
+- **Missing:** Expo push notification service integration
+- **Status:** Partially implemented
+- **Priority:** Nice to have
+
+---
+
+### 📊 Deployment Checklist (Critical Path)
+
+To make payment system functional:
+
+- [ ] **Deploy Wallet Migration** (2 min)
+  - Run: 20260303_create_wallet_system.sql in Supabase SQL Editor
+  - Verify: `SELECT COUNT(*) FROM wallets`
+
+- [ ] **Deploy Paystack Migration** (2 min)
+  - Run: 20260303_create_paystack_integration.sql in Supabase SQL Editor
+  - Verify: `SELECT COUNT(*) FROM payments`
+
+- [ ] **Deploy Escrow Migration (if missing)** (2 min)
+  - Run: 20260127_create_escrow_system.sql
+  - Verify: `SELECT escrow_status FROM orders LIMIT 1`
+
+- [ ] **Deploy Auto-Release Edge Function** (2 min)
+  - Command: `supabase functions deploy auto-release-escrow`
+  - Verify: Check Dashboard → Edge Functions
+
+- [ ] **Configure Cron Job** (8 min)
+  - Run: 20260303_setup_escrow_cron_job.sql
+  - Replace placeholders: YOUR_SUPABASE_URL, YOUR_SERVICE_ROLE_KEY
+  - Verify: `SELECT * FROM cron.job WHERE jobname = 'auto-release-escrow-hourly'`
+
+- [ ] **Manual Test** (10 min)
+  - Create test order ₦10,000
+  - Simulate payment (mark as paid)
+  - Mark as delivered
+  - Bypass 24hr wait: `UPDATE orders SET eligible_for_release_at = NOW() - INTERVAL '1 hour' WHERE id = 'TEST_ORDER_ID'`
+  - Manually trigger: `curl -X POST 'YOUR_SUPABASE_URL/functions/v1/auto-release-escrow' -H 'Authorization: Bearer YOUR_ANON_KEY'`
+  - Verify wallet credited: `SELECT balance FROM wallets WHERE user_id = 'VENDOR_ID'`
+  - Should see: ₦9,500 (95% of ₦10,000)
+
+- [ ] **Fix Revenue Analytics** (5 min)
+  - Edit: hooks/useVendorEarnings.ts
+  - Lines: 41-42, 53, 69
+  - Change: `order.total` → `vendor_payout_amount || order.total * 0.95`
+
+**Total Time:** ~30 minutes for full deployment and testing
+
+**Success Criteria:**
+
+- Vendor wallet shows balance > ₦0
+- Auto-release runs hourly
+- Revenue analytics show correct amounts
+- Platform earnings track 5% fees
 
 **7. Missing TypeScript Types**
 
