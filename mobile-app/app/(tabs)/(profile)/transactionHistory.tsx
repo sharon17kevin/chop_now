@@ -43,7 +43,9 @@ export default function TransactionHistoryScreen() {
   const { colors } = useTheme();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<
+    Transaction[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,7 +132,7 @@ export default function TransactionHistoryScreen() {
         (tx) =>
           tx.description?.toLowerCase().includes(query) ||
           tx.reference?.toLowerCase().includes(query) ||
-          tx.amount.toString().includes(query)
+          tx.amount.toString().includes(query),
       );
     }
 
@@ -167,7 +169,10 @@ export default function TransactionHistoryScreen() {
       groups[dateKey].push(tx);
     });
 
-    return Object.entries(groups).map(([date, txs]) => ({ date, transactions: txs }));
+    return Object.entries(groups).map(([date, txs]) => ({
+      date,
+      transactions: txs,
+    }));
   }
 
   function getTransactionIcon(type: string) {
@@ -205,13 +210,18 @@ export default function TransactionHistoryScreen() {
           </View>
           <View style={styles.transactionInfo}>
             <Text style={[styles.transactionTitle, { color: colors.text }]}>
-              {item.description || (item.type === 'credit' ? 'Wallet Credit' : 'Payment')}
+              {item.description ||
+                (item.type === 'credit' ? 'Wallet Credit' : 'Payment')}
             </Text>
-            <Text style={[styles.transactionDate, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.transactionDate, { color: colors.textSecondary }]}
+            >
               {formatTimeAgo(item.created_at)}
             </Text>
             {item.reference && (
-              <Text style={[styles.transactionRef, { color: colors.textTetiary }]}>
+              <Text
+                style={[styles.transactionRef, { color: colors.textTetiary }]}
+              >
                 Ref: {item.reference.substring(0, 20)}
                 {item.reference.length > 20 ? '...' : ''}
               </Text>
@@ -262,30 +272,42 @@ export default function TransactionHistoryScreen() {
 
       {/* Stats Summary */}
       <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: colors.success + '20' }]}>
+        <View
+          style={[styles.statCard, { backgroundColor: colors.success + '20' }]}
+        >
           <ArrowDownCircle size={20} color={colors.success} />
           <View style={styles.statInfo}>
-            <Text style={[styles.statLabel, { color: colors.success }]}>Total In</Text>
+            <Text style={[styles.statLabel, { color: colors.success }]}>
+              Total In
+            </Text>
             <Text style={[styles.statValue, { color: colors.success }]}>
               ₦{totalCredit.toLocaleString()}
             </Text>
           </View>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: colors.error + '20' }]}>
+        <View
+          style={[styles.statCard, { backgroundColor: colors.error + '20' }]}
+        >
           <ArrowUpCircle size={20} color={colors.error} />
           <View style={styles.statInfo}>
-            <Text style={[styles.statLabel, { color: colors.error }]}>Total Out</Text>
+            <Text style={[styles.statLabel, { color: colors.error }]}>
+              Total Out
+            </Text>
             <Text style={[styles.statValue, { color: colors.error }]}>
               ₦{totalDebit.toLocaleString()}
             </Text>
           </View>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: colors.primary + '20' }]}>
+        <View
+          style={[styles.statCard, { backgroundColor: colors.primary + '20' }]}
+        >
           <TrendingUp size={20} color={colors.primary} />
           <View style={styles.statInfo}>
-            <Text style={[styles.statLabel, { color: colors.primary }]}>Net</Text>
+            <Text style={[styles.statLabel, { color: colors.primary }]}>
+              Net
+            </Text>
             <Text style={[styles.statValue, { color: colors.primary }]}>
               ₦{(totalCredit - totalDebit).toLocaleString()}
             </Text>
@@ -321,13 +343,17 @@ export default function TransactionHistoryScreen() {
               style={[
                 styles.filterChip,
                 {
-                  backgroundColor: filterType === 'all' ? colors.primary : colors.card,
+                  backgroundColor:
+                    filterType === 'all' ? colors.primary : colors.card,
                   borderColor: colors.border,
                 },
               ]}
               onPress={() => setFilterType('all')}
             >
-              <Filter size={14} color={filterType === 'all' ? '#FFFFFF' : colors.text} />
+              <Filter
+                size={14}
+                color={filterType === 'all' ? '#FFFFFF' : colors.text}
+              />
               <Text
                 style={[
                   styles.filterChipText,
@@ -367,7 +393,8 @@ export default function TransactionHistoryScreen() {
               style={[
                 styles.filterChip,
                 {
-                  backgroundColor: filterType === 'debit' ? colors.error : colors.card,
+                  backgroundColor:
+                    filterType === 'debit' ? colors.error : colors.card,
                   borderColor: colors.border,
                 },
               ]}
@@ -394,13 +421,17 @@ export default function TransactionHistoryScreen() {
               style={[
                 styles.filterChip,
                 {
-                  backgroundColor: period === 'today' ? colors.primary : colors.card,
+                  backgroundColor:
+                    period === 'today' ? colors.primary : colors.card,
                   borderColor: colors.border,
                 },
               ]}
               onPress={() => setPeriod('today')}
             >
-              <Calendar size={14} color={period === 'today' ? '#FFFFFF' : colors.text} />
+              <Calendar
+                size={14}
+                color={period === 'today' ? '#FFFFFF' : colors.text}
+              />
               <Text
                 style={[
                   styles.filterChipText,
@@ -415,7 +446,8 @@ export default function TransactionHistoryScreen() {
               style={[
                 styles.filterChip,
                 {
-                  backgroundColor: period === 'week' ? colors.primary : colors.card,
+                  backgroundColor:
+                    period === 'week' ? colors.primary : colors.card,
                   borderColor: colors.border,
                 },
               ]}
@@ -435,7 +467,8 @@ export default function TransactionHistoryScreen() {
               style={[
                 styles.filterChip,
                 {
-                  backgroundColor: period === 'month' ? colors.primary : colors.card,
+                  backgroundColor:
+                    period === 'month' ? colors.primary : colors.card,
                   borderColor: colors.border,
                 },
               ]}
@@ -455,7 +488,8 @@ export default function TransactionHistoryScreen() {
               style={[
                 styles.filterChip,
                 {
-                  backgroundColor: period === 'all' ? colors.primary : colors.card,
+                  backgroundColor:
+                    period === 'all' ? colors.primary : colors.card,
                   borderColor: colors.border,
                 },
               ]}
@@ -478,12 +512,16 @@ export default function TransactionHistoryScreen() {
       {filteredTransactions.length === 0 ? (
         <View style={styles.emptyState}>
           <Calendar size={48} color={colors.textSecondary} />
-          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.emptyStateText, { color: colors.textSecondary }]}
+          >
             {searchQuery || filterType !== 'all' || period !== 'all'
               ? 'No transactions found'
               : 'No transactions yet'}
           </Text>
-          <Text style={[styles.emptyStateSubtext, { color: colors.textTetiary }]}>
+          <Text
+            style={[styles.emptyStateSubtext, { color: colors.textTetiary }]}
+          >
             {searchQuery || filterType !== 'all' || period !== 'all'
               ? 'Try adjusting your filters'
               : 'Your transaction history will appear here'}
@@ -495,7 +533,9 @@ export default function TransactionHistoryScreen() {
           keyExtractor={(item) => item.date}
           renderItem={({ item }) => (
             <View style={styles.dateGroup}>
-              <Text style={[styles.dateHeader, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.dateHeader, { color: colors.textSecondary }]}
+              >
                 {item.date}
               </Text>
               {item.transactions.map((tx) => (
