@@ -34,6 +34,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useVendorProducts } from '@/hooks/useVendorProducts';
 import { useVendorProfile } from '@/hooks/useVendorProfile';
 import ProductCard from '@/components/ProductCard';
+import ProductRatingSection from '@/components/ProductRatingSection';
 import { CartService } from '@/services/cart';
 import { useUserStore } from '@/stores/useUserStore';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -455,6 +456,13 @@ export default function VendorPage() {
             >
               {selectedProduct.description}
             </Text>
+
+            {/* Product Rating Section */}
+            <ProductRatingSection
+              productId={selectedProduct.id}
+              productName={selectedProduct.name}
+              vendorId={vendorId as string}
+            />
 
             {/* Out of Stock Banner */}
             {selectedProduct.stock === 0 && (

@@ -19,7 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function ReviewsScreen() {
   const { colors } = useTheme();
-  const { vendorId, vendorName } = useLocalSearchParams();
+  const { vendorId } = useLocalSearchParams();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -69,13 +69,6 @@ export default function ReviewsScreen() {
       Alert.alert('Error', 'Failed to submit vote. Please try again.');
     }
   };
-
-  const displayName = vendorName
-    ? vendorName
-        .toString()
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, (l) => l.toUpperCase())
-    : 'Vendor';
 
   return (
     <SafeAreaView

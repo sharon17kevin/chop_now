@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ReviewService } from '@/services/reviews';
+import { ReviewService } from '../services/reviews';
 
 export interface Review {
   id: string;
   user_id: string;
   vendor_id: string;
+  product_id?: string | null; // New: for product reviews
   rating: number;
   title: string | null;
   comment: string;

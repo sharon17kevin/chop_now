@@ -3,6 +3,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Product, isDiscountActive } from '@/stores/useProductStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useWishlistStore } from '@/stores/useWishlistStore';
+import { useProductRating } from '@/hooks/useProductRating';
 import { useRouter } from 'expo-router';
 import { Heart, Plus, Star, ImageIcon } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -30,6 +31,9 @@ export default function GridProductCard({ product }: GridProductCardProps) {
 
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const inWishlist = isInWishlist(product.id);
+
+  // Get product rating data
+  const { data: ratingData } = useProductRating(product.id);
 
   // Get best possible discount for bulk pricing
   const bestBulkDiscount = getBestDiscount(product.bulk_discount_tiers);
@@ -206,13 +210,16 @@ export default function GridProductCard({ product }: GridProductCardProps) {
         <View style={styles.ratingRow}>
           <Star size={10} color="#F59E0B" fill="#F59E0B" />
           <Text style={[styles.rating, { color: colors.textSecondary }]}>
-            4.2
+            {ratingData?.average
+              ? ratingData.average.toFixed(1)
+              : product.rating?.toFixed(1) || 'No ratings'}
           </Text>
           <Text
             style={[styles.vendor, { color: colors.textTetiary }]}
             numberOfLines={1}
           >
             • {product.profiles?.full_name || 'Vendor'}
+            {ratingData?.total ? ` (${ratingData.total})` : ''}
           </Text>
         </View>
 
