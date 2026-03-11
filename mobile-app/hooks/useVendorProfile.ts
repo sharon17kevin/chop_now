@@ -67,23 +67,26 @@ export const useVendorProfile = (vendorId: string) => {
       setLoading(true);
       setError(null);
 
+      console.log('useVendorProfile: Fetching profile for vendorId:', vendorId);
+      
       const data = await ProfileService.getVendorProfile(vendorId);
 
       if (!data) {
+        console.log('useVendorProfile: No vendor profile found for:', vendorId);
         setError('Vendor profile not found');
         setProfile(null);
         return;
       }
 
-      if (data.role !== 'vendor') {
-        setError('This user is not a vendor');
-        setProfile(null);
-        return;
-      }
-
+      console.log('useVendorProfile: Profile fetched successfully for:', data.full_name);
       setProfile(data as VendorProfile);
     } catch (err: any) {
-      console.error('Error fetching vendor profile:', err);
+      console.error('useVendorProfile: Error fetching vendor profile:', err);
+      console.error('useVendorProfile: Error details:', {
+        message: err.message,
+        stack: err.stack,
+        vendorId
+      });
       setError(err.message || 'Failed to load vendor information');
     } finally {
       setLoading(false);

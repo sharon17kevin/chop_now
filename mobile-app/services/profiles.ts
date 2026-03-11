@@ -2,13 +2,48 @@ import { supabase } from '@/lib/supabase';
 
 export const ProfileService = {
     async getVendorProfile(vendorId: string) {
+        console.log('Fetching vendor profile for:', vendorId);
+        
+        // First try to get the vendor profile with public fields
         const { data, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select(`
+                id,
+                full_name,
+                profile_image,
+                banner_image,
+                role,
+                verified,
+                farm_name,
+                farm_location,
+                farm_description,
+                business_phone,
+                address,
+                city,
+                state,
+                business_hours,
+                delivery_zones,
+                rating,
+                total_orders,
+                total_sales,
+                favorite_count,
+                created_at,
+                updated_at
+            `)
             .eq('id', vendorId)
+            .eq('role', 'vendor')
             .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Error fetching vendor profile:', error);
+            throw new Error(`Failed to fetch vendor profile: ${error.message}`);
+        }
+        
+        if (!data) {
+            throw new Error('Vendor not found or not accessible');
+        }
+        
+        console.log('Vendor profile fetched successfully:', data.full_name);
         return data;
     },
 
