@@ -1,49 +1,48 @@
 // app/(tabs)/(home)/vendor/[vendorId].tsx
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  RefreshControl,
-  Image,
-  Alert,
-  Linking,
-} from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  MapPin,
-  Star,
-  Package,
-  X,
-  Plus,
-  Minus,
-  ShoppingBag,
-  Heart,
-  Tag,
-  Percent,
-  Phone,
-} from 'lucide-react-native';
+import ProductCard from '@/components/ProductCard';
+import ProductRatingSection from '@/components/ProductRatingSection';
+import QuantityControl from '@/components/common/QuantityControl';
 import { useTheme } from '@/hooks/useTheme';
 import { useVendorProducts } from '@/hooks/useVendorProducts';
 import { useVendorProfile } from '@/hooks/useVendorProfile';
-import ProductCard from '@/components/ProductCard';
-import ProductRatingSection from '@/components/ProductRatingSection';
-import { CartService } from '@/services/cart';
-import { useUserStore } from '@/stores/useUserStore';
 import { useWishlist } from '@/hooks/useWishlist';
+import { CartService } from '@/services/cart';
 import { isDiscountActive } from '@/stores/useProductStore';
+import { useUserStore } from '@/stores/useUserStore';
 import {
   calculateOrderTotal,
-  getNextDiscountTier,
   formatDiscountTier,
+  getNextDiscountTier,
 } from '@/utils/pricing';
+import * as Clipboard from 'expo-clipboard';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  ArrowLeft,
+  Heart,
+  MapPin,
+  Package,
+  Percent,
+  Phone,
+  ShoppingBag,
+  Star,
+  Tag,
+  X
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Linking,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function VendorPage() {
   const { colors } = useTheme();
@@ -125,24 +124,9 @@ export default function VendorPage() {
     setSelectedProduct(null); // Return to product grid
   };
 
-  // Quantity controls
-  const increment = () => {
-    if (selectedProduct && quantity < selectedProduct.stock) {
-      const incrementValue = selectedProduct.order_increment || 1;
-      const newQuantity = quantity + incrementValue;
-      // Don't exceed stock
-      setQuantity(Math.min(newQuantity, selectedProduct.stock));
-    }
-  };
-
-  const decrement = () => {
-    const minQty = selectedProduct?.minimum_order_quantity || 1;
-    const incrementValue = selectedProduct?.order_increment || 1;
-    if (quantity > minQty) {
-      const newQuantity = quantity - incrementValue;
-      // Don't go below minimum order quantity
-      setQuantity(Math.max(newQuantity, minQty));
-    }
+  // Quantity change handler
+  const handleQuantityChange = (newQuantity: number) => {
+    setQuantity(newQuantity);
   };
 
   // Vendor contact functions
@@ -835,43 +819,18 @@ export default function VendorPage() {
               </View>
 
               <View style={styles.quantityControls}>
-                <TouchableOpacity
-                  onPress={decrement}
-                  disabled={
-                    quantity <= (selectedProduct.minimum_order_quantity || 1)
-                  }
-                  style={[
-                    styles.quantityButton,
-                    {
-                      backgroundColor: colors.filter,
-                      opacity:
-                        quantity <=
-                        (selectedProduct.minimum_order_quantity || 1)
-                          ? 0.5
-                          : 1,
-                    },
-                  ]}
-                >
-                  <Minus size={20} color={colors.text} />
-                </TouchableOpacity>
-
-                <Text style={[styles.quantityValue, { color: colors.text }]}>
-                  {quantity}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={increment}
-                  disabled={quantity >= selectedProduct.stock}
-                  style={[
-                    styles.quantityButton,
-                    {
-                      backgroundColor: colors.filter,
-                      opacity: quantity >= selectedProduct.stock ? 0.5 : 1,
-                    },
-                  ]}
-                >
-                  <Plus size={20} color={colors.text} />
-                </TouchableOpacity>
+                <QuantityControl
+                  quantity={quantity}
+                  onQuantityChange={handleQuantityChange}
+                  product={{
+                    stock: selectedProduct.stock,
+                    minimum_order_quantity:
+                      selectedProduct.minimum_order_quantity,
+                    order_increment: selectedProduct.order_increment,
+                  }}
+                  size="large"
+                  disabled={addingToCart || selectedProduct.stock === 0}
+                />
               </View>
             </View>
 

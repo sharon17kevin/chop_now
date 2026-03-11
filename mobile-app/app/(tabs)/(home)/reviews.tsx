@@ -56,7 +56,10 @@ export default function ReviewsScreen() {
 
       if (existingVote) {
         // Toggle vote
-        await ReviewService.updateReviewVote(existingVote.id, !existingVote.is_helpful);
+        await ReviewService.updateReviewVote(
+          existingVote.id,
+          !existingVote.is_helpful,
+        );
       } else {
         // Create new vote
         await ReviewService.createReviewVote(reviewId, user.id, true);

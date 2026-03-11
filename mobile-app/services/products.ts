@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 
 export const ProductService = {
     async fetchAll() {
@@ -90,7 +90,7 @@ export const ProductService = {
         const { data, error } = await supabase
             .from('products')
             .select(
-                'id, name, category, stock, price, unit, is_available, image_url, discount_percentage, original_price, is_on_sale, sale_ends_at',
+                'id, name, category, stock, price, unit, is_available, image_url, discount_percentage, original_price, is_on_sale, sale_ends_at, minimum_order_quantity, order_increment, bulk_discount_tiers, description',
             )
             .eq('id', productId)
             .single();

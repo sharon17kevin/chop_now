@@ -1,14 +1,16 @@
 import { DestinationMiniCard } from '@/components/cards/DestinationCard';
 import ExpandingTile from '@/components/common/ExpandingTile';
+import QuantityControl from '@/components/common/QuantityControl';
 import Indicator from '@/components/common/Indicator';
 import { miniCardsData } from '@/data/mockData';
 import { useTheme } from '@/hooks/useTheme';
+import { useProduct } from '@/hooks/useProduct';
 import { useUserStore } from '@/stores/useUserStore';
 import { CartService } from '@/services/cart';
 import { typography } from '@/styles/typography';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Clock, Heart, Share, Star } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dimensions,
   Image,
@@ -37,6 +39,9 @@ export default function ItemInfoScreen() {
 
   const isOpenBool = isOpen === 'true';
   const priceNum = parseFloat(price?.toString() || '0');
+  
+  // Fetch full product data to get MOQ, increment, and stock info
+  const { data: product, isLoading: productLoading, error: productError } = useProduct(id?.toString() || null);
 
   const images = [
     image?.toString() ||
@@ -72,9 +77,17 @@ export default function ItemInfoScreen() {
   // quantity state and handlers
   const [qty, setQty] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  
+  // Set initial quantity based on product MOQ when product data loads
+  useEffect(() => {
+    if (product && product.minimum_order_quantity) {
+      setQty(product.minimum_order_quantity);
+    }
+  }, [product]);
 
-  const increment = () => setQty((q) => q + 1);
-  const decrement = () => setQty((q) => Math.max(1, q - 1));
+  const handleQuantityChange = (newQuantity: number) => {
+    setQty(newQuantity);
+  };
 
   // Add to cart handler - saves to cart_items table
   const handleAddToBag = async () => {
@@ -442,29 +455,31 @@ export default function ItemInfoScreen() {
           },
         ]}
       >
-        <View style={styles.qtyRow}>
-          <TouchableOpacity
-            onPress={decrement}
-            style={[styles.qtyButton, { borderColor: colors.inputBorder }]}
-          >
-            <Text style={{ color: colors.text }}>-</Text>
-          </TouchableOpacity>
-          <Text style={[styles.qtyText, { color: colors.text }]}>{qty}</Text>
-          <TouchableOpacity
-            onPress={increment}
-            style={[styles.qtyButton, { borderColor: colors.inputBorder }]}
-          >
-            <Text style={{ color: colors.text }}>+</Text>
-          </TouchableOpacity>
-        </View>
+        {product ? (
+          <QuantityControl
+            quantity={qty}
+            onQuantityChange={handleQuantityChange}
+            product={{
+              stock: product.stock,
+              minimum_order_quantity: product.minimum_order_quantity,
+              order_increment: product.order_increment,
+            }}
+            size="medium"
+            disabled={isAddingToCart}
+          />
+        ) : (
+          <View style={styles.qtyRow}>
+            <Text style={[styles.qtyText, { color: colors.text }]}>Loading...</Text>
+          </View>
+        )}
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={handleAddToBag}
-          disabled={isAddingToCart}
+          disabled={isAddingToCart || !product}
           style={[
             styles.addBagButton,
             { backgroundColor: colors.secondary },
-            isAddingToCart && { opacity: 0.6 },
+            (isAddingToCart || !product) && { opacity: 0.6 },
           ]}
         >
           {isAddingToCart ? (
