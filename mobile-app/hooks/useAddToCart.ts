@@ -9,6 +9,7 @@ interface AddToCartOptions {
   quantity?: number;
   isAvailable?: boolean;
   stock?: number;
+  minimumOrderQuantity?: number;
 }
 
 export function useAddToCart() {
@@ -18,10 +19,14 @@ export function useAddToCart() {
     const {
       productId,
       productName,
-      quantity = 1,
+      quantity,
       isAvailable = true,
       stock = 1,
+      minimumOrderQuantity = 1,
     } = options;
+
+    // Use MOQ as default quantity if not specified
+    const actualQuantity = quantity || minimumOrderQuantity;
 
     if (!isAvailable || stock === 0) {
       Alert.alert('Unavailable', 'This product is currently out of stock');
@@ -40,9 +45,9 @@ export function useAddToCart() {
       const existing = await CartService.getExistingCartItem(userId, productId);
 
       if (existing) {
-        await CartService.updateQuantity(existing.id, existing.quantity + quantity);
+        await CartService.updateQuantity(existing.id, existing.quantity + actualQuantity);
       } else {
-        await CartService.addItem(userId, productId, quantity);
+        await CartService.addItem(userId, productId, actualQuantity);
       }
 
       Alert.alert('Success', `Added ${productName} to cart!`);

@@ -10,7 +10,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  Alert,
+  Linking,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -25,14 +28,21 @@ import {
   Heart,
   Tag,
   Percent,
+  Phone,
 } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useVendorProducts } from '@/hooks/useVendorProducts';
+import { useVendorProfile } from '@/hooks/useVendorProfile';
 import ProductCard from '@/components/ProductCard';
 import { CartService } from '@/services/cart';
 import { useUserStore } from '@/stores/useUserStore';
 import { useWishlist } from '@/hooks/useWishlist';
 import { isDiscountActive } from '@/stores/useProductStore';
+import {
+  calculateOrderTotal,
+  getNextDiscountTier,
+  formatDiscountTier,
+} from '@/utils/pricing';
 
 export default function VendorPage() {
   const { colors } = useTheme();
@@ -46,6 +56,9 @@ export default function VendorPage() {
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
 
+  // Fetch vendor profile for contact info
+  const { profile: vendorProfile } = useVendorProfile(vendorId as string);
+
   const {
     categories,
     productsByCategory,
@@ -56,6 +69,20 @@ export default function VendorPage() {
   } = useVendorProducts(vendorId as string);
 
   const currentProducts = productsByCategory[selectedCategory] || [];
+
+  // Calculate pricing with bulk discounts
+  const pricingInfo = selectedProduct
+    ? calculateOrderTotal(
+        selectedProduct.price,
+        selectedProduct.bulk_discount_tiers,
+        quantity,
+      )
+    : null;
+
+  // Get next discount tier for incentive
+  const nextTier = selectedProduct
+    ? getNextDiscountTier(selectedProduct.bulk_discount_tiers, quantity)
+    : null;
 
   // Auto-open product if navigated with productId
   useEffect(() => {
@@ -69,7 +96,8 @@ export default function VendorPage() {
         if (foundProduct) {
           setSelectedCategory(category);
           setSelectedProduct(foundProduct);
-          setQuantity(1);
+          const minQty = foundProduct.minimum_order_quantity || 1;
+          setQuantity(minQty);
           break;
         }
       }
@@ -78,14 +106,16 @@ export default function VendorPage() {
 
   // Handle product card press
   const handleProductPress = (product: any) => {
+    const minQty = product.minimum_order_quantity || 1;
     setSelectedProduct(product);
-    setQuantity(1);
+    setQuantity(minQty);
   };
 
   // Close product detail view
   const handleCloseDetail = () => {
     setSelectedProduct(null);
-    setQuantity(1);
+    const minQty = selectedProduct?.minimum_order_quantity || 1;
+    setQuantity(minQty);
   };
 
   // Handle category tab press - closes detail view
@@ -97,13 +127,53 @@ export default function VendorPage() {
   // Quantity controls
   const increment = () => {
     if (selectedProduct && quantity < selectedProduct.stock) {
-      setQuantity((q) => q + 1);
+      const incrementValue = selectedProduct.order_increment || 1;
+      const newQuantity = quantity + incrementValue;
+      // Don't exceed stock
+      setQuantity(Math.min(newQuantity, selectedProduct.stock));
     }
   };
 
   const decrement = () => {
-    if (quantity > 1) {
-      setQuantity((q) => q - 1);
+    const minQty = selectedProduct?.minimum_order_quantity || 1;
+    const incrementValue = selectedProduct?.order_increment || 1;
+    if (quantity > minQty) {
+      const newQuantity = quantity - incrementValue;
+      // Don't go below minimum order quantity
+      setQuantity(Math.max(newQuantity, minQty));
+    }
+  };
+
+  // Vendor contact functions
+  const handleCallVendor = () => {
+    if (!vendorProfile?.business_phone && !vendorProfile?.phone) {
+      Alert.alert('No Contact', 'Vendor contact number not available');
+      return;
+    }
+
+    const phoneNumber = vendorProfile.business_phone || vendorProfile.phone;
+
+    Alert.alert('Contact Vendor', `Call ${vendorName}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Call',
+        onPress: () => {
+          Linking.openURL(`tel:${phoneNumber}`);
+        },
+      },
+    ]);
+  };
+
+  const handleCopyVendorNumber = async () => {
+    if (!vendorProfile?.business_phone && !vendorProfile?.phone) {
+      Alert.alert('No Contact', 'Vendor contact number not available');
+      return;
+    }
+
+    const phoneNumber = vendorProfile.business_phone || vendorProfile.phone;
+    if (phoneNumber) {
+      await Clipboard.setStringAsync(phoneNumber);
+      Alert.alert('Copied', 'Vendor phone number copied to clipboard');
     }
   };
 
@@ -117,6 +187,18 @@ export default function VendorPage() {
   const handleAddToCart = async () => {
     if (!selectedProduct) return;
 
+    const minQty = selectedProduct.minimum_order_quantity || 1;
+
+    // Validate minimum order quantity
+    if (quantity < minQty) {
+      Alert.alert(
+        'Minimum Order Quantity',
+        `This product requires a minimum order of ${minQty} ${selectedProduct.unit}(s).`,
+        [{ text: 'OK' }],
+      );
+      return;
+    }
+
     try {
       setAddingToCart(true);
       const userId = useUserStore.getState().profile?.id;
@@ -127,11 +209,17 @@ export default function VendorPage() {
       }
 
       // Check if already in cart
-      const existing = await CartService.getExistingCartItem(userId, selectedProduct.id);
+      const existing = await CartService.getExistingCartItem(
+        userId,
+        selectedProduct.id,
+      );
 
       if (existing) {
         // Update quantity
-        await CartService.updateQuantity(existing.id, existing.quantity + quantity);
+        await CartService.updateQuantity(
+          existing.id,
+          existing.quantity + quantity,
+        );
       } else {
         // Add new item
         await CartService.addItem(userId, selectedProduct.id, quantity);
@@ -201,7 +289,32 @@ export default function VendorPage() {
           </View>
         </TouchableOpacity>
 
-        <View style={{ width: 40 }} />
+        {/* Vendor Contact Button */}
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert(
+              'Contact Vendor',
+              `Choose an option to contact ${vendorName || 'vendor'}`,
+              [
+                {
+                  text: 'Call',
+                  onPress: handleCallVendor,
+                },
+                {
+                  text: 'Copy Number',
+                  onPress: handleCopyVendorNumber,
+                },
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+              ],
+            );
+          }}
+          style={[styles.contactButton, { backgroundColor: colors.filter }]}
+        >
+          <Phone size={20} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Category Tabs */}
@@ -500,21 +613,234 @@ export default function VendorPage() {
               </View>
             </View>
 
+            {/* Bulk Discount Information */}
+            {selectedProduct?.bulk_discount_tiers &&
+              selectedProduct.bulk_discount_tiers.length > 0 && (
+                <View style={styles.bulkDiscountSection}>
+                  {/* Active discount badge */}
+                  {pricingInfo && pricingInfo.discountPercent > 0 && (
+                    <View
+                      style={[
+                        styles.activeDiscountBadge,
+                        {
+                          backgroundColor: colors.warning + '20',
+                          borderColor: colors.warning,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.activeDiscountText,
+                          { color: colors.warning },
+                        ]}
+                      >
+                        🎉 {pricingInfo.discountPercent}% bulk discount applied!
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Discount tiers list */}
+                  <View style={styles.discountTiersContainer}>
+                    <Text
+                      style={[
+                        styles.discountTiersTitle,
+                        { color: colors.text },
+                      ]}
+                    >
+                      Bulk Pricing:
+                    </Text>
+                    {selectedProduct.bulk_discount_tiers.map(
+                      (
+                        tier: {
+                          min_quantity: number;
+                          discount_percent: number;
+                        },
+                        index: number,
+                      ) => (
+                        <View
+                          key={index}
+                          style={[
+                            styles.discountTierItem,
+                            {
+                              backgroundColor:
+                                pricingInfo?.discountPercent ===
+                                tier.discount_percent
+                                  ? colors.warning + '15'
+                                  : colors.input,
+                              borderColor:
+                                pricingInfo?.discountPercent ===
+                                tier.discount_percent
+                                  ? colors.warning
+                                  : colors.border,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.discountTierText,
+                              {
+                                color:
+                                  pricingInfo?.discountPercent ===
+                                  tier.discount_percent
+                                    ? colors.warning
+                                    : colors.textSecondary,
+                              },
+                            ]}
+                          >
+                            {formatDiscountTier(tier, selectedProduct.unit)}
+                          </Text>
+                        </View>
+                      ),
+                    )}
+                  </View>
+
+                  {/* Next tier incentive */}
+                  {nextTier && (
+                    <View
+                      style={[
+                        styles.nextTierBadge,
+                        {
+                          backgroundColor: colors.primary + '15',
+                          borderColor: colors.primary,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.nextTierText, { color: colors.primary }]}
+                      >
+                        💡 Add {nextTier.unitsToGo} more {selectedProduct.unit}{' '}
+                        to unlock {nextTier.discount_percent}% off!
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Price breakdown */}
+                  {pricingInfo && pricingInfo.discountPercent > 0 && (
+                    <View style={styles.priceBreakdown}>
+                      <View style={styles.priceBreakdownRow}>
+                        <Text
+                          style={[
+                            styles.priceBreakdownLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          Subtotal:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.priceBreakdownValue,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          ₦{pricingInfo.subtotal.toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={styles.priceBreakdownRow}>
+                        <Text
+                          style={[
+                            styles.priceBreakdownLabel,
+                            { color: colors.success },
+                          ]}
+                        >
+                          Bulk Discount ({pricingInfo.discountPercent}%):
+                        </Text>
+                        <Text
+                          style={[
+                            styles.priceBreakdownValue,
+                            { color: colors.success },
+                          ]}
+                        >
+                          -₦{pricingInfo.savings.toLocaleString()}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.priceBreakdownRow,
+                          styles.totalRow,
+                          { borderTopColor: colors.border },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.priceBreakdownLabel,
+                            styles.totalLabel,
+                            { color: colors.text },
+                          ]}
+                        >
+                          Total:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.priceBreakdownValue,
+                            styles.totalValue,
+                            { color: colors.primary },
+                          ]}
+                        >
+                          ₦{pricingInfo.total.toLocaleString()}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.pricePerUnitText,
+                          { color: colors.textTetiary },
+                        ]}
+                      >
+                        ₦{pricingInfo.pricePerUnit.toFixed(2)} per{' '}
+                        {selectedProduct.unit}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
             {/* Quantity Selector */}
             <View style={styles.quantitySection}>
-              <Text style={[styles.quantityLabel, { color: colors.text }]}>
-                Quantity
-              </Text>
+              <View style={styles.quantityHeader}>
+                <Text style={[styles.quantityLabel, { color: colors.text }]}>
+                  Quantity
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {selectedProduct.minimum_order_quantity &&
+                    selectedProduct.minimum_order_quantity > 1 && (
+                      <Text
+                        style={[
+                          styles.minQtyLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Min: {selectedProduct.minimum_order_quantity}{' '}
+                        {selectedProduct.unit}(s)
+                      </Text>
+                    )}
+                  {selectedProduct.order_increment &&
+                    selectedProduct.order_increment > 1 && (
+                      <Text
+                        style={[
+                          styles.minQtyLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        • Step: {selectedProduct.order_increment}
+                      </Text>
+                    )}
+                </View>
+              </View>
 
               <View style={styles.quantityControls}>
                 <TouchableOpacity
                   onPress={decrement}
-                  disabled={quantity <= 1}
+                  disabled={
+                    quantity <= (selectedProduct.minimum_order_quantity || 1)
+                  }
                   style={[
                     styles.quantityButton,
                     {
                       backgroundColor: colors.filter,
-                      opacity: quantity <= 1 ? 0.5 : 1,
+                      opacity:
+                        quantity <=
+                        (selectedProduct.minimum_order_quantity || 1)
+                          ? 0.5
+                          : 1,
                     },
                   ]}
                 >
@@ -560,7 +886,9 @@ export default function VendorPage() {
                   <ShoppingBag size={20} color="#fff" />
                   <Text style={styles.addButtonText}>
                     Add to Cart - ₦
-                    {(selectedProduct.price * quantity).toLocaleString()}
+                    {pricingInfo && pricingInfo.discountPercent > 0
+                      ? pricingInfo.total.toLocaleString()
+                      : (selectedProduct.price * quantity).toLocaleString()}
                   </Text>
                 </>
               )}
@@ -657,6 +985,13 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  contactButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tabsContainer: {
     borderBottomWidth: 1,
@@ -883,10 +1218,20 @@ const styles = StyleSheet.create({
   quantitySection: {
     marginBottom: 24,
   },
+  quantityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   quantityLabel: {
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 12,
+  },
+  minQtyLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontStyle: 'italic',
   },
   quantityControls: {
     flexDirection: 'row',
@@ -918,5 +1263,85 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  bulkDiscountSection: {
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  activeDiscountBadge: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    marginBottom: 12,
+  },
+  activeDiscountText: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  discountTiersContainer: {
+    marginBottom: 12,
+  },
+  discountTiersTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  discountTierItem: {
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  discountTierText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  nextTierBadge: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    marginBottom: 12,
+  },
+  nextTierText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  priceBreakdown: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    padding: 12,
+    borderRadius: 8,
+  },
+  priceBreakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  priceBreakdownLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  priceBreakdownValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  totalValue: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  pricePerUnitText: {
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 4,
   },
 });

@@ -1,9 +1,16 @@
+import { useAddToCart } from '@/hooks/useAddToCart';
 import { useTheme } from '@/hooks/useTheme';
 import { Database } from '@/types/database.types';
 import { useRouter } from 'expo-router';
 import { Heart, Plus, Star, ImageIcon } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 import { Image } from 'expo-image';
 
 type Product = Database['public']['Tables']['products']['Row'] & {
@@ -17,11 +24,26 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { colors } = useTheme();
   const router = useRouter();
+  const { addToCart, addingToCart } = useAddToCart();
 
   const handlePress = () => {
     router.push({
       pathname: '/(tabs)/(home)/items/[iteminfo]' as any,
       params: { iteminfo: product.id },
+    });
+  };
+
+  const handleAddToCart = async (e: any) => {
+    e.stopPropagation();
+
+    if (addingToCart) return;
+
+    await addToCart({
+      productId: product.id,
+      productName: product.name,
+      isAvailable: product.is_available,
+      stock: product.stock,
+      minimumOrderQuantity: product.minimum_order_quantity || 1,
     });
   };
 
@@ -75,6 +97,21 @@ export default function ProductCard({ product }: ProductCardProps) {
             </Text>
           </View>
         ) : null}
+        {/* Minimum Order Quantity Badge */}
+        {product.minimum_order_quantity &&
+        product.minimum_order_quantity > 1 &&
+        product.stock > 0 ? (
+          <View
+            style={[
+              styles.moqBadge,
+              { backgroundColor: colors.secondary, bottom: 8, left: 8 },
+            ]}
+          >
+            <Text style={styles.moqText}>
+              Min: {product.minimum_order_quantity} {product.unit}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.content}>
@@ -111,9 +148,27 @@ export default function ProductCard({ product }: ProductCardProps) {
             )}
           </View>
           <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: colors.secondary }]}
+            style={[
+              styles.addButton,
+              {
+                backgroundColor: colors.secondary,
+                opacity:
+                  addingToCart || !product.is_available || product.stock === 0
+                    ? 0.5
+                    : 1,
+              },
+            ]}
+            onPress={handleAddToCart}
+            disabled={
+              addingToCart || !product.is_available || product.stock === 0
+            }
+            activeOpacity={0.8}
           >
-            <Plus size={20} color="#FFF" />
+            {addingToCart ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Plus size={20} color="#FFF" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -242,5 +297,16 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  moqBadge: {
+    position: 'absolute',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  moqText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '600',
   },
 });

@@ -23,6 +23,9 @@ export interface Database {
                     discount_percentage: number | null
                     vendor_id: string
                     created_at: string
+                    minimum_order_quantity: number
+                    order_increment: number | null
+                    bulk_discount_tiers: {min_quantity: number; discount_percent: number}[] | null
                 }
                 Insert: {
                     id?: string
@@ -37,6 +40,9 @@ export interface Database {
                     discount_percentage?: number | null
                     vendor_id: string
                     created_at?: string
+                    minimum_order_quantity?: number
+                    order_increment?: number | null
+                    bulk_discount_tiers?: {min_quantity: number; discount_percent: number}[] | null
                 }
                 Update: {
                     id?: string
@@ -51,6 +57,9 @@ export interface Database {
                     discount_percentage?: number | null
                     vendor_id?: string
                     created_at?: string
+                    minimum_order_quantity?: number
+                    order_increment?: number | null
+                    bulk_discount_tiers?: {min_quantity: number; discount_percent: number}[] | null
                 }
             }
             cart_items: {

@@ -122,6 +122,7 @@ Chow is a farm-to-table marketplace connecting local farmers with customers. The
 - is_organic (boolean)
 - is_available (boolean)
 - status (text: 'pending' | 'approved' | 'rejected')
+- minimum_order_quantity (integer, default: 1, CHECK >= 1) -- Minimum units customer must purchase
 - created_at (timestamp)
 - updated_at (timestamp)
 ```

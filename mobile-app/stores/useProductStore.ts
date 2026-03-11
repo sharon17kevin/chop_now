@@ -25,6 +25,9 @@ export interface Product {
   } | null;
   tags?: string[] | null;
   rating?: number;
+  minimum_order_quantity?: number;
+  order_increment?: number | null;
+  bulk_discount_tiers?: {min_quantity: number; discount_percent: number}[] | null;
   created_at: string;
   updated_at: string;
   profiles?: {

@@ -1,11 +1,11 @@
-// components/ProductCard.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { Heart, ImageIcon } from 'lucide-react-native';
+import { Heart, ImageIcon, Package } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
 import { useWishlist } from '@/hooks/useWishlist';
+import { getBestDiscount } from '@/utils/pricing';
 
 interface ProductCardProps {
   id: string;
@@ -20,6 +20,11 @@ interface ProductCardProps {
   is_available: boolean;
   vendor_id?: string;
   vendor_name?: string;
+  minimum_order_quantity?: number;
+  order_increment?: number | null;
+  bulk_discount_tiers?:
+    | { min_quantity: number; discount_percent: number }[]
+    | null;
   onPress?: () => void;
 }
 
@@ -36,6 +41,9 @@ export default function ProductCard({
   is_available,
   vendor_id,
   vendor_name,
+  minimum_order_quantity,
+  order_increment,
+  bulk_discount_tiers,
   onPress,
 }: ProductCardProps) {
   const { colors } = useTheme();
@@ -43,6 +51,7 @@ export default function ProductCard({
   const { isInWishlist, toggleWishlist } = useWishlist();
 
   const inWishlist = isInWishlist(id);
+  const bestBulkDiscount = getBestDiscount(bulk_discount_tiers);
 
   const handlePress = () => {
     if (onPress) {
@@ -134,6 +143,20 @@ export default function ProductCard({
             <Text style={styles.stockText}>Low Stock</Text>
           </View>
         )}
+
+        {/* Bulk Discount Badge - bottom left */}
+        {bestBulkDiscount > 0 && stock > 0 && (
+          <View
+            style={[
+              styles.bulkDiscountBadge,
+              { backgroundColor: colors.warning },
+            ]}
+          >
+            <Text style={styles.bulkDiscountText}>
+              Up to {bestBulkDiscount}% off
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Product Info */}
@@ -159,12 +182,33 @@ export default function ProductCard({
             </Text>
           </View>
 
-          <View
-            style={[styles.categoryBadge, { backgroundColor: colors.filter }]}
-          >
-            <Text style={[styles.category, { color: colors.textSecondary }]}>
-              {category}
-            </Text>
+          <View style={styles.badges}>
+            {/* Minimum Order Badge */}
+            {minimum_order_quantity && minimum_order_quantity > 1 && (
+              <View
+                style={[
+                  styles.minQtyBadge,
+                  {
+                    backgroundColor: colors.primary + '20',
+                    borderColor: colors.primary,
+                  },
+                ]}
+              >
+                <Package size={10} color={colors.primary} />
+                <Text style={[styles.minQtyText, { color: colors.primary }]}>
+                  Min {minimum_order_quantity}
+                </Text>
+              </View>
+            )}
+
+            {/* Category Badge */}
+            <View
+              style={[styles.categoryBadge, { backgroundColor: colors.filter }]}
+            >
+              <Text style={[styles.category, { color: colors.textSecondary }]}>
+                {category}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -270,6 +314,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
+  badges: {
+    flexDirection: 'column',
+    gap: 6,
+    alignItems: 'flex-end',
+  },
+  minQtyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 3,
+    borderWidth: 1,
+  },
+  minQtyText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
   price: {
     fontSize: 18,
     fontWeight: '800',
@@ -287,5 +349,18 @@ const styles = StyleSheet.create({
   category: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  bulkDiscountBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  bulkDiscountText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

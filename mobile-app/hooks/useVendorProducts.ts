@@ -18,6 +18,9 @@ interface Product {
   is_available: boolean;
   status?: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  minimum_order_quantity?: number;
+  order_increment?: number | null;
+  bulk_discount_tiers?: {min_quantity: number; discount_percent: number}[] | null;
 }
 
 interface UseVendorProductsReturn {

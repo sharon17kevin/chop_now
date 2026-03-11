@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { getBestDiscount } from '@/utils/pricing';
 
 interface GridProductCardProps {
   product: Product;
@@ -29,6 +30,9 @@ export default function GridProductCard({ product }: GridProductCardProps) {
 
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const inWishlist = isInWishlist(product.id);
+
+  // Get best possible discount for bulk pricing
+  const bestBulkDiscount = getBestDiscount(product.bulk_discount_tiers);
 
   // Debug: Log stock value
   console.log(
@@ -57,9 +61,9 @@ export default function GridProductCard({ product }: GridProductCardProps) {
     await addToCart({
       productId: product.id,
       productName: product.name,
-      quantity: 1,
       isAvailable: product.is_available,
       stock: product.stock,
+      minimumOrderQuantity: product.minimum_order_quantity || 1,
     });
   };
 
@@ -157,6 +161,38 @@ export default function GridProductCard({ product }: GridProductCardProps) {
           >
             <Text style={styles.discountText}>
               -{product.discount_percentage}%
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Bulk Discount Badge */}
+        {!product.discount_percentage &&
+        bestBulkDiscount > 0 &&
+        product.stock > 0 ? (
+          <View
+            style={[
+              styles.bulkDiscountBadge,
+              { backgroundColor: colors.warning, top: 6, left: 6 },
+            ]}
+          >
+            <Text style={styles.bulkDiscountText}>
+              Up to {bestBulkDiscount}% off
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Minimum Order Quantity Badge */}
+        {product.minimum_order_quantity &&
+        product.minimum_order_quantity > 1 &&
+        product.stock > 0 ? (
+          <View
+            style={[
+              styles.moqBadge,
+              { backgroundColor: colors.secondary, bottom: 6, left: 6 },
+            ]}
+          >
+            <Text style={styles.moqText}>
+              Min: {product.minimum_order_quantity} {product.unit}
             </Text>
           </View>
         ) : null}
@@ -342,5 +378,27 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  bulkDiscountBadge: {
+    position: 'absolute',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  bulkDiscountText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  moqBadge: {
+    position: 'absolute',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  moqText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '600',
   },
 });

@@ -26,7 +26,6 @@ import { useTheme } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
 import { useVendorRating } from '@/hooks/useVendorRating';
 import { useVendorProfile } from '@/hooks/useVendorProfile';
-import { typography } from '@/styles/typography';
 
 const { width } = Dimensions.get('window');
 const BANNER_HEIGHT = 200;
@@ -34,8 +33,7 @@ const PROFILE_SIZE = 100;
 
 export default function VendorInfo() {
   const { colors } = useTheme();
-  const { vendorId, vendorName, vendorAddress, vendorRating } =
-    useLocalSearchParams();
+  const { vendorId, vendorName, vendorAddress } = useLocalSearchParams();
 
   const router = useRouter();
 
@@ -85,8 +83,8 @@ export default function VendorInfo() {
   }
 
   // Use vendor's actual images or show placeholders
-  const bannerImage = vendorProfile.banner_image || null;
-  const profileImage = vendorProfile.profile_image || null;
+  const bannerImage = (vendorProfile as any)?.banner_image || null;
+  const profileImage = (vendorProfile as any)?.profile_image || null;
 
   return (
     <SafeAreaView
@@ -232,8 +230,8 @@ export default function VendorInfo() {
                   {ratingData?.average
                     ? ratingData.average.toFixed(1)
                     : vendorProfile.rating
-                    ? vendorProfile.rating.toFixed(1)
-                    : '0.0'}
+                      ? vendorProfile.rating.toFixed(1)
+                      : '0.0'}
                 </Text>
                 <Text
                   style={[styles.statLabel, { color: colors.textSecondary }]}
@@ -289,7 +287,7 @@ export default function VendorInfo() {
                 {['5', '4', '3', '2', '1'].map((star) => {
                   const sumCount = Object.values(ratingData.breakdown).reduce(
                     (a, b) => a + b,
-                    0
+                    0,
                   );
                   const percentage =
                     sumCount > 0
@@ -360,146 +358,7 @@ export default function VendorInfo() {
           </View>
         )}
 
-        {/* Old Vendor Header - DELETE THIS */}
-        <View
-          style={[
-            styles.headerCard,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              display: 'none',
-            },
-          ]}
-        >
-          <View style={styles.headerTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.vendorTitle, { color: colors.text }]}>
-                {vendorProfile.farm_name ||
-                  vendorProfile.full_name ||
-                  vendorName}
-              </Text>
-              {vendorProfile.verified && (
-                <View style={styles.verifiedBadge}>
-                  <CheckCircle size={16} color={colors.success} />
-                  <Text
-                    style={[styles.verifiedText, { color: colors.success }]}
-                  >
-                    Verified Vendor
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {vendorRating && ratingData && (
-              <View style={styles.ratingSection}>
-                {/* Left: Average */}
-                <View style={styles.ratingAverage}>
-                  <Text style={[typography.h1, { color: colors.text }]}>
-                    {ratingData.average.toFixed(1)}
-                  </Text>
-                  <View style={{ flexDirection: 'row' }}>
-                    {[5, 4, 3, 2, 1].map((star: number) => (
-                      <Star
-                        size={20}
-                        key={star}
-                        fill={
-                          star <= Math.round(ratingData.average)
-                            ? colors.secondary
-                            : 'transparent'
-                        }
-                        color={colors.secondary}
-                        style={{ marginLeft: 2, marginBottom: 5 }}
-                      />
-                    ))}
-                  </View>
-                  <TouchableOpacity
-                    onPress={() =>
-                      router.push({
-                        pathname: '/vendor/reviews',
-                        params: { vendorId },
-                      })
-                    }
-                  >
-                    <Text
-                      style={[
-                        typography.body2,
-                        { color: colors.textSecondary, marginTop: 4 },
-                      ]}
-                    >
-                      {ratingData.total} ratings
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {/* Right: Breakdown */}
-                <View style={styles.ratingBreakdown}>
-                  {['5', '4', '3', '2', '1'].map((star: string) => {
-                    const sumCount = Object.values(ratingData.breakdown).reduce(
-                      (a, b) => a + b,
-                      0
-                    );
-                    const percentage =
-                      sumCount > 0
-                        ? (ratingData.breakdown[star] / sumCount) * 100
-                        : 0;
-
-                    return (
-                      <View key={star} style={styles.ratingRow}>
-                        <Text
-                          style={[
-                            typography.body2,
-                            { color: colors.textSecondary, width: 16 },
-                          ]}
-                        >
-                          {star}
-                        </Text>
-
-                        <View
-                          style={[
-                            styles.progressBarBackground,
-                            { backgroundColor: colors.textSecondary },
-                          ]}
-                        >
-                          <View
-                            style={[
-                              styles.progressBarFill,
-                              {
-                                width: `${percentage}%`,
-                                backgroundColor: colors.secondary,
-                              },
-                            ]}
-                          />
-                        </View>
-                        <Text
-                          style={[
-                            typography.body2,
-                            {
-                              color: colors.textSecondary,
-                              width: 36,
-                              textAlign: 'right',
-                            },
-                          ]}
-                        >
-                          {`${Math.round(percentage)}%`}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-          </View>
-
-          {vendorProfile.farm_description && (
-            <Text
-              style={[
-                styles.description,
-                { color: colors.textSecondary, marginTop: 12 },
-              ]}
-            >
-              {vendorProfile.farm_description}
-            </Text>
-          )}
-        </View>
+        {/*  */}
 
         {/* Contact Information */}
         <View style={styles.section}>
@@ -645,7 +504,7 @@ export default function VendorInfo() {
                             {zone}
                           </Text>
                         </View>
-                      )
+                      ),
                     )}
                   </View>
                 </View>
