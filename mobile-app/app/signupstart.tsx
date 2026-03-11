@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignupStart({}) {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   return (
     <SafeAreaView
       edges={['top']}
@@ -39,13 +39,13 @@ export default function SignupStart({}) {
         >
           {/* Logo */}
           <Image
-            source={require('../assets/images/board_1.webp')}
+            source={require('../assets/images/chopnow_logo.webp')}
             style={styles.logo}
             resizeMode="contain"
           />
 
           {/* Title */}
-          <Text style={styles.title}>Welcome to Chop Now</Text>
+          <Text style={[ styles.title, {color: isDark ? colors.text : '#222'}]}>Welcome to Chop Now</Text>
 
           {/* Subtitle */}
           <Text style={styles.subtitle}>

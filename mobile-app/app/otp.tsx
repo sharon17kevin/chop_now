@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,11 +29,18 @@ export default function EmailVerificationScreen() {
   const { verifyEmailOtp } = useAuth();
   const { pending, clear } = usePendingSignup();
 
+  // Redirect back to signup if no pending data (e.g. TTL expired, direct navigation)
+  useEffect(() => {
+    if (!pending) {
+      router.replace('/signup' as any);
+    }
+  }, []);
+
   const handleVerifyOtp = async () => {
     if (otp.trim().length < 6) {
       Alert.alert(
         'Invalid Code',
-        'Please enter the 6-digit code sent to your email.'
+        'Please enter the 6-digit code sent to your email.',
       );
       return;
     }
@@ -41,7 +48,7 @@ export default function EmailVerificationScreen() {
     if (!pending) {
       Alert.alert(
         'Error',
-        'No pending signup found. Please try signing up again.'
+        'No pending signup found. Please try signing up again.',
       );
       router.back();
       return;
@@ -56,19 +63,31 @@ export default function EmailVerificationScreen() {
       otp.trim(),
       pending.name,
       pending.password,
-      pending.role
+      pending.role,
     );
 
     if (!result.success) {
       setLoading(false);
-      Alert.alert('Verification Failed', result.error);
+      const errorMsg = result.error || 'Verification failed';
+
+      // Clear pending data on terminal failures so password doesn't linger
+      if (
+        errorMsg.toLowerCase().includes('expired') ||
+        errorMsg.toLowerCase().includes('max attempts') ||
+        errorMsg.toLowerCase().includes('too many')
+      ) {
+        clear();
+      }
+
+      Alert.alert('Verification Failed', errorMsg);
       return;
     }
 
-    // Success - clear pending data and navigation handled by verifyEmailOtp
-    console.log('✅ Verification successful');
+    // Success - clear pending data and navigate to home
+    console.log('Verification successful');
     clear();
     setLoading(false);
+    router.replace('/(tabs)/(home)' as any);
   };
 
   const handleResendCode = async () => {
@@ -86,14 +105,14 @@ export default function EmailVerificationScreen() {
     if (!result.success) {
       Alert.alert(
         'Error',
-        result.error || 'Could not resend code. Please try again.'
+        result.error || 'Could not resend code. Please try again.',
       );
       return;
     }
 
     Alert.alert(
       'Code Resent',
-      'A new verification code has been sent to your email.'
+      'A new verification code has been sent to your email.',
     );
   };
 

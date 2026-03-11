@@ -89,7 +89,10 @@ function RootLayoutNav() {
       isAuthenticated &&
       !inAuthGroup &&
       segments[0] !== 'login' &&
-      segments[0] !== 'signup'
+      segments[0] !== 'signup' &&
+      segments[0] !== 'signupstart' &&
+      segments[0] !== 'otp' &&
+      segments[0] !== 'forgot'
     ) {
       // User is authenticated but not inside the protected group
       router.replace('/(tabs)/(home)' as any);

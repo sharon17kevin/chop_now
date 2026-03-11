@@ -16,10 +16,12 @@ import { useTheme } from '@/hooks/useTheme';
 import { ArrowLeft } from 'lucide-react-native';
 import { typography } from '@/styles/typography';
 import { ScrollView } from 'react-native-gesture-handler';
+import { supabase } from '@/lib/supabase';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
   const router = useRouter();
   const { colors } = useTheme();
 
@@ -29,19 +31,21 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Example: Supabase or Firebase password reset
-      // await supabase.auth.resetPasswordForEmail(email);
-      await new Promise((res) => setTimeout(res, 1500)); // mock delay
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
 
-      Alert.alert(
-        'Check your inbox',
-        'We’ve sent a password reset code to your email.'
-      );
-      router.push({
-        pathname: 'otp' as any,
-      });
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to send reset email.');
+        return;
+      }
+
+      setSent(true);
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
@@ -53,7 +57,7 @@ export default function ForgotPasswordScreen() {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView
         edges={['top']}
-        style={[styles.container, { backgroundColor: 'colors.background' }]}
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
         <View style={[styles.header, { width: '100%', height: 50 }]}>
           <TouchableOpacity
@@ -75,44 +79,95 @@ export default function ForgotPasswordScreen() {
               paddingBottom: 20,
             }}
           >
-            <Text style={styles.title}>Forgot Password?</Text>
-            <Text style={styles.subtitle}>
-              Enter your email below and we’ll send you a link to reset your
-              password.
-            </Text>
+            {sent ? (
+              <>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  Check Your Inbox
+                </Text>
+                <Text
+                  style={[styles.subtitle, { color: colors.textSecondary }]}
+                >
+                  We've sent a password reset link to {email}. Check your email
+                  and follow the instructions to reset your password.
+                </Text>
 
-            <TextInput
-              placeholder="Enter your email"
-              placeholderTextColor="#aaa"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-            />
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: colors.secondary }]}
+                  onPress={() => router.replace('/login')}
+                >
+                  <Text style={styles.buttonText}>Back to Login</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.button,
-                loading && { opacity: 0.6 },
-                { backgroundColor: colors.secondary },
-              ]}
-              onPress={handleResetPassword}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Send Reset Link</Text>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSent(false);
+                  }}
+                  style={styles.backContainer}
+                >
+                  <Text
+                    style={[styles.resendText, { color: colors.secondary }]}
+                  >
+                    Didn't receive it? Try again
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  Forgot Password?
+                </Text>
+                <Text
+                  style={[styles.subtitle, { color: colors.textSecondary }]}
+                >
+                  Enter your email below and we'll send you a link to reset your
+                  password.
+                </Text>
 
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backContainer}
-            >
-              <Text style={styles.backText}>Back to Login</Text>
-            </TouchableOpacity>
+                <TextInput
+                  placeholder="Enter your email"
+                  placeholderTextColor={colors.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: colors.inputBorder,
+                      backgroundColor: colors.input,
+                      color: colors.text,
+                    },
+                  ]}
+                />
+
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    loading && { opacity: 0.6 },
+                    { backgroundColor: colors.secondary },
+                  ]}
+                  onPress={handleResetPassword}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Send Reset Link</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={styles.backContainer}
+                >
+                  <Text
+                    style={[styles.backText, { color: colors.textSecondary }]}
+                  >
+                    Back to Login
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -140,29 +195,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#111',
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 15,
-    color: '#666',
     marginBottom: 30,
+    textAlign: 'center',
   },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 10,
     padding: 14,
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  dummy: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
     fontSize: 16,
     marginBottom: 20,
   },
@@ -182,7 +226,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backText: {
-    color: '#FF6600',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  resendText: {
     fontSize: 15,
     fontWeight: '500',
   },

@@ -28,14 +28,12 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { typography } from '@/styles/typography';
 import { usePendingSignup } from '@/stores/usePendingSignup';
 import * as authService from '@/services/auth/auth';
 
 export default function SignUpScreen() {
-  const { signup } = useAuth();
   const { colors } = useTheme();
   const { setPending } = usePendingSignup();
   const [name, setName] = useState('');
@@ -81,8 +79,8 @@ export default function SignUpScreen() {
 
     if (!password) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     if (!confirmPassword) {
@@ -102,7 +100,7 @@ export default function SignUpScreen() {
         withTiming(10, { duration: 50 }),
         withTiming(-10, { duration: 50 }),
         withTiming(10, { duration: 50 }),
-        withTiming(0, { duration: 50 })
+        withTiming(0, { duration: 50 }),
       );
       return;
     }
@@ -121,7 +119,7 @@ export default function SignUpScreen() {
 
       Alert.alert(
         'Signup Failed',
-        result.error || 'Failed to send verification code'
+        result.error || 'Failed to send verification code',
       );
 
       if (result.error?.toLowerCase().includes('email')) {

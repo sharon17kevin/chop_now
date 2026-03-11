@@ -573,30 +573,6 @@ export default function SellScreen() {
       );
       const imageUrls = uploadedImages.map((img) => img.url);
 
-      // Build bulk discount tiers array
-      const bulkDiscountTiers: {
-        min_quantity: number;
-        discount_percent: number;
-      }[] = [];
-      if (
-        data.hasBulkDiscount &&
-        data.discountTier1Qty &&
-        data.discountTier1Percent
-      ) {
-        bulkDiscountTiers.push({
-          min_quantity: parseInt(data.discountTier1Qty),
-          discount_percent: parseFloat(data.discountTier1Percent),
-        });
-
-        // Add tier 2 if both fields are filled
-        if (data.discountTier2Qty && data.discountTier2Percent) {
-          bulkDiscountTiers.push({
-            min_quantity: parseInt(data.discountTier2Qty),
-            discount_percent: parseFloat(data.discountTier2Percent),
-          });
-        }
-      }
-
       await ProductService.addProduct({
         vendor_id: user.id,
         name: data.name.trim(),
@@ -612,11 +588,6 @@ export default function SellScreen() {
         status: 'pending',
         is_available: true,
         minimum_order_quantity: parseInt(data.minimumOrderQty) || 1,
-        order_increment: data.hasIncrement
-          ? parseInt(data.orderIncrement)
-          : null,
-        bulk_discount_tiers:
-          bulkDiscountTiers.length > 0 ? bulkDiscountTiers : null,
       });
 
       // Save smart defaults for next product

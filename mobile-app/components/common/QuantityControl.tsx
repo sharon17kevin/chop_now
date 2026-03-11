@@ -23,7 +23,7 @@ export default function QuantityControl({
   disabled = false,
 }: QuantityControlProps) {
   const { colors } = useTheme();
-  
+
   const minQty = product.minimum_order_quantity || 1;
   const incrementValue = product.order_increment || 1;
   const maxQty = product.stock;

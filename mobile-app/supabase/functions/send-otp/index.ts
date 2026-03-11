@@ -141,7 +141,7 @@ async function sendEmail(to: string, code: string): Promise<EmailResult> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Chow <onboarding@resend.dev>',  // Using Resend's test domain
+        from: 'Chow <noreply@luvimes.com>',  // Using your verified domain
         to,
         subject: 'Your Chow Verification Code',
         html: `

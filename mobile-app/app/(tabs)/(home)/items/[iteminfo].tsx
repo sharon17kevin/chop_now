@@ -39,13 +39,17 @@ export default function ItemInfoScreen() {
 
   const isOpenBool = isOpen === 'true';
   const priceNum = parseFloat(price?.toString() || '0');
-  
+
   // Fetch full product data to get MOQ, increment, and stock info
-  const { data: product, isLoading: productLoading, error: productError } = useProduct(id?.toString() || null);
+  const {
+    data: product,
+    isLoading: productLoading,
+    error: productError,
+  } = useProduct(id?.toString() || null);
 
   const images = [
     image?.toString() ||
-    'https://images.pexels.com/photos/1002703/pexels-photo-1002703.jpeg',
+      'https://images.pexels.com/photos/1002703/pexels-photo-1002703.jpeg',
     'https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg',
     'https://images.pexels.com/photos/34950/pexels-photo.jpg',
   ];
@@ -63,7 +67,7 @@ export default function ItemInfoScreen() {
   };
   const sumCount = Object.values(ratingData.breakdown).reduce(
     (a, b) => a + b,
-    0
+    0,
   );
 
   const handleShare = () => {
@@ -77,7 +81,7 @@ export default function ItemInfoScreen() {
   // quantity state and handlers
   const [qty, setQty] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  
+
   // Set initial quantity based on product MOQ when product data loads
   useEffect(() => {
     if (product && product.minimum_order_quantity) {
@@ -100,7 +104,7 @@ export default function ItemInfoScreen() {
       if (!profile?.id) {
         Alert.alert(
           'Login Required',
-          'Please log in to add items to your cart'
+          'Please log in to add items to your cart',
         );
         return;
       }
@@ -110,11 +114,17 @@ export default function ItemInfoScreen() {
       // const vendorId = 'some-vendor-uuid';   // Will be fetched from product data
 
       // Check if item already in cart
-      const existingItem = await CartService.getExistingCartItemMaybe(profile.id, productId);
+      const existingItem = await CartService.getExistingCartItemMaybe(
+        profile.id,
+        productId,
+      );
 
       if (existingItem) {
         // Update existing cart item quantity
-        await CartService.updateQuantity(existingItem.id, existingItem.quantity + qty);
+        await CartService.updateQuantity(
+          existingItem.id,
+          existingItem.quantity + qty,
+        );
 
         Alert.alert(
           'Cart Updated',
@@ -125,7 +135,7 @@ export default function ItemInfoScreen() {
               text: 'View Cart',
               onPress: () => router.push('/(tabs)/(orders)'),
             },
-          ]
+          ],
         );
       } else {
         // Add new cart item
@@ -146,7 +156,7 @@ export default function ItemInfoScreen() {
       console.error('Add to cart error:', error);
       Alert.alert(
         'Error',
-        error?.message || 'Failed to add item to cart. Please try again.'
+        error?.message || 'Failed to add item to cart. Please try again.',
       );
     } finally {
       setIsAddingToCart(false);
@@ -327,8 +337,9 @@ export default function ItemInfoScreen() {
           <ExpandingTile
             title="Description"
             address={address as string}
-            description={`${description} This location is currently ${isOpenBool ? 'open' : 'closed'
-              }.`}
+            description={`${description} This location is currently ${
+              isOpenBool ? 'open' : 'closed'
+            }.`}
           />
         </View>
 
@@ -391,8 +402,9 @@ export default function ItemInfoScreen() {
                     style={[
                       styles.progressBarFill,
                       {
-                        width: `${(ratingData.breakdown[star] / sumCount) * 100
-                          }%`,
+                        width: `${
+                          (ratingData.breakdown[star] / sumCount) * 100
+                        }%`,
                         backgroundColor: colors.secondary,
                       },
                     ]}
@@ -409,7 +421,7 @@ export default function ItemInfoScreen() {
                   ]}
                 >
                   {`${Math.round(
-                    (ratingData.breakdown[star] / sumCount) * 100
+                    (ratingData.breakdown[star] / sumCount) * 100,
                   )}%`}
                 </Text>
               </View>
@@ -469,7 +481,9 @@ export default function ItemInfoScreen() {
           />
         ) : (
           <View style={styles.qtyRow}>
-            <Text style={[styles.qtyText, { color: colors.text }]}>Loading...</Text>
+            <Text style={[styles.qtyText, { color: colors.text }]}>
+              Loading...
+            </Text>
           </View>
         )}
         <TouchableOpacity
