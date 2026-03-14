@@ -46,7 +46,8 @@
             "image": "./assets/images/chopnow_logo.png"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
@@ -57,7 +58,6 @@
         "projectId": "d1adb3d8-8946-4705-9290-a97cea489ed7"
       }
     },
-    
     "android": {
       "package": "com.sharon14kevin.chopnow",
       "adaptiveIcon": {

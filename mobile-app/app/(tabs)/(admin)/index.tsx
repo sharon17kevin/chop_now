@@ -4,11 +4,14 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useRouter } from 'expo-router';
 import {
   AlertCircle,
+  Bell,
   CheckCircle,
   Clock,
+  ImageIcon,
   Package,
   ShoppingBag,
   Store,
+  Ticket,
   TrendingUp,
   Users,
   XCircle,
@@ -327,6 +330,27 @@ export default function AdminDashboard() {
             description="View platform analytics and insights"
             color="#06b6d4"
             onPress={() => router.push('/(tabs)/(admin)/analysis')}
+          />
+          <ActionCard
+            icon={ImageIcon}
+            title="Manage Banners"
+            description="Create and manage home page promotions"
+            color="#ec4899"
+            onPress={() => router.push('/(tabs)/(admin)/banners')}
+          />
+          <ActionCard
+            icon={Ticket}
+            title="Promo Codes"
+            description="Create and manage discount codes"
+            color="#14b8a6"
+            onPress={() => router.push('/(tabs)/(admin)/promoCodes')}
+          />
+          <ActionCard
+            icon={Bell}
+            title="Broadcast"
+            description="Send notifications to all users"
+            color="#6366f1"
+            onPress={() => router.push('/(tabs)/(admin)/broadcast')}
           />
         </View>
 

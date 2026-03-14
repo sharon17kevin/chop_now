@@ -39,7 +39,7 @@ export default function SignupStart({}) {
         >
           {/* Logo */}
           <Image
-            source={require('../assets/images/chopnow_logo.webp')}
+            source={require('../assets/images/chopnow_logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

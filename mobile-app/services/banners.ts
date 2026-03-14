@@ -1,6 +1,61 @@
 import { supabase } from '@/lib/supabase';
 
+export interface BannerInput {
+    title: string;
+    subtitle?: string | null;
+    image_url: string;
+    action_type: 'product' | 'vendor' | 'category' | 'url';
+    action_id?: string | null;
+    action_url?: string | null;
+    is_active: boolean;
+    display_order: number;
+    start_date: string;
+    end_date?: string | null;
+}
+
 export const BannerService = {
+    async getAllBanners() {
+        const { data, error } = await supabase
+            .from('banners')
+            .select('*')
+            .order('display_order', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async createBanner(banner: BannerInput) {
+        const { data, error } = await supabase
+            .from('banners')
+            .insert(banner)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async updateBanner(id: string, updates: Partial<BannerInput>) {
+        const { data, error } = await supabase
+            .from('banners')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async deleteBanner(id: string) {
+        const { error } = await supabase
+            .from('banners')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
     async getActiveBanners() {
         const now = new Date().toISOString();
 

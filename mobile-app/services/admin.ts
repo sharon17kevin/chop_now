@@ -1,4 +1,21 @@
 import { supabase } from '@/lib/supabase';
+import { NotificationService } from './notifications';
+
+export interface PromoCodeInput {
+    code: string;
+    description?: string;
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number;
+    min_order_amount?: number;
+    max_discount_amount?: number;
+    usage_limit?: number;
+    per_user_limit?: number;
+    valid_from?: string;
+    valid_until?: string | null;
+    is_active?: boolean;
+    vendor_id?: string | null;
+    applicable_categories?: string[];
+}
 
 export const AdminService = {
     // Vendor Applications
@@ -204,5 +221,100 @@ export const AdminService = {
         });
 
         if (error) throw error;
+    },
+
+    // Promo Code CRUD
+    async getPromoCodes() {
+        const { data, error } = await supabase
+            .from('promo_codes')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async createPromoCode(promo: PromoCodeInput) {
+        const { data, error } = await supabase
+            .from('promo_codes')
+            .insert(promo)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async updatePromoCode(id: string, updates: Partial<PromoCodeInput>) {
+        const { data, error } = await supabase
+            .from('promo_codes')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async deletePromoCode(id: string) {
+        const { error } = await supabase
+            .from('promo_codes')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    // Broadcast Notifications
+    async broadcastNotification(
+        title: string,
+        message: string,
+        type: 'promotion' | 'alert' | 'system',
+        targetRole?: 'customer' | 'vendor' | null,
+    ) {
+        // Get target user IDs
+        let query = supabase.from('profiles').select('id');
+        if (targetRole) {
+            query = query.eq('role', targetRole);
+        }
+
+        const { data: users, error: usersError } = await query;
+        if (usersError) throw usersError;
+        if (!users || users.length === 0) {
+            return { notified: 0, pushed: 0 };
+        }
+
+        // Insert in-app notifications
+        const notifications = users.map((u) => ({
+            user_id: u.id,
+            title,
+            message,
+            type,
+            is_read: false,
+        }));
+
+        await NotificationService.createBulk(notifications);
+
+        // Send push notifications via edge function
+        let pushed = 0;
+        try {
+            const { data, error } = await supabase.functions.invoke('send-notification', {
+                body: {
+                    title,
+                    message,
+                    role: targetRole || undefined,
+                    type,
+                },
+            });
+
+            if (!error && data) {
+                pushed = data.sent || 0;
+            }
+        } catch (e) {
+            console.error('Push notification failed:', e);
+        }
+
+        return { notified: users.length, pushed };
     },
 };
